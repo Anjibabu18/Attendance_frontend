@@ -1,8 +1,10 @@
 package com.attendance.config;
 
+import com.attendance.config.AppConfig;
 import com.attendance.domain.AppUser;
 import com.attendance.domain.Role;
 import com.attendance.repo.UserRepository;
+import com.attendance.security.PasswordPolicy;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,13 +16,25 @@ import org.slf4j.LoggerFactory;
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true", matchIfMissing = true)
 public class DataSeeder implements CommandLineRunner {
   private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);
+  private static final String DEV_ADMIN_USERNAME = "admin";
+  private static final String DEV_ADMIN_PASSWORD = "Admin@12345!";
+  private static final String DEV_HR_USERNAME = "hr";
+  private static final String DEV_HR_PASSWORD = "HrUser@12345!";
 
   private final UserRepository userRepository;
   private final PasswordEncoder passwordEncoder;
+  private final PasswordPolicy passwordPolicy;
+  private final AppConfig appConfig;
 
-  public DataSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+  public DataSeeder(
+      UserRepository userRepository,
+      PasswordEncoder passwordEncoder,
+      PasswordPolicy passwordPolicy,
+      AppConfig appConfig) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
+    this.passwordPolicy = passwordPolicy;
+    this.appConfig = appConfig;
   }
 
   @Override
@@ -30,6 +44,7 @@ public class DataSeeder implements CommandLineRunner {
 
     if (!username.isBlank() && !password.isBlank()) {
       if (!userRepository.existsByUsername(username)) {
+        passwordPolicy.validate(password);
         AppUser admin = new AppUser();
         admin.setUsername(username);
         admin.setPasswordHash(passwordEncoder.encode(password));
@@ -37,6 +52,14 @@ public class DataSeeder implements CommandLineRunner {
         userRepository.save(admin);
         log.info("Seeded admin user '{}'", username);
       }
+    } else if (shouldSeedLocalDefaults() && userRepository.count() == 0) {
+      passwordPolicy.validate(DEV_ADMIN_PASSWORD);
+      AppUser admin = new AppUser();
+      admin.setUsername(DEV_ADMIN_USERNAME);
+      admin.setPasswordHash(passwordEncoder.encode(DEV_ADMIN_PASSWORD));
+      admin.setRole(Role.ROLE_ADMIN);
+      userRepository.save(admin);
+      log.info("Seeded local dev admin user '{}'", DEV_ADMIN_USERNAME);
     } else {
       log.info(
           "Admin seeding skipped. Set INIT_ADMIN_USERNAME and INIT_ADMIN_PASSWORD to seed an admin account.");
@@ -47,18 +70,34 @@ public class DataSeeder implements CommandLineRunner {
     if (!hrUsername.isBlank()
         && !hrPassword.isBlank()
         && !userRepository.existsByUsername(hrUsername)) {
+      passwordPolicy.validate(hrPassword);
       AppUser hr = new AppUser();
       hr.setUsername(hrUsername);
       hr.setPasswordHash(passwordEncoder.encode(hrPassword));
       hr.setRole(Role.ROLE_HR);
       userRepository.save(hr);
       log.info("Seeded HR user '{}'", hrUsername);
+    } else if (shouldSeedLocalDefaults()
+        && !userRepository.existsByUsername(DEV_HR_USERNAME)) {
+      passwordPolicy.validate(DEV_HR_PASSWORD);
+      AppUser hr = new AppUser();
+      hr.setUsername(DEV_HR_USERNAME);
+      hr.setPasswordHash(passwordEncoder.encode(DEV_HR_PASSWORD));
+      hr.setRole(Role.ROLE_HR);
+      userRepository.save(hr);
+      log.info("Seeded local dev HR user '{}'", DEV_HR_USERNAME);
     }
+  }
+
+  private boolean shouldSeedLocalDefaults() {
+    String allowedOrigins = appConfig.getCors().getAllowedOrigins();
+    return allowedOrigins != null && allowedOrigins.contains("localhost");
   }
 
   private static String env(String key, String def) {
     String v = System.getenv(key);
-    if (v == null || v.isBlank()) return def;
+    if (v == null || v.isBlank())
+      return def;
     return v;
   }
 }

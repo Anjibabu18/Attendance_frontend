@@ -21,7 +21,12 @@ public class JwtService {
   }
 
   private SecretKey signingKey() {
-    byte[] bytes = appConfig.getJwt().getSecret().getBytes(StandardCharsets.UTF_8);
+    String secret = appConfig.getJwt().getSecret();
+    if (secret == null || secret.length() < 32 || secret.startsWith("change-me")) {
+      throw new IllegalStateException(
+          "JWT_SECRET must be configured with at least 32 characters and must not use the default value");
+    }
+    byte[] bytes = secret.getBytes(StandardCharsets.UTF_8);
     return Keys.hmacShaKeyFor(bytes);
   }
 

@@ -1,14 +1,17 @@
 import { Card, CardContent, type CardContentProps, type CardProps, type SxProps, type Theme } from "@mui/material";
 
 const baseCardSx: SxProps<Theme> = {
-  border: "1px solid rgba(15,23,42,0.08)",
-  borderRadius: 5,
-  background:
-    "linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(247,249,255,0.82) 100%), radial-gradient(circle at top right, rgba(216,155,43,0.10), transparent 34%)",
-  backdropFilter: "blur(10px)",
-  boxShadow: "0 22px 60px rgba(17,24,39,0.08)",
+  border: "1px solid rgba(203,213,225,0.9)",
+  borderRadius: 1,
+  background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.94))",
+  boxShadow: "0 10px 28px rgba(15,23,42,0.07)",
   position: "relative",
   overflow: "hidden",
+  transition: "border-color .16s ease, box-shadow .16s ease, transform .16s ease",
+  "&:hover": {
+    borderColor: "#cbd5e1",
+    boxShadow: "0 16px 38px rgba(15,23,42,0.10)",
+  },
 };
 
 export default function AppCard(
@@ -22,7 +25,7 @@ export default function AppCard(
       <CardContent
         {...contentProps}
         sx={[
-          { p: 3, "&:last-child": { pb: 3 } },
+          { p: { xs: 2.25, md: 3 }, "&:last-child": { pb: { xs: 2.25, md: 3 } } },
           ...(Array.isArray(contentSx) ? contentSx : [contentSx]),
         ]}
       >

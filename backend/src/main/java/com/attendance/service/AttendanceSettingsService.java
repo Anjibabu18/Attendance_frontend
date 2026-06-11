@@ -59,6 +59,60 @@ public class AttendanceSettingsService {
       String weekendDays,
       Integer fullDayMinutes,
       Integer halfDayMinutes) {
+    return update(defaultInTime, defaultOutTime, weekendDays, fullDayMinutes, halfDayMinutes, 10, 10, fullDayMinutes);
+  }
+
+  @Transactional
+  public AttendanceSettings update(
+      LocalTime defaultInTime,
+      LocalTime defaultOutTime,
+      String weekendDays,
+      Integer fullDayMinutes,
+      Integer halfDayMinutes,
+      Integer lateGraceMinutes,
+      Integer earlyLeaveGraceMinutes,
+      Integer overtimeAfterMinutes) {
+    return update(
+        defaultInTime,
+        defaultOutTime,
+        weekendDays,
+        fullDayMinutes,
+        halfDayMinutes,
+        lateGraceMinutes,
+        earlyLeaveGraceMinutes,
+        overtimeAfterMinutes,
+        1d,
+        75d,
+        500d,
+        30000d,
+        false,
+        false,
+        10080,
+        appConfig.getAttendance().isOfficeIpRestrictionEnabled(),
+        appConfig.getAttendance().getAllowedOfficeCidrs(),
+        appConfig.getAttendance().isTrustProxyHeaders());
+  }
+
+  @Transactional
+  public AttendanceSettings update(
+      LocalTime defaultInTime,
+      LocalTime defaultOutTime,
+      String weekendDays,
+      Integer fullDayMinutes,
+      Integer halfDayMinutes,
+      Integer lateGraceMinutes,
+      Integer earlyLeaveGraceMinutes,
+      Integer overtimeAfterMinutes,
+      Double lateDeductionPerMinute,
+      Double overtimePayPerHour,
+      Double unpaidLeaveDailyRate,
+      Double standardMonthlySalary,
+      Boolean requireQrForPunch,
+      Boolean permanentOfficeQr,
+      Integer qrTokenValidityMinutes,
+      Boolean officeIpRestrictionEnabled,
+      String allowedOfficeCidrs,
+      Boolean trustProxyHeaders) {
     if (fullDayMinutes == null || fullDayMinutes <= 0) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "fullDayMinutes must be > 0");
     }
@@ -67,6 +121,22 @@ public class AttendanceSettingsService {
     }
     if (halfDayMinutes > fullDayMinutes) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "halfDayMinutes must be <= fullDayMinutes");
+    }
+    if (lateGraceMinutes == null || lateGraceMinutes < 0) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "lateGraceMinutes must be >= 0");
+    }
+    if (earlyLeaveGraceMinutes == null || earlyLeaveGraceMinutes < 0) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "earlyLeaveGraceMinutes must be >= 0");
+    }
+    if (overtimeAfterMinutes == null || overtimeAfterMinutes <= 0) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "overtimeAfterMinutes must be > 0");
+    }
+    if (qrTokenValidityMinutes == null || qrTokenValidityMinutes <= 0) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "qrTokenValidityMinutes must be > 0");
+    }
+    if (Boolean.TRUE.equals(officeIpRestrictionEnabled)
+        && (allowedOfficeCidrs == null || allowedOfficeCidrs.isBlank())) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "allowedOfficeCidrs is required when office IP restriction is enabled");
     }
 
     AttendanceSettings s =
@@ -77,6 +147,19 @@ public class AttendanceSettingsService {
     s.setWeekendDays(weekendDays);
     s.setFullDayMinutes(fullDayMinutes);
     s.setHalfDayMinutes(halfDayMinutes);
+    s.setLateGraceMinutes(lateGraceMinutes);
+    s.setEarlyLeaveGraceMinutes(earlyLeaveGraceMinutes);
+    s.setOvertimeAfterMinutes(overtimeAfterMinutes);
+    s.setLateDeductionPerMinute(lateDeductionPerMinute);
+    s.setOvertimePayPerHour(overtimePayPerHour);
+    s.setUnpaidLeaveDailyRate(unpaidLeaveDailyRate);
+    s.setStandardMonthlySalary(standardMonthlySalary);
+    s.setRequireQrForPunch(requireQrForPunch);
+    s.setPermanentOfficeQr(permanentOfficeQr);
+    s.setQrTokenValidityMinutes(qrTokenValidityMinutes);
+    s.setOfficeIpRestrictionEnabled(Boolean.TRUE.equals(officeIpRestrictionEnabled));
+    s.setAllowedOfficeCidrs(cleanCidrs(allowedOfficeCidrs));
+    s.setTrustProxyHeaders(Boolean.TRUE.equals(trustProxyHeaders));
     ensureDefaults(s);
     return attendanceSettingsRepository.save(s);
   }
@@ -90,6 +173,19 @@ public class AttendanceSettingsService {
     s.setWeekendDays("SUNDAY");
     s.setFullDayMinutes(appConfig.getAttendance().getMinDailyMinutes());
     s.setHalfDayMinutes(Math.max(1, appConfig.getAttendance().getMinDailyMinutes() / 2));
+    s.setLateGraceMinutes(10);
+    s.setEarlyLeaveGraceMinutes(10);
+    s.setOvertimeAfterMinutes(appConfig.getAttendance().getMinDailyMinutes());
+    s.setLateDeductionPerMinute(1d);
+    s.setOvertimePayPerHour(75d);
+    s.setUnpaidLeaveDailyRate(500d);
+    s.setStandardMonthlySalary(30000d);
+    s.setRequireQrForPunch(false);
+    s.setPermanentOfficeQr(false);
+    s.setQrTokenValidityMinutes(10080);
+    s.setOfficeIpRestrictionEnabled(appConfig.getAttendance().isOfficeIpRestrictionEnabled());
+    s.setAllowedOfficeCidrs(cleanCidrs(appConfig.getAttendance().getAllowedOfficeCidrs()));
+    s.setTrustProxyHeaders(appConfig.getAttendance().isTrustProxyHeaders());
     return attendanceSettingsRepository.save(s);
   }
 
@@ -103,5 +199,55 @@ public class AttendanceSettingsService {
     if (s.getHalfDayMinutes() > s.getFullDayMinutes()) {
       s.setHalfDayMinutes(Math.max(1, s.getFullDayMinutes() / 2));
     }
+    if (s.getLateGraceMinutes() == null || s.getLateGraceMinutes() < 0) {
+      s.setLateGraceMinutes(10);
+    }
+    if (s.getEarlyLeaveGraceMinutes() == null || s.getEarlyLeaveGraceMinutes() < 0) {
+      s.setEarlyLeaveGraceMinutes(10);
+    }
+    if (s.getOvertimeAfterMinutes() == null || s.getOvertimeAfterMinutes() <= 0) {
+      s.setOvertimeAfterMinutes(s.getFullDayMinutes());
+    }
+    if (s.getLateDeductionPerMinute() == null || s.getLateDeductionPerMinute() < 0) {
+      s.setLateDeductionPerMinute(1d);
+    }
+    if (s.getOvertimePayPerHour() == null || s.getOvertimePayPerHour() < 0) {
+      s.setOvertimePayPerHour(75d);
+    }
+    if (s.getUnpaidLeaveDailyRate() == null || s.getUnpaidLeaveDailyRate() < 0) {
+      s.setUnpaidLeaveDailyRate(500d);
+    }
+    if (s.getStandardMonthlySalary() == null || s.getStandardMonthlySalary() < 0) {
+      s.setStandardMonthlySalary(30000d);
+    }
+    if (s.getRequireQrForPunch() == null) {
+      s.setRequireQrForPunch(false);
+    }
+    if (s.getPermanentOfficeQr() == null) {
+      s.setPermanentOfficeQr(false);
+    }
+    if (s.getQrTokenValidityMinutes() == null || s.getQrTokenValidityMinutes() <= 0) {
+      s.setQrTokenValidityMinutes(10080);
+    }
+    if (s.getOfficeIpRestrictionEnabled() == null) {
+      s.setOfficeIpRestrictionEnabled(appConfig.getAttendance().isOfficeIpRestrictionEnabled());
+    }
+    if (s.getAllowedOfficeCidrs() == null) {
+      s.setAllowedOfficeCidrs(cleanCidrs(appConfig.getAttendance().getAllowedOfficeCidrs()));
+    }
+    if (s.getTrustProxyHeaders() == null) {
+      s.setTrustProxyHeaders(appConfig.getAttendance().isTrustProxyHeaders());
+    }
+  }
+
+  private static String cleanCidrs(String value) {
+    if (value == null || value.isBlank()) {
+      return "";
+    }
+    return java.util.Arrays.stream(value.split(","))
+        .map(String::trim)
+        .filter(v -> !v.isBlank())
+        .reduce((a, b) -> a + "," + b)
+        .orElse("");
   }
 }

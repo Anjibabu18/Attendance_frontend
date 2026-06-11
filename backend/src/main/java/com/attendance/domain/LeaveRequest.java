@@ -34,6 +34,21 @@ public class LeaveRequest {
   @Column(nullable = false, length = 255)
   private String reason;
 
+  @Column(name = "leave_type", length = 40)
+  private String leaveType;
+
+  @Column(name = "mail_subject", length = 160)
+  private String mailSubject;
+
+  @Column(name = "mail_message", length = 2000)
+  private String mailMessage;
+
+  @Column(name = "attachment_url", length = 500)
+  private String attachmentUrl;
+
+  @Column(name = "attachment_name", length = 180)
+  private String attachmentName;
+
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 20)
   private LeaveRequestStatus status = LeaveRequestStatus.PENDING;
@@ -91,6 +106,46 @@ public class LeaveRequest {
     this.reason = reason;
   }
 
+  public String getLeaveType() {
+    return leaveType;
+  }
+
+  public void setLeaveType(String leaveType) {
+    this.leaveType = leaveType;
+  }
+
+  public String getMailSubject() {
+    return mailSubject;
+  }
+
+  public void setMailSubject(String mailSubject) {
+    this.mailSubject = mailSubject;
+  }
+
+  public String getMailMessage() {
+    return mailMessage;
+  }
+
+  public void setMailMessage(String mailMessage) {
+    this.mailMessage = mailMessage;
+  }
+
+  public String getAttachmentUrl() {
+    return attachmentUrl;
+  }
+
+  public void setAttachmentUrl(String attachmentUrl) {
+    this.attachmentUrl = attachmentUrl;
+  }
+
+  public String getAttachmentName() {
+    return attachmentName;
+  }
+
+  public void setAttachmentName(String attachmentName) {
+    this.attachmentName = attachmentName;
+  }
+
   public LeaveRequestStatus getStatus() {
     return status;
   }
@@ -131,4 +186,3 @@ public class LeaveRequest {
     this.hrRemarks = hrRemarks;
   }
 }
-

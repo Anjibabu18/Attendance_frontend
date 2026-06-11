@@ -6,11 +6,16 @@ import com.attendance.domain.Role;
 import com.attendance.repo.EmployeeRepository;
 import com.attendance.repo.UserRepository;
 import com.attendance.security.JwtService;
+import com.attendance.security.LoginAttemptService;
 import com.attendance.service.ApiException;
+import com.attendance.service.AuditLogService;
+import com.attendance.service.ProductionFeatureService;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -27,29 +32,55 @@ public class AuthController {
   private final UserRepository userRepository;
   private final EmployeeRepository employeeRepository;
   private final JwtService jwtService;
+  private final LoginAttemptService loginAttemptService;
+  private final AuditLogService auditLogService;
+  private final ProductionFeatureService productionFeatureService;
 
   public AuthController(
       AuthenticationManager authenticationManager,
       UserRepository userRepository,
       EmployeeRepository employeeRepository,
-      JwtService jwtService) {
+      JwtService jwtService,
+      LoginAttemptService loginAttemptService,
+      AuditLogService auditLogService,
+      ProductionFeatureService productionFeatureService) {
     this.authenticationManager = authenticationManager;
     this.userRepository = userRepository;
     this.employeeRepository = employeeRepository;
     this.jwtService = jwtService;
+    this.loginAttemptService = loginAttemptService;
+    this.auditLogService = auditLogService;
+    this.productionFeatureService = productionFeatureService;
   }
 
   @PostMapping("/login")
-  public AuthDtos.LoginResponse login(@Valid @RequestBody AuthDtos.LoginRequest req) {
-    Authentication auth =
-        authenticationManager.authenticate(
-            new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword()));
+  public AuthDtos.LoginResponse login(
+      @Valid @RequestBody AuthDtos.LoginRequest req, HttpServletRequest request) {
+    String remoteAddress = clientAddress(request);
+    loginAttemptService.assertAllowed(req.getUsername(), remoteAddress);
+    Authentication auth;
+    try {
+      auth =
+          authenticationManager.authenticate(
+              new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword()));
+    } catch (AuthenticationException e) {
+      loginAttemptService.recordFailure(req.getUsername(), remoteAddress);
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid login");
+    }
     if (!auth.isAuthenticated()) throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid login");
 
     AppUser user =
         userRepository
             .findByUsername(req.getUsername())
             .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid login"));
+    loginAttemptService.recordSuccess(req.getUsername(), remoteAddress);
+    user.setLastLoginAt(java.time.Instant.now());
+    user.setLastLoginIp(remoteAddress);
+    String ua = request.getHeader("User-Agent");
+    user.setLastUserAgent(ua == null ? null : ua.substring(0, Math.min(255, ua.length())));
+    userRepository.save(user);
+    productionFeatureService.recordSession(user, remoteAddress, user.getLastUserAgent());
+    auditLogService.record(user.getUsername(), "LOGIN_SUCCESS", "USER", user.getId(), "ip=" + remoteAddress);
     String token = jwtService.createToken(user.getUsername(), user.getRole());
     if (user.getRole() == Role.ROLE_EMPLOYEE) {
       var emp =
@@ -70,5 +101,13 @@ public class AuthController {
             .findByUsername(username)
             .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid token"));
     return Map.of("username", user.getUsername(), "role", user.getRole().name());
+  }
+
+  private static String clientAddress(HttpServletRequest request) {
+    String forwardedFor = request.getHeader("X-Forwarded-For");
+    if (forwardedFor != null && !forwardedFor.isBlank()) {
+      return forwardedFor.split(",")[0].trim();
+    }
+    return request.getRemoteAddr();
   }
 }

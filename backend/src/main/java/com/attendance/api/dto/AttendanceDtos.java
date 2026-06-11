@@ -61,13 +61,20 @@ public class AttendanceDtos {
     private LocalTime inTime;
     private LocalTime outTime;
     private Integer workedMinutes;
+    private Integer lateMinutes;
+    private Integer earlyLeaveMinutes;
+    private Integer overtimeMinutes;
     private String leaveReason;
     private Double checkInLatitude;
     private Double checkInLongitude;
     private String checkInPhotoUrl;
+    private Double checkInFaceScore;
+    private Boolean checkInFaceVerified;
     private Double checkOutLatitude;
     private Double checkOutLongitude;
     private String checkOutPhotoUrl;
+    private Double checkOutFaceScore;
+    private Boolean checkOutFaceVerified;
     private AttendanceStatus status;
 
     public AttendanceResponse(
@@ -77,13 +84,20 @@ public class AttendanceDtos {
         LocalTime inTime,
         LocalTime outTime,
         Integer workedMinutes,
+        Integer lateMinutes,
+        Integer earlyLeaveMinutes,
+        Integer overtimeMinutes,
         String leaveReason,
         Double checkInLatitude,
         Double checkInLongitude,
         String checkInPhotoUrl,
+        Double checkInFaceScore,
+        Boolean checkInFaceVerified,
         Double checkOutLatitude,
         Double checkOutLongitude,
         String checkOutPhotoUrl,
+        Double checkOutFaceScore,
+        Boolean checkOutFaceVerified,
         AttendanceStatus status) {
       this.id = id;
       this.employeeId = employeeId;
@@ -91,13 +105,20 @@ public class AttendanceDtos {
       this.inTime = inTime;
       this.outTime = outTime;
       this.workedMinutes = workedMinutes;
+      this.lateMinutes = lateMinutes;
+      this.earlyLeaveMinutes = earlyLeaveMinutes;
+      this.overtimeMinutes = overtimeMinutes;
       this.leaveReason = leaveReason;
       this.checkInLatitude = checkInLatitude;
       this.checkInLongitude = checkInLongitude;
       this.checkInPhotoUrl = checkInPhotoUrl;
+      this.checkInFaceScore = checkInFaceScore;
+      this.checkInFaceVerified = checkInFaceVerified;
       this.checkOutLatitude = checkOutLatitude;
       this.checkOutLongitude = checkOutLongitude;
       this.checkOutPhotoUrl = checkOutPhotoUrl;
+      this.checkOutFaceScore = checkOutFaceScore;
+      this.checkOutFaceVerified = checkOutFaceVerified;
       this.status = status;
     }
 
@@ -125,6 +146,18 @@ public class AttendanceDtos {
       return workedMinutes;
     }
 
+    public Integer getLateMinutes() {
+      return lateMinutes;
+    }
+
+    public Integer getEarlyLeaveMinutes() {
+      return earlyLeaveMinutes;
+    }
+
+    public Integer getOvertimeMinutes() {
+      return overtimeMinutes;
+    }
+
     public String getLeaveReason() {
       return leaveReason;
     }
@@ -141,6 +174,14 @@ public class AttendanceDtos {
       return checkInPhotoUrl;
     }
 
+    public Double getCheckInFaceScore() {
+      return checkInFaceScore;
+    }
+
+    public Boolean getCheckInFaceVerified() {
+      return checkInFaceVerified;
+    }
+
     public Double getCheckOutLatitude() {
       return checkOutLatitude;
     }
@@ -151,6 +192,14 @@ public class AttendanceDtos {
 
     public String getCheckOutPhotoUrl() {
       return checkOutPhotoUrl;
+    }
+
+    public Double getCheckOutFaceScore() {
+      return checkOutFaceScore;
+    }
+
+    public Boolean getCheckOutFaceVerified() {
+      return checkOutFaceVerified;
     }
 
     public AttendanceStatus getStatus() {
@@ -212,6 +261,54 @@ public class AttendanceDtos {
 
     public void setLeaveReason(String leaveReason) {
       this.leaveReason = leaveReason;
+    }
+  }
+
+  public static class PunchPlaceResponse {
+    private OfficeDtos.OfficeLocationResponse officeLocation;
+    private double latitude;
+    private double longitude;
+    private double distanceMeters;
+    private double allowedRadiusMeters;
+    private boolean insideRadius;
+
+    public PunchPlaceResponse(
+        OfficeDtos.OfficeLocationResponse officeLocation,
+        double latitude,
+        double longitude,
+        double distanceMeters,
+        double allowedRadiusMeters,
+        boolean insideRadius) {
+      this.officeLocation = officeLocation;
+      this.latitude = latitude;
+      this.longitude = longitude;
+      this.distanceMeters = distanceMeters;
+      this.allowedRadiusMeters = allowedRadiusMeters;
+      this.insideRadius = insideRadius;
+    }
+
+    public OfficeDtos.OfficeLocationResponse getOfficeLocation() {
+      return officeLocation;
+    }
+
+    public double getLatitude() {
+      return latitude;
+    }
+
+    public double getLongitude() {
+      return longitude;
+    }
+
+    public double getDistanceMeters() {
+      return distanceMeters;
+    }
+
+    public double getAllowedRadiusMeters() {
+      return allowedRadiusMeters;
+    }
+
+    public boolean isInsideRadius() {
+      return insideRadius;
     }
   }
 }

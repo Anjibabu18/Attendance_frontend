@@ -11,6 +11,9 @@ public class LeaveDtos {
     @NotNull private LocalDate fromDate;
     @NotNull private LocalDate toDate;
     @NotBlank private String reason;
+    private String leaveType;
+    private String mailSubject;
+    private String mailMessage;
 
     public LocalDate getFromDate() {
       return fromDate;
@@ -35,6 +38,13 @@ public class LeaveDtos {
     public void setReason(String reason) {
       this.reason = reason;
     }
+
+    public String getLeaveType() { return leaveType; }
+    public void setLeaveType(String leaveType) { this.leaveType = leaveType; }
+    public String getMailSubject() { return mailSubject; }
+    public void setMailSubject(String mailSubject) { this.mailSubject = mailSubject; }
+    public String getMailMessage() { return mailMessage; }
+    public void setMailMessage(String mailMessage) { this.mailMessage = mailMessage; }
   }
 
   public static class DecideLeaveRequest {
@@ -57,6 +67,11 @@ public class LeaveDtos {
     private LocalDate fromDate;
     private LocalDate toDate;
     private String reason;
+    private String leaveType;
+    private String mailSubject;
+    private String mailMessage;
+    private String attachmentUrl;
+    private String attachmentName;
     private LeaveRequestStatus status;
     private Instant createdAt;
     private Instant decidedAt;
@@ -71,6 +86,11 @@ public class LeaveDtos {
         LocalDate fromDate,
         LocalDate toDate,
         String reason,
+        String leaveType,
+        String mailSubject,
+        String mailMessage,
+        String attachmentUrl,
+        String attachmentName,
         LeaveRequestStatus status,
         Instant createdAt,
         Instant decidedAt,
@@ -83,6 +103,11 @@ public class LeaveDtos {
       this.fromDate = fromDate;
       this.toDate = toDate;
       this.reason = reason;
+      this.leaveType = leaveType;
+      this.mailSubject = mailSubject;
+      this.mailMessage = mailMessage;
+      this.attachmentUrl = attachmentUrl;
+      this.attachmentName = attachmentName;
       this.status = status;
       this.createdAt = createdAt;
       this.decidedAt = decidedAt;
@@ -118,6 +143,12 @@ public class LeaveDtos {
       return reason;
     }
 
+    public String getLeaveType() { return leaveType; }
+    public String getMailSubject() { return mailSubject; }
+    public String getMailMessage() { return mailMessage; }
+    public String getAttachmentUrl() { return attachmentUrl; }
+    public String getAttachmentName() { return attachmentName; }
+
     public LeaveRequestStatus getStatus() {
       return status;
     }
@@ -139,4 +170,3 @@ public class LeaveDtos {
     }
   }
 }
-

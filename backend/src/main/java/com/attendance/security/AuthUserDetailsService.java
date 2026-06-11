@@ -27,7 +27,10 @@ public class AuthUserDetailsService implements UserDetailsService {
     return new User(
         user.getUsername(),
         user.getPasswordHash(),
+        user.isEnabled(),
+        true,
+        true,
+        true,
         List.of(new SimpleGrantedAuthority(user.getRole().name())));
   }
 }
-

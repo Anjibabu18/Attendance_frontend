@@ -29,6 +29,24 @@ public class AppUser {
   @Column(nullable = false, length = 20)
   private Role role;
 
+  @Column(nullable = false)
+  private boolean enabled = true;
+
+  @Column(name = "last_login_at")
+  private java.time.Instant lastLoginAt;
+
+  @Column(name = "last_login_ip", length = 80)
+  private String lastLoginIp;
+
+  @Column(name = "last_user_agent", length = 255)
+  private String lastUserAgent;
+
+  @Column(nullable = false)
+  private boolean mfaEnabled = false;
+
+  @Column(name = "mfa_secret", length = 120)
+  private String mfaSecret;
+
   public Long getId() {
     return id;
   }
@@ -60,5 +78,52 @@ public class AppUser {
   public void setRole(Role role) {
     this.role = role;
   }
-}
 
+  public boolean isEnabled() {
+    return enabled;
+  }
+
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
+
+  public java.time.Instant getLastLoginAt() {
+    return lastLoginAt;
+  }
+
+  public void setLastLoginAt(java.time.Instant lastLoginAt) {
+    this.lastLoginAt = lastLoginAt;
+  }
+
+  public String getLastLoginIp() {
+    return lastLoginIp;
+  }
+
+  public void setLastLoginIp(String lastLoginIp) {
+    this.lastLoginIp = lastLoginIp;
+  }
+
+  public String getLastUserAgent() {
+    return lastUserAgent;
+  }
+
+  public void setLastUserAgent(String lastUserAgent) {
+    this.lastUserAgent = lastUserAgent;
+  }
+
+  public boolean isMfaEnabled() {
+    return mfaEnabled;
+  }
+
+  public void setMfaEnabled(boolean mfaEnabled) {
+    this.mfaEnabled = mfaEnabled;
+  }
+
+  public String getMfaSecret() {
+    return mfaSecret;
+  }
+
+  public void setMfaSecret(String mfaSecret) {
+    this.mfaSecret = mfaSecret;
+  }
+}

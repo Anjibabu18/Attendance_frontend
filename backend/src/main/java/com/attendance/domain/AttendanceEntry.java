@@ -44,6 +44,15 @@ public class AttendanceEntry {
   @Column(name = "worked_minutes")
   private Integer workedMinutes;
 
+  @Column(name = "late_minutes")
+  private Integer lateMinutes;
+
+  @Column(name = "early_leave_minutes")
+  private Integer earlyLeaveMinutes;
+
+  @Column(name = "overtime_minutes")
+  private Integer overtimeMinutes;
+
   @Column(name = "leave_reason", length = 255)
   private String leaveReason;
 
@@ -56,6 +65,12 @@ public class AttendanceEntry {
   @Column(name = "check_in_photo_url", length = 500)
   private String checkInPhotoUrl;
 
+  @Column(name = "check_in_face_score")
+  private Double checkInFaceScore;
+
+  @Column(name = "check_in_face_verified")
+  private Boolean checkInFaceVerified;
+
   @Column(name = "check_out_latitude")
   private Double checkOutLatitude;
 
@@ -64,6 +79,12 @@ public class AttendanceEntry {
 
   @Column(name = "check_out_photo_url", length = 500)
   private String checkOutPhotoUrl;
+
+  @Column(name = "check_out_face_score")
+  private Double checkOutFaceScore;
+
+  @Column(name = "check_out_face_verified")
+  private Boolean checkOutFaceVerified;
 
   @Enumerated(EnumType.STRING)
   @Column(nullable = false, length = 10)
@@ -117,6 +138,30 @@ public class AttendanceEntry {
     this.workedMinutes = workedMinutes;
   }
 
+  public Integer getLateMinutes() {
+    return lateMinutes;
+  }
+
+  public void setLateMinutes(Integer lateMinutes) {
+    this.lateMinutes = lateMinutes;
+  }
+
+  public Integer getEarlyLeaveMinutes() {
+    return earlyLeaveMinutes;
+  }
+
+  public void setEarlyLeaveMinutes(Integer earlyLeaveMinutes) {
+    this.earlyLeaveMinutes = earlyLeaveMinutes;
+  }
+
+  public Integer getOvertimeMinutes() {
+    return overtimeMinutes;
+  }
+
+  public void setOvertimeMinutes(Integer overtimeMinutes) {
+    this.overtimeMinutes = overtimeMinutes;
+  }
+
   public String getLeaveReason() {
     return leaveReason;
   }
@@ -149,6 +194,22 @@ public class AttendanceEntry {
     this.checkInPhotoUrl = checkInPhotoUrl;
   }
 
+  public Double getCheckInFaceScore() {
+    return checkInFaceScore;
+  }
+
+  public void setCheckInFaceScore(Double checkInFaceScore) {
+    this.checkInFaceScore = checkInFaceScore;
+  }
+
+  public Boolean getCheckInFaceVerified() {
+    return checkInFaceVerified;
+  }
+
+  public void setCheckInFaceVerified(Boolean checkInFaceVerified) {
+    this.checkInFaceVerified = checkInFaceVerified;
+  }
+
   public Double getCheckOutLatitude() {
     return checkOutLatitude;
   }
@@ -171,6 +232,22 @@ public class AttendanceEntry {
 
   public void setCheckOutPhotoUrl(String checkOutPhotoUrl) {
     this.checkOutPhotoUrl = checkOutPhotoUrl;
+  }
+
+  public Double getCheckOutFaceScore() {
+    return checkOutFaceScore;
+  }
+
+  public void setCheckOutFaceScore(Double checkOutFaceScore) {
+    this.checkOutFaceScore = checkOutFaceScore;
+  }
+
+  public Boolean getCheckOutFaceVerified() {
+    return checkOutFaceVerified;
+  }
+
+  public void setCheckOutFaceVerified(Boolean checkOutFaceVerified) {
+    this.checkOutFaceVerified = checkOutFaceVerified;
   }
 
   public AttendanceStatus getStatus() {

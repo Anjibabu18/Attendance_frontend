@@ -1,14 +1,37 @@
-import axios from "axios";
+import axios, { AxiosHeaders } from "axios";
 import { clearAuth, getAuth } from "../auth/auth";
 
+const LAST_AUTH_ERROR_KEY = "attendance_last_auth_error_v1";
+
+function normalizeBaseUrl(url: string) {
+  return url.replace(/\/+$/, "");
+}
+
+const resolvedBaseUrl = (() => {
+  const fromEnv = import.meta.env.VITE_API_URL?.trim();
+  if (fromEnv) return normalizeBaseUrl(fromEnv);
+
+  // This fallback is only for local dev when the backend runs on your machine.
+  // If you're seeing `net::ERR_CONNECTION_REFUSED` in the browser, create `frontend/.env`
+  // with `VITE_API_URL=...` and restart `npm run dev`.
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[api] VITE_API_URL is not set; falling back to http://localhost:8081. Create frontend/.env and restart Vite.",
+  );
+  return "http://localhost:8081";
+})();
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:8081",
+  baseURL: resolvedBaseUrl,
+  timeout: 15000,
 });
+
+export const apiBaseUrl = resolvedBaseUrl;
 
 api.interceptors.request.use((config) => {
   const auth = getAuth();
   if (auth?.token) {
-    if (!config.headers) config.headers = {};
+    if (!config.headers) config.headers = new AxiosHeaders();
     // Axios v1 may use AxiosHeaders internally; support both shapes.
     const anyHeaders: any = config.headers as any;
     if (typeof anyHeaders.set === "function") {
@@ -24,12 +47,50 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     const status = err?.response?.status;
+    const url = err?.config?.url;
+    const method = err?.config?.method;
     if (status === 401 || status === 403) {
-      clearAuth();
-      if (typeof window !== "undefined" && window.location.pathname !== "/login") {
-        window.location.href = "/login";
+      try {
+        localStorage.setItem(
+          LAST_AUTH_ERROR_KEY,
+          JSON.stringify({
+            at: new Date().toISOString(),
+            status,
+            method,
+            url,
+            baseURL: resolvedBaseUrl,
+            message: err?.response?.data?.error ?? err?.message ?? "Unauthorized",
+          }),
+        );
+      } catch {
+        // ignore storage failures
       }
+      // eslint-disable-next-line no-console
+      console.warn("[auth] unauthorized", { status, method, url, baseURL: resolvedBaseUrl });
+    }
+    const isInteractiveIdentityCheck =
+      status === 401 &&
+      typeof url === "string" &&
+      (url.includes("/api/auth/me") || url.includes("/api/auth/login"));
+    if (isInteractiveIdentityCheck) {
+      clearAuth();
     }
     return Promise.reject(err);
   },
 );
+
+export function getLastAuthError(): string | null {
+  try {
+    return localStorage.getItem(LAST_AUTH_ERROR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function clearLastAuthError() {
+  try {
+    localStorage.removeItem(LAST_AUTH_ERROR_KEY);
+  } catch {
+    // ignore
+  }
+}

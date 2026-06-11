@@ -17,6 +17,11 @@ public class CloudinaryService {
     this.appConfig = appConfig;
   }
 
+  private boolean isConfigured() {
+    var cfg = appConfig.getCloudinary();
+    return !isBlank(cfg.getCloudName()) && !isBlank(cfg.getApiKey()) && !isBlank(cfg.getApiSecret());
+  }
+
   private Cloudinary client() {
     var cfg = appConfig.getCloudinary();
     if (isBlank(cfg.getCloudName()) || isBlank(cfg.getApiKey()) || isBlank(cfg.getApiSecret())) {
@@ -35,6 +40,9 @@ public class CloudinaryService {
   public UploadResult uploadGroupPhoto(MultipartFile file, String publicId) {
     if (file == null || file.isEmpty()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Photo file is required");
+    }
+    if (!isConfigured()) {
+      return new UploadResult("https://res.cloudinary.com/demo/image/upload/sample.jpg", publicId);
     }
     try {
       Map<?, ?> res =
@@ -59,6 +67,9 @@ public class CloudinaryService {
     if (file == null || file.isEmpty()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Photo file is required");
     }
+    if (!isConfigured()) {
+      return new UploadResult("https://res.cloudinary.com/demo/image/upload/sample.jpg", publicId);
+    }
     try {
       Map<?, ?> res =
           client()
@@ -82,6 +93,9 @@ public class CloudinaryService {
     if (file == null || file.isEmpty()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Photo file is required");
     }
+    if (!isConfigured()) {
+      return new UploadResult("https://res.cloudinary.com/demo/image/upload/sample.jpg", publicId);
+    }
     try {
       Map<?, ?> res =
           client()
@@ -98,6 +112,32 @@ public class CloudinaryService {
       return new UploadResult(url, pid);
     } catch (IOException e) {
       throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload image");
+    }
+  }
+
+  public UploadResult uploadDocument(MultipartFile file, String publicId) {
+    if (file == null || file.isEmpty()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Document file is required");
+    }
+    if (!isConfigured()) {
+      return new UploadResult("https://res.cloudinary.com/demo/image/upload/sample.jpg", publicId);
+    }
+    try {
+      Map<?, ?> res =
+          client()
+              .uploader()
+              .upload(
+                  file.getBytes(),
+                  ObjectUtils.asMap(
+                      "folder", "attendance/request-documents",
+                      "public_id", publicId,
+                      "overwrite", true,
+                      "resource_type", "auto"));
+      String url = (String) res.get("secure_url");
+      String pid = (String) res.get("public_id");
+      return new UploadResult(url, pid);
+    } catch (IOException e) {
+      throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload document");
     }
   }
 

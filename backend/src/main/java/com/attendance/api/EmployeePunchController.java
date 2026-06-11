@@ -8,6 +8,9 @@ import com.attendance.repo.EmployeeRepository;
 import com.attendance.repo.UserRepository;
 import com.attendance.service.ApiException;
 import com.attendance.service.AttendancePunchService;
+import com.attendance.service.OfficeNetworkService;
+import com.attendance.service.ProductionFeatureService;
+import jakarta.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,16 +30,22 @@ public class EmployeePunchController {
   private final EmployeeRepository employeeRepository;
   private final AttendanceRepository attendanceRepository;
   private final AttendancePunchService attendancePunchService;
+  private final ProductionFeatureService productionFeatureService;
+  private final OfficeNetworkService officeNetworkService;
 
   public EmployeePunchController(
       UserRepository userRepository,
       EmployeeRepository employeeRepository,
       AttendanceRepository attendanceRepository,
-      AttendancePunchService attendancePunchService) {
+      AttendancePunchService attendancePunchService,
+      ProductionFeatureService productionFeatureService,
+      OfficeNetworkService officeNetworkService) {
     this.userRepository = userRepository;
     this.employeeRepository = employeeRepository;
     this.attendanceRepository = attendanceRepository;
     this.attendancePunchService = attendancePunchService;
+    this.productionFeatureService = productionFeatureService;
+    this.officeNetworkService = officeNetworkService;
   }
 
   @GetMapping("/today")
@@ -47,12 +56,50 @@ public class EmployeePunchController {
     return toResponse(e);
   }
 
+  @GetMapping("/place")
+  public AttendanceDtos.PunchPlaceResponse place(
+      @RequestParam("latitude") double latitude, @RequestParam("longitude") double longitude) {
+    var emp = currentEmployee();
+    var place = attendancePunchService.evaluatePlace(emp, latitude, longitude);
+    var office = AdminOfficeLocationController.toResponse(place.office());
+    return new AttendanceDtos.PunchPlaceResponse(
+        office,
+        latitude,
+        longitude,
+        place.distanceMeters(),
+        place.office().getRadiusMeters(),
+        place.insideRadius());
+  }
+
+  @GetMapping("/qr")
+  public java.util.Map<String, Object> qr(@RequestParam("token") String token) {
+    var qr = productionFeatureService.validateQr(token);
+    return java.util.Map.of(
+        "valid", true,
+        "officeId", qr.getOfficeLocation().getId(),
+        "officeName", qr.getOfficeLocation().getOfficeName(),
+        "expiresAt", qr.getExpiresAt());
+  }
+
+  @GetMapping("/device")
+  public java.util.Map<String, Object> device(@RequestParam("deviceId") String deviceId) {
+    String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    return java.util.Map.of("approved", productionFeatureService.deviceApproved(username, deviceId));
+  }
+
   @PostMapping("/checkin")
   public AttendanceDtos.AttendanceResponse checkIn(
       @RequestParam("latitude") double latitude,
       @RequestParam("longitude") double longitude,
-      @RequestParam("file") MultipartFile file) {
+      @RequestParam(value = "qrToken", required = false) String qrToken,
+      @RequestParam("deviceId") String deviceId,
+      @RequestParam("file") MultipartFile file,
+      HttpServletRequest request) {
     var emp = currentEmployee();
+    String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    officeNetworkService.validatePunchNetwork(request);
+    productionFeatureService.validateApprovedDevice(username, deviceId);
+    productionFeatureService.validatePunchQrIfRequired(qrToken, emp);
     var e = attendancePunchService.checkIn(emp, latitude, longitude, file);
     return toResponse(e);
   }
@@ -61,8 +108,15 @@ public class EmployeePunchController {
   public AttendanceDtos.AttendanceResponse checkOut(
       @RequestParam("latitude") double latitude,
       @RequestParam("longitude") double longitude,
-      @RequestParam("file") MultipartFile file) {
+      @RequestParam(value = "qrToken", required = false) String qrToken,
+      @RequestParam("deviceId") String deviceId,
+      @RequestParam("file") MultipartFile file,
+      HttpServletRequest request) {
     var emp = currentEmployee();
+    String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    officeNetworkService.validatePunchNetwork(request);
+    productionFeatureService.validateApprovedDevice(username, deviceId);
+    productionFeatureService.validatePunchQrIfRequired(qrToken, emp);
     var e = attendancePunchService.checkOut(emp, latitude, longitude, file);
     return toResponse(e);
   }
@@ -89,14 +143,20 @@ public class EmployeePunchController {
         e.getInTime(),
         e.getOutTime(),
         e.getWorkedMinutes(),
+        e.getLateMinutes(),
+        e.getEarlyLeaveMinutes(),
+        e.getOvertimeMinutes(),
         e.getLeaveReason(),
         e.getCheckInLatitude(),
         e.getCheckInLongitude(),
         e.getCheckInPhotoUrl(),
+        e.getCheckInFaceScore(),
+        e.getCheckInFaceVerified(),
         e.getCheckOutLatitude(),
         e.getCheckOutLongitude(),
         e.getCheckOutPhotoUrl(),
+        e.getCheckOutFaceScore(),
+        e.getCheckOutFaceVerified(),
         e.getStatus());
   }
 }
-

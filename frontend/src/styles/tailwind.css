@@ -4,21 +4,17 @@
 
 @layer base {
   :root {
-    --app-bg: #f4efe6;
-    --app-surface: rgba(255, 255, 255, 0.84);
-    --app-line: rgba(15, 23, 42, 0.08);
-    --app-ink: #172033;
-    --app-muted: #5f6b7a;
-    --app-blue: #165dff;
-    --app-gold: #d89b2b;
-    --app-violet: #7c3aed;
-    --app-shadow: 0 22px 60px rgba(17, 24, 39, 0.08);
-    font-family: "Space Grotesk", "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
+    --app-bg: #eef4f8;
+    --app-surface: #ffffff;
+    --app-line: #e5e7eb;
+    --app-ink: #111827;
+    --app-muted: #667085;
+    --app-blue: #2563eb;
+    --app-teal: #0f766e;
+    --app-shadow: 0 10px 30px rgba(16, 24, 40, 0.08);
+    font-family: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
     color: var(--app-ink);
-    background:
-      radial-gradient(circle at top left, rgba(22, 93, 255, 0.12), transparent 34%),
-      radial-gradient(circle at top right, rgba(216, 155, 43, 0.14), transparent 30%),
-      linear-gradient(180deg, #faf7f1 0%, #f3eee6 100%);
+    background: var(--app-bg);
   }
 
   * {
@@ -29,28 +25,32 @@
     scroll-behavior: smooth;
   }
 
-  body {
+    body {
     min-height: 100vh;
     margin: 0;
-    font-family: "Space Grotesk", "Aptos", "Trebuchet MS", "Segoe UI", sans-serif;
+    font-family: "Inter", "Aptos", "Segoe UI", system-ui, sans-serif;
     color: var(--app-ink);
     background:
-      radial-gradient(circle at top left, rgba(22, 93, 255, 0.12), transparent 34%),
-      radial-gradient(circle at top right, rgba(216, 155, 43, 0.14), transparent 30%),
-      linear-gradient(180deg, #faf7f1 0%, #f3eee6 100%);
+      linear-gradient(180deg, #eaf2ff 0, #eef4f8 260px, #eef4f8 100%);
   }
 
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    background-image:
-      linear-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255, 255, 255, 0.15) 1px, transparent 1px);
-    background-size: 36px 36px;
-    mask-image: radial-gradient(circle at center, black 35%, transparent 82%);
-    opacity: 0.2;
+  body::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  body::-webkit-scrollbar-track {
+    background: #eef2f7;
+  }
+
+  body::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 8px;
+    border: 2px solid #eef2f7;
+  }
+
+  body::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 
   #root {

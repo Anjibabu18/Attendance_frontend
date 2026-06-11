@@ -56,6 +56,18 @@ public class OfficeDtos {
     }
   }
 
+  public static class AssignEmployeeOfficeRequest {
+    private Long officeLocationId;
+
+    public Long getOfficeLocationId() {
+      return officeLocationId;
+    }
+
+    public void setOfficeLocationId(Long officeLocationId) {
+      this.officeLocationId = officeLocationId;
+    }
+  }
+
   public static class OfficeLocationResponse {
     private Long id;
     private String officeName;
@@ -111,4 +123,3 @@ public class OfficeDtos {
     }
   }
 }
-

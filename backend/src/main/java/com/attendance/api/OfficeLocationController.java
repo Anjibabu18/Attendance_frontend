@@ -18,14 +18,6 @@ public class OfficeLocationController {
   @GetMapping("/active")
   public OfficeDtos.OfficeLocationResponse active() {
     var loc = officeLocationService.getActiveOrThrow();
-    return new OfficeDtos.OfficeLocationResponse(
-        loc.getId(),
-        loc.getOfficeName(),
-        loc.getLatitude(),
-        loc.getLongitude(),
-        loc.getRadiusMeters(),
-        loc.isActive(),
-        loc.getUpdatedAt());
+    return AdminOfficeLocationController.toResponse(loc);
   }
 }
-

@@ -1,4 +1,4 @@
-export type Role = "ROLE_ADMIN" | "ROLE_HR" | "ROLE_EMPLOYEE";
+export type Role = "ROLE_ADMIN" | "ROLE_HR" | "ROLE_MANAGER" | "ROLE_EMPLOYEE";
 
 export type AuthState = {
   token: string;
@@ -25,4 +25,3 @@ export function setAuth(state: AuthState) {
 export function clearAuth() {
   localStorage.removeItem(KEY);
 }
-

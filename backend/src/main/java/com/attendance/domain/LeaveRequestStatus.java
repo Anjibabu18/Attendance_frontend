@@ -3,6 +3,7 @@ package com.attendance.domain;
 public enum LeaveRequestStatus {
   PENDING,
   APPROVED,
-  REJECTED
+  REJECTED,
+  CANCELLED,
+  CANCELLATION_REQUESTED
 }
-

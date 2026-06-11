@@ -25,6 +25,19 @@ public class SettingsController {
         s.getDefaultOutTime(),
         s.getWeekendDays(),
         s.getFullDayMinutes(),
-        s.getHalfDayMinutes());
+        s.getHalfDayMinutes(),
+        s.getLateGraceMinutes(),
+        s.getEarlyLeaveGraceMinutes(),
+        s.getOvertimeAfterMinutes(),
+        s.getLateDeductionPerMinute(),
+        s.getOvertimePayPerHour(),
+        s.getUnpaidLeaveDailyRate(),
+        s.getStandardMonthlySalary(),
+        s.getRequireQrForPunch(),
+        s.getPermanentOfficeQr(),
+        s.getQrTokenValidityMinutes(),
+        s.getOfficeIpRestrictionEnabled(),
+        s.getAllowedOfficeCidrs(),
+        s.getTrustProxyHeaders());
   }
 }

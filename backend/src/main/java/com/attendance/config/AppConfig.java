@@ -9,7 +9,10 @@ public class AppConfig {
   private Jwt jwt = new Jwt();
   private Attendance attendance = new Attendance();
   private Cloudinary cloudinary = new Cloudinary();
+  private Face face = new Face();
   private Mail mail = new Mail();
+  private Cors cors = new Cors();
+  private Security security = new Security();
 
   public Jwt getJwt() {
     return jwt;
@@ -35,12 +38,36 @@ public class AppConfig {
     this.cloudinary = cloudinary;
   }
 
+  public Face getFace() {
+    return face;
+  }
+
+  public void setFace(Face face) {
+    this.face = face;
+  }
+
   public Mail getMail() {
     return mail;
   }
 
   public void setMail(Mail mail) {
     this.mail = mail;
+  }
+
+  public Cors getCors() {
+    return cors;
+  }
+
+  public void setCors(Cors cors) {
+    this.cors = cors;
+  }
+
+  public Security getSecurity() {
+    return security;
+  }
+
+  public void setSecurity(Security security) {
+    this.security = security;
   }
 
   public static class Jwt {
@@ -76,6 +103,9 @@ public class AppConfig {
   public static class Attendance {
     private int minDailyMinutes;
     private String defaultJoinDate;
+    private boolean officeIpRestrictionEnabled;
+    private String allowedOfficeCidrs = "";
+    private boolean trustProxyHeaders;
 
     public int getMinDailyMinutes() {
       return minDailyMinutes;
@@ -91,6 +121,30 @@ public class AppConfig {
 
     public void setDefaultJoinDate(String defaultJoinDate) {
       this.defaultJoinDate = defaultJoinDate;
+    }
+
+    public boolean isOfficeIpRestrictionEnabled() {
+      return officeIpRestrictionEnabled;
+    }
+
+    public void setOfficeIpRestrictionEnabled(boolean officeIpRestrictionEnabled) {
+      this.officeIpRestrictionEnabled = officeIpRestrictionEnabled;
+    }
+
+    public String getAllowedOfficeCidrs() {
+      return allowedOfficeCidrs;
+    }
+
+    public void setAllowedOfficeCidrs(String allowedOfficeCidrs) {
+      this.allowedOfficeCidrs = allowedOfficeCidrs;
+    }
+
+    public boolean isTrustProxyHeaders() {
+      return trustProxyHeaders;
+    }
+
+    public void setTrustProxyHeaders(boolean trustProxyHeaders) {
+      this.trustProxyHeaders = trustProxyHeaders;
     }
   }
 
@@ -124,6 +178,45 @@ public class AppConfig {
     }
   }
 
+  public static class Face {
+    private boolean serviceEnabled;
+    private String serviceUrl = "http://localhost:5055/verify";
+    private int timeoutMillis = 15000;
+    private double minScore = 0.7d;
+
+    public boolean isServiceEnabled() {
+      return serviceEnabled;
+    }
+
+    public void setServiceEnabled(boolean serviceEnabled) {
+      this.serviceEnabled = serviceEnabled;
+    }
+
+    public String getServiceUrl() {
+      return serviceUrl;
+    }
+
+    public void setServiceUrl(String serviceUrl) {
+      this.serviceUrl = serviceUrl;
+    }
+
+    public int getTimeoutMillis() {
+      return timeoutMillis;
+    }
+
+    public void setTimeoutMillis(int timeoutMillis) {
+      this.timeoutMillis = timeoutMillis;
+    }
+
+    public double getMinScore() {
+      return minScore;
+    }
+
+    public void setMinScore(double minScore) {
+      this.minScore = minScore;
+    }
+  }
+
   public static class Mail {
     private boolean enabled;
     private String from;
@@ -151,6 +244,75 @@ public class AppConfig {
 
     public void setHrRecipients(String hrRecipients) {
       this.hrRecipients = hrRecipients;
+    }
+  }
+
+  public static class Cors {
+    private String allowedOrigins = "http://localhost:*,http://127.0.0.1:*";
+
+    public String getAllowedOrigins() {
+      return allowedOrigins;
+    }
+
+    public void setAllowedOrigins(String allowedOrigins) {
+      this.allowedOrigins = allowedOrigins;
+    }
+  }
+
+  public static class Security {
+    private int loginMaxAttempts = 5;
+    private int loginLockMinutes = 15;
+    private int passwordMinLength = 10;
+    private boolean passwordRequireMixedCase = true;
+    private boolean passwordRequireDigit = true;
+    private boolean passwordRequireSpecial = true;
+
+    public int getLoginMaxAttempts() {
+      return loginMaxAttempts;
+    }
+
+    public void setLoginMaxAttempts(int loginMaxAttempts) {
+      this.loginMaxAttempts = loginMaxAttempts;
+    }
+
+    public int getLoginLockMinutes() {
+      return loginLockMinutes;
+    }
+
+    public void setLoginLockMinutes(int loginLockMinutes) {
+      this.loginLockMinutes = loginLockMinutes;
+    }
+
+    public int getPasswordMinLength() {
+      return passwordMinLength;
+    }
+
+    public void setPasswordMinLength(int passwordMinLength) {
+      this.passwordMinLength = passwordMinLength;
+    }
+
+    public boolean isPasswordRequireMixedCase() {
+      return passwordRequireMixedCase;
+    }
+
+    public void setPasswordRequireMixedCase(boolean passwordRequireMixedCase) {
+      this.passwordRequireMixedCase = passwordRequireMixedCase;
+    }
+
+    public boolean isPasswordRequireDigit() {
+      return passwordRequireDigit;
+    }
+
+    public void setPasswordRequireDigit(boolean passwordRequireDigit) {
+      this.passwordRequireDigit = passwordRequireDigit;
+    }
+
+    public boolean isPasswordRequireSpecial() {
+      return passwordRequireSpecial;
+    }
+
+    public void setPasswordRequireSpecial(boolean passwordRequireSpecial) {
+      this.passwordRequireSpecial = passwordRequireSpecial;
     }
   }
 }

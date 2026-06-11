@@ -77,6 +77,10 @@ public class AttendanceService {
     entry.setWorkedMinutes(minutes);
 
     var settings = attendanceSettingsService.get();
+    entry.setLateMinutes(computeLateMinutes(inTime, settings.getDefaultInTime(), settings.getLateGraceMinutes()));
+    entry.setEarlyLeaveMinutes(
+        computeEarlyLeaveMinutes(outTime, settings.getDefaultOutTime(), settings.getEarlyLeaveGraceMinutes()));
+    entry.setOvertimeMinutes(computeOvertimeMinutes(minutes, settings.getOvertimeAfterMinutes()));
     int fullDayMinutes =
         settings.getFullDayMinutes() != null && settings.getFullDayMinutes() > 0
             ? settings.getFullDayMinutes()
@@ -233,8 +237,32 @@ public class AttendanceService {
   private static Integer computeWorkedMinutes(LocalTime inTime, LocalTime outTime) {
     if (inTime == null || outTime == null) return null;
     long minutes = Duration.between(inTime, outTime).toMinutes();
-    if (minutes < 0) minutes = 0;
+    if (minutes < 0) minutes += 24L * 60L;
     return (int) minutes;
+  }
+
+  private static Integer computeLateMinutes(
+      LocalTime inTime, LocalTime defaultInTime, Integer graceMinutes) {
+    if (inTime == null || defaultInTime == null) return 0;
+    long minutes = Duration.between(defaultInTime, inTime).toMinutes();
+    return (int) Math.max(0, minutes - safeGrace(graceMinutes));
+  }
+
+  private static Integer computeEarlyLeaveMinutes(
+      LocalTime outTime, LocalTime defaultOutTime, Integer graceMinutes) {
+    if (outTime == null || defaultOutTime == null) return 0;
+    long minutes = Duration.between(outTime, defaultOutTime).toMinutes();
+    if (minutes < -12L * 60L) minutes += 24L * 60L;
+    return (int) Math.max(0, minutes - safeGrace(graceMinutes));
+  }
+
+  private static Integer computeOvertimeMinutes(Integer workedMinutes, Integer overtimeAfterMinutes) {
+    if (workedMinutes == null || overtimeAfterMinutes == null || overtimeAfterMinutes <= 0) return 0;
+    return Math.max(0, workedMinutes - overtimeAfterMinutes);
+  }
+
+  private static int safeGrace(Integer value) {
+    return value == null ? 0 : Math.max(0, value);
   }
 
   public record MonthSummary(

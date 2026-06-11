@@ -24,25 +24,25 @@ export default function PageHeader(props: {
               alignItems: "center",
               gap: 1,
               px: 1.5,
-              py: 0.75,
-              borderRadius: 999,
-              border: "1px solid rgba(15,23,42,0.08)",
-              background: "rgba(255,255,255,0.75)",
+              py: 0.6,
+              borderRadius: 1.5,
+              border: "1px solid #e5e7eb",
+              background: "#ffffff",
               fontSize: 12,
               fontWeight: 900,
               color: "text.secondary",
               mb: 1.5,
             }}
           >
-            <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "warning.main" }} />
+            <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: "primary.main" }} />
             {props.eyebrow}
           </Box>
         ) : null}
-        <Typography variant="h5" sx={{ fontWeight: 950, letterSpacing: -0.2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 850, letterSpacing: 0 }}>
           {props.title}
         </Typography>
         {props.subtitle ? (
-          <Typography sx={{ opacity: 0.72, mt: 0.5, maxWidth: 720 }}>{props.subtitle}</Typography>
+          <Typography sx={{ color: "text.secondary", mt: 0.5, maxWidth: 780, fontSize: 14 }}>{props.subtitle}</Typography>
         ) : null}
       </Box>
       {props.right ? <Box sx={{ flexShrink: 0 }}>{props.right}</Box> : null}

@@ -27,7 +27,7 @@ export default function MonthCalendar(props: {
 
   return (
     <Box>
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 1, mb: 1.2 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 0.75, mb: 1 }}>
         {labels.map((l) => (
           <Typography
             key={l}
@@ -36,7 +36,7 @@ export default function MonthCalendar(props: {
               opacity: 0.72,
               textAlign: "center",
               fontWeight: 800,
-              letterSpacing: 0.25,
+              letterSpacing: 0,
               textTransform: "uppercase",
             }}
           >
@@ -44,29 +44,29 @@ export default function MonthCalendar(props: {
           </Typography>
         ))}
       </Box>
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 1 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 0.75 }}>
         {cells.map((c, idx) => {
           const day = c.date ? dayjs(c.date).date() : "";
           const bg =
             c.status === "P"
-              ? "linear-gradient(180deg, rgba(22,163,74,0.18), rgba(22,163,74,0.08))"
+              ? "#ecfdf3"
               : c.status === "HD"
-                ? "linear-gradient(180deg, rgba(245,158,11,0.18), rgba(245,158,11,0.08))"
+                ? "#fffaeb"
               : c.status === "H"
-                ? "linear-gradient(180deg, rgba(124,58,237,0.18), rgba(124,58,237,0.08))"
+                ? "#eef2ff"
               : c.status === "L"
-                ? "linear-gradient(180deg, rgba(220,38,38,0.16), rgba(220,38,38,0.07))"
-                : "rgba(255,255,255,0.5)";
+                ? "#fef3f2"
+                : "#ffffff";
           const border =
             c.status === "P"
-              ? "1px solid rgba(22,163,74,0.28)"
+              ? "1px solid #bbf7d0"
               : c.status === "HD"
-                ? "1px solid rgba(245,158,11,0.28)"
+                ? "1px solid #fedf89"
               : c.status === "H"
-                ? "1px solid rgba(124,58,237,0.28)"
+                ? "1px solid #c7d2fe"
               : c.status === "L"
-                ? "1px solid rgba(220,38,38,0.28)"
-                : "1px solid rgba(15,23,42,0.08)";
+                ? "1px solid #fecaca"
+                : "1px solid #e5e7eb";
           const letterColor =
             c.status === "P"
               ? "success.main"
@@ -94,27 +94,28 @@ export default function MonthCalendar(props: {
                 }
               }}
               sx={{
-                height: { xs: 72, md: 86 },
-                borderRadius: 4,
+                height: { xs: 62, md: 74 },
+                borderRadius: 2,
                 border,
                 background: bg,
-                p: 1.2,
+                p: 1,
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
-                outline: selected ? "2px solid rgba(22,93,255,0.48)" : "none",
+                outline: selected ? "2px solid #2563eb" : "none",
+                outlineOffset: selected ? 1 : 0,
                 cursor: c.date && props.onDayClick ? "pointer" : "default",
                 userSelect: "none",
-                boxShadow: c.date ? "0 10px 24px rgba(15, 23, 42, 0.05)" : "none",
-                transition: "transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease",
+                boxShadow: "none",
+                transition: "border-color 120ms ease, background-color 120ms ease",
                 "&:hover":
                   c.date && props.onDayClick
-                    ? { transform: "translateY(-2px)", boxShadow: "0 14px 28px rgba(2,6,23,0.08)" }
+                    ? { borderColor: "#2563eb" }
                     : undefined,
               }}
             >
               <Typography sx={{ fontSize: 12, fontWeight: 900, opacity: 0.86 }}>{day}</Typography>
-              <Typography sx={{ fontSize: { xs: 20, md: 24 }, fontWeight: 950, textAlign: "right", color: letterColor }}>
+              <Typography sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 900, textAlign: "right", color: letterColor }}>
                 {c.date ? c.status : ""}
               </Typography>
             </Box>

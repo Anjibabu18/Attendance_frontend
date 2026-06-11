@@ -3,6 +3,7 @@ package com.attendance.service;
 import com.attendance.domain.OfficeLocation;
 import com.attendance.repo.OfficeLocationRepository;
 import java.time.Instant;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,19 +30,22 @@ public class OfficeLocationService {
     return officeLocationRepository.findFirstByActiveTrueOrderByUpdatedAtDesc().orElse(null);
   }
 
+  public List<OfficeLocation> listActive() {
+    return officeLocationRepository.findByActiveTrueOrderByOfficeNameAscUpdatedAtDesc();
+  }
+
+  public OfficeLocation getByIdOrThrow(Long id) {
+    return officeLocationRepository
+        .findById(id)
+        .filter(OfficeLocation::isActive)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Office location not found"));
+  }
+
   @Transactional
   public OfficeLocation upsertActive(String officeName, double latitude, double longitude, double radiusMeters) {
+    validateCoordinates(latitude, longitude);
     if (radiusMeters <= 0) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "radiusMeters must be > 0");
-    }
-
-    // Keep it simple: create a new active row, deactivate any previous ones.
-    for (OfficeLocation loc : officeLocationRepository.findAll()) {
-      if (loc.isActive()) {
-        loc.setActive(false);
-        loc.setUpdatedAt(Instant.now());
-        officeLocationRepository.save(loc);
-      }
     }
 
     OfficeLocation loc = new OfficeLocation();
@@ -52,6 +56,23 @@ public class OfficeLocationService {
     loc.setActive(true);
     loc.setUpdatedAt(Instant.now());
     return officeLocationRepository.save(loc);
+  }
+
+  @Transactional
+  public OfficeLocation deactivate(Long id) {
+    OfficeLocation loc = getByIdOrThrow(id);
+    loc.setActive(false);
+    loc.setUpdatedAt(Instant.now());
+    return officeLocationRepository.save(loc);
+  }
+
+  private static void validateCoordinates(double latitude, double longitude) {
+    if (Double.isNaN(latitude) || latitude < -90 || latitude > 90) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "latitude must be between -90 and 90");
+    }
+    if (Double.isNaN(longitude) || longitude < -180 || longitude > 180) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "longitude must be between -180 and 180");
+    }
   }
 
   public static double distanceMeters(double lat1, double lon1, double lat2, double lon2) {
@@ -69,4 +90,3 @@ public class OfficeLocationService {
     return earthRadius * c;
   }
 }
-

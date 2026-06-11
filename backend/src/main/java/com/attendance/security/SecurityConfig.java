@@ -1,13 +1,15 @@
 package com.attendance.security;
 
+import com.attendance.config.AppConfig;
 import jakarta.servlet.RequestDispatcher;
+import java.util.Arrays;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -26,6 +28,12 @@ import org.slf4j.LoggerFactory;
 @EnableMethodSecurity
 public class SecurityConfig {
   private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
+  private final AppConfig appConfig;
+
+  public SecurityConfig(AppConfig appConfig) {
+    this.appConfig = appConfig;
+  }
+
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
@@ -41,16 +49,25 @@ public class SecurityConfig {
   }
 
   @Bean
-  public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter)
+  public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter, ApiRateLimitFilter apiRateLimitFilter)
       throws Exception {
     http.csrf(csrf -> csrf.disable());
     http.cors(Customizer.withDefaults());
+    http.headers(
+        headers ->
+            headers
+                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'"))
+                .frameOptions(frame -> frame.deny())
+                .httpStrictTransportSecurity(
+                    hsts -> hsts.includeSubDomains(true).preload(true).maxAgeInSeconds(31536000)));
     http.sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
     http.authorizeHttpRequests(
         auth ->
             auth.requestMatchers(HttpMethod.OPTIONS, "/**")
                 .permitAll()
                 .requestMatchers("/api/auth/**")
+                .permitAll()
+                .requestMatchers("/error")
                 .permitAll()
                 .anyRequest()
                 .authenticated());
@@ -73,6 +90,7 @@ public class SecurityConfig {
                     })
                 .accessDeniedHandler(
                     (req, res, e) -> res.sendError(HttpStatus.FORBIDDEN.value(), "Forbidden")));
+    http.addFilterBefore(apiRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
     http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
     return http.build();
   }
@@ -81,10 +99,14 @@ public class SecurityConfig {
   public CorsConfigurationSource corsConfigurationSource() {
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowCredentials(true);
-    config.addAllowedOriginPattern("http://localhost:*");
-    config.addAllowedOriginPattern("http://127.0.0.1:*");
+    Arrays.stream((appConfig.getCors().getAllowedOrigins() == null ? "" : appConfig.getCors().getAllowedOrigins()).split(","))
+        .map(String::trim)
+        .filter(s -> !s.isBlank())
+        .forEach(config::addAllowedOriginPattern);
     config.addAllowedHeader("*");
-    config.addAllowedMethod("*");
+    config.setAllowedMethods(
+        java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+    config.setMaxAge(3600L);
     UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
     source.registerCorsConfiguration("/**", config);
     return source;
