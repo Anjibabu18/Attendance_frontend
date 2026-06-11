@@ -19,10 +19,10 @@ Use the backend repo. Render can read `render.yaml` or you can create a Docker w
 
 Set these Render environment variables:
 
-- `DB_URL`
-- `DB_USER`
-- `DB_PASS`
-- `JWT_SECRET`
+- `DB_URL=jdbc:mysql://mysql-3bafb0f2-anushamilktrading-4564.b.aivencloud.com:26783/attendance?useSSL=true&requireSSL=true&verifyServerCertificate=false&serverTimezone=Asia/Kolkata`
+- `DB_USER=avnadmin`
+- `DB_PASS=your-db-password`
+- `JWT_SECRET` (auto-generated or set your custom string)
 - `CORS_ALLOWED_ORIGINS=https://your-vercel-domain.vercel.app`
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`

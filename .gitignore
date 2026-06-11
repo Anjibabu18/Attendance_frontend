@@ -1,5 +1,6 @@
 .DS_Store
 Thumbs.db
+*.sql
 
 # Backend
 backend/target/
@@ -26,3 +27,5 @@ scripts/.tmp/
 
 # IDE
 .metadata/
+SECRETS.md
+
