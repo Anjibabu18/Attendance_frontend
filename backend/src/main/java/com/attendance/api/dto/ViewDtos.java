@@ -53,6 +53,7 @@ public class ViewDtos {
     private String employeeNumber;
     private String name;
     private String loginRole;
+    private String username;
     private CompanyRoleView companyRole;
     private OfficeDtos.OfficeLocationResponse assignedOfficeLocation;
     private DepartmentView department;
@@ -137,6 +138,14 @@ public class ViewDtos {
 
     public String getLoginRole() {
       return loginRole;
+    }
+
+    public String getUsername() {
+      return username;
+    }
+
+    public void setUsername(String username) {
+      this.username = username;
     }
 
     public CompanyRoleView getCompanyRole() {

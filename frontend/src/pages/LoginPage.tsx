@@ -7,39 +7,38 @@ import {
   CardContent,
   Chip,
   Container,
-  Divider,
   IconButton,
   InputAdornment,
   TextField,
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import BadgeIcon from "@mui/icons-material/Badge";
-import FactCheckIcon from "@mui/icons-material/FactCheck";
 import LoginIcon from "@mui/icons-material/Login";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import LockIcon from "@mui/icons-material/Lock";
 import SecurityIcon from "@mui/icons-material/Security";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, clearLastAuthError, getLastAuthError } from "../api/client";
+import { useToast } from "../components/Toast";
 import { Role, setAuth } from "../auth/auth";
 
-type LoginResponse = { token: string; role: Role; employeeId?: number | null; name?: string | null };
-
-const features = [
-  { icon: <LocationOnIcon fontSize="small" />, title: "Office geofence", text: "GPS-based punch validation" },
-  { icon: <FactCheckIcon fontSize="small" />, title: "HR approval", text: "Attendance and leave review" },
-  { icon: <BadgeIcon fontSize="small" />, title: "Employee reports", text: "Monthly status and analytics" },
-];
+type LoginResponse = { token: string; refreshToken?: string | null; role: Role; employeeId?: number | null; name?: string | null };
 
 export default function LoginPage() {
+  const { toastError } = useToast();
   const nav = useNavigate();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (error) {
+      toastError(error);
+      setError(null);
+    }
+  }, [error, toastError]);
   const [lastAuthError] = useState(() => {
     const raw = getLastAuthError();
     if (!raw) return null;
@@ -95,7 +94,7 @@ export default function LoginPage() {
         setError("Login succeeded but backend did not return a valid JWT token.");
         return;
       }
-      setAuth({ token, role: res.data.role, name: res.data.name ?? undefined });
+      setAuth({ token, refreshToken: res.data.refreshToken, role: res.data.role, name: res.data.name ?? undefined, loggedInAt: new Date().toISOString() });
       nav(nextPathForRole(res.data.role), { replace: true });
     } catch (err: unknown) {
       setError(getErrorMessage(err));
@@ -108,19 +107,19 @@ export default function LoginPage() {
     <Box
       sx={{
         minHeight: "100svh",
-        bgcolor: "#f4f7fb",
+        bgcolor: "#edf4f7",
         display: "grid",
-        alignItems: "start",
-        py: { xs: 1.5, md: 2.5 },
+        alignItems: "center",
+        py: { xs: 1.5, md: 3 },
       }}
     >
       <Container maxWidth="lg">
         <Box sx={{ mb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Avatar sx={{ width: 42, height: 42, bgcolor: "#111827", fontWeight: 900 }}>A</Avatar>
+            <Avatar sx={{ width: 42, height: 42, bgcolor: "#0f172a", fontWeight: 900 }}>A</Avatar>
             <Box>
               <Typography sx={{ fontWeight: 950, fontSize: 20, lineHeight: 1.1 }}>Attendance</Typography>
-              <Typography sx={{ color: "text.secondary", fontSize: 13 }}>Secure workforce operations</Typography>
+              <Typography sx={{ color: "text.secondary", fontSize: 13 }}>Secure attendance portal</Typography>
             </Box>
           </Box>
           <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => nav("/")} sx={{ color: "text.primary" }}>
@@ -132,28 +131,30 @@ export default function LoginPage() {
           elevation={0}
           sx={{
             border: "1px solid #dfe3ea",
-            borderRadius: 1,
+            borderRadius: 1.5,
             overflow: "hidden",
-            boxShadow: "0 18px 50px rgba(15,23,42,0.10)",
+            boxShadow: "0 24px 70px rgba(15,23,42,0.14)",
             bgcolor: "#ffffff",
           }}
         >
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "390px 1fr" }, minHeight: { xs: "auto", md: 560 } }}>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "420px 1fr" }, minHeight: { xs: "auto", md: 560 } }}>
             <Box
               sx={{
-                bgcolor: "#0f172a",
+                background: "linear-gradient(160deg, #0f172a 0%, #12343b 55%, #0f766e 130%)",
                 color: "white",
                 p: { xs: 2.5, md: 3 },
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "space-between",
-                gap: 2.5,
+                justifyContent: "center",
+                gap: 3,
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              <Box>
+              <Box sx={{ position: "relative", zIndex: 1 }}>
                 <Chip
                   icon={<SecurityIcon />}
-                  label="Secure workspace"
+                  label="Verified access"
                   size="small"
                   sx={{
                     bgcolor: "rgba(255,255,255,0.10)",
@@ -163,18 +164,59 @@ export default function LoginPage() {
                     "& .MuiChip-icon": { color: "white" },
                   }}
                 />
-                <Typography sx={{ mt: 2.5, fontWeight: 950, fontSize: { xs: 30, md: 36 }, lineHeight: 1.05 }}>
-                  Production attendance command center.
+                <Typography sx={{ mt: 2.5, fontWeight: 950, fontSize: { xs: 30, md: 38 }, lineHeight: 1.04 }}>
+                  Check in with confidence.
                 </Typography>
-                <Typography sx={{ mt: 1.25, color: "rgba(255,255,255,0.72)", lineHeight: 1.65, fontSize: 13.5 }}>
-                  Role-based login for Admin, HR, and employees with geofence punch, leave workflow, monthly analytics, and export-ready reports.
+                <Typography sx={{ mt: 1.25, color: "rgba(255,255,255,0.74)", lineHeight: 1.6, fontSize: 14 }}>
+                  One clean portal for office QR, device approval, face verification, and attendance review.
                 </Typography>
-                <Box sx={{ mt: 2.5, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+                <Box sx={{ mt: 3, position: "relative", height: 260, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 1.5, bgcolor: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
+                  <Box sx={{ position: "absolute", inset: 18, border: "1px solid rgba(255,255,255,0.14)", borderRadius: 1.5 }} />
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      left: 32,
+                      right: 32,
+                      top: 32,
+                      height: 3,
+                      bgcolor: "#67e8f9",
+                      boxShadow: "0 0 28px rgba(103,232,249,0.9)",
+                      animation: "attendanceScan 3.2s ease-in-out infinite",
+                    }}
+                  />
+                  <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+                    <Box
+                      sx={{
+                        width: 128,
+                        height: 128,
+                        borderRadius: "50%",
+                        border: "1px solid rgba(255,255,255,0.18)",
+                        display: "grid",
+                        placeItems: "center",
+                        bgcolor: "rgba(15,23,42,0.32)",
+                        animation: "attendanceFloat 5s ease-in-out infinite",
+                      }}
+                    >
+                      <LockIcon sx={{ fontSize: 48, color: "#a7f3d0" }} />
+                    </Box>
+                  </Box>
+                  <Box sx={{ position: "absolute", left: 18, right: 18, bottom: 18, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1 }}>
+                    {[
+                      ["QR", "valid"],
+                      ["Face", "match"],
+                      ["GPS", "inside"],
+                    ].map(([value, label]) => (
+                      <Box key={value} sx={{ p: 1, borderRadius: 1, bgcolor: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.10)" }}>
+                        <Typography sx={{ fontWeight: 950, fontSize: 16 }}>{value}</Typography>
+                        <Typography sx={{ color: "rgba(255,255,255,0.62)", fontSize: 11 }}>{label}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+                <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                   {[
-                    ["JWT", "Token security"],
-                    ["GPS", "Office radius"],
-                    ["CSV", "Monthly export"],
-                    ["P/HD/L", "Calendar state"],
+                    ["Admin", "rules"],
+                    ["Employee", "punch"],
                   ].map(([value, label]) => (
                     <Box
                       key={value}
@@ -185,35 +227,11 @@ export default function LoginPage() {
                         bgcolor: "rgba(255,255,255,0.07)",
                       }}
                     >
-                      <Typography sx={{ fontWeight: 950, fontSize: 18, lineHeight: 1 }}>{value}</Typography>
+                      <Typography sx={{ fontWeight: 950, fontSize: 17, lineHeight: 1 }}>{value}</Typography>
                       <Typography sx={{ mt: 0.5, color: "rgba(255,255,255,0.62)", fontSize: 12 }}>{label}</Typography>
                     </Box>
                   ))}
                 </Box>
-              </Box>
-
-              <Box sx={{ display: { xs: "none", md: "grid" }, gap: 1 }}>
-                {features.map((item) => (
-                  <Box
-                    key={item.title}
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "34px 1fr",
-                      gap: 1.25,
-                      alignItems: "center",
-                      p: 1.1,
-                      borderRadius: 1,
-                      bgcolor: "rgba(255,255,255,0.08)",
-                      border: "1px solid rgba(255,255,255,0.10)",
-                    }}
-                  >
-                    <Box sx={{ display: "grid", placeItems: "center", color: "#93c5fd" }}>{item.icon}</Box>
-                    <Box>
-                      <Typography sx={{ fontWeight: 850, fontSize: 13 }}>{item.title}</Typography>
-                      <Typography sx={{ color: "rgba(255,255,255,0.62)", fontSize: 12 }}>{item.text}</Typography>
-                    </Box>
-                  </Box>
-                ))}
               </Box>
             </Box>
 
@@ -223,7 +241,7 @@ export default function LoginPage() {
                   <Box>
                     <Typography sx={{ fontWeight: 950, fontSize: 32, lineHeight: 1.1 }}>Sign in</Typography>
                     <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 14 }}>
-                      Enter your assigned credentials to open the correct dashboard.
+                      Use your company username and password.
                     </Typography>
                   </Box>
                   <Box
@@ -298,15 +316,6 @@ export default function LoginPage() {
                   >
                     {loading ? "Signing in..." : "Sign in to portal"}
                   </Button>
-                </Box>
-
-                <Divider sx={{ my: 2.5 }} />
-
-                <Box sx={{ p: 2, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#f9fafb" }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 13 }}>Access policy</Typography>
-                  <Typography sx={{ mt: 0.5, color: "text.secondary", fontSize: 13 }}>
-                    Admin credentials must be created from backend environment variables in production. The app clears invalid sessions automatically.
-                  </Typography>
                 </Box>
               </Box>
             </CardContent>

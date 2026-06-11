@@ -28,6 +28,7 @@ import Layout from "../components/Layout";
 import ProductionControls from "../components/ProductionControls";
 import RealtimeBoard from "../components/RealtimeBoard";
 import StatCard from "../components/StatCard";
+import { useToast } from "../components/Toast";
 
 type CompanyRole = { id: number; name: string; photoUrl?: string | null };
 type Employee = {
@@ -35,6 +36,7 @@ type Employee = {
   employeeNumber: string;
   name: string;
   loginRole: string;
+  username?: string | null;
   companyRole?: CompanyRole | null;
   assignedOfficeLocation?: Exclude<OfficeLocation, null> | null;
   department?: Department | null;
@@ -92,6 +94,7 @@ type OfficeLocation = {
 } | null;
 
 export default function AdminPage() {
+  const { toastSuccess, toastError } = useToast();
   const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [attendanceSettings, setAttendanceSettings] = useState<AttendanceSettings | null>(null);
@@ -116,6 +119,20 @@ export default function AdminPage() {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (err) {
+      toastError(err);
+      setErr(null);
+    }
+  }, [err, toastError]);
+
+  useEffect(() => {
+    if (ok) {
+      toastSuccess(ok);
+      setOk(null);
+    }
+  }, [ok, toastSuccess]);
+
   const [roleName, setRoleName] = useState("");
 
   const [hrUsername, setHrUsername] = useState("");
@@ -129,6 +146,8 @@ export default function AdminPage() {
   const [empPassword, setEmpPassword] = useState("");
   const [empRoleId, setEmpRoleId] = useState<number | "">("");
   const [empOfficeId, setEmpOfficeId] = useState<number | "">("");
+  const [empDepartmentId, setEmpDepartmentId] = useState<number | "">("");
+  const [empShiftId, setEmpShiftId] = useState<number | "">("");
 
   const [holidayMonth, setHolidayMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -144,8 +163,10 @@ export default function AdminPage() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [resetPasswords, setResetPasswords] = useState<Record<number, string>>({});
   const [bulkPassword, setBulkPassword] = useState("");
+  const [usernameEdits, setUsernameEdits] = useState<Record<number, string>>({});
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
   const [bulkOfficeId, setBulkOfficeId] = useState<number | "">("");
+  const [bulkDepartmentId, setBulkDepartmentId] = useState<number | "">("");
   const [bulkShiftId, setBulkShiftId] = useState<number | "">("");
   const [bulkStatus, setBulkStatus] = useState<Employee["status"] | "">("");
   const [rosterEmployeeId, setRosterEmployeeId] = useState<number | "">("");
@@ -171,6 +192,15 @@ export default function AdminPage() {
   const [wizardStep, setWizardStep] = useState(0);
 
   const roleById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
+  const roleSelectValue = empRoleId !== "" && roles.some((r) => r.id === empRoleId) ? empRoleId : "";
+  const employeeOfficeSelectValue = empOfficeId !== "" && officeLocations.some((loc) => loc.id === empOfficeId) ? empOfficeId : "";
+  const employeeDepartmentSelectValue = empDepartmentId !== "" && departments.some((d) => d.id === empDepartmentId) ? empDepartmentId : "";
+  const employeeShiftSelectValue = empShiftId !== "" && shifts.some((s) => s.id === empShiftId) ? empShiftId : "";
+  const bulkOfficeSelectValue = bulkOfficeId !== "" && officeLocations.some((loc) => loc.id === bulkOfficeId) ? bulkOfficeId : "";
+  const bulkDepartmentSelectValue = bulkDepartmentId !== "" && departments.some((d) => d.id === bulkDepartmentId) ? bulkDepartmentId : "";
+  const bulkShiftSelectValue = bulkShiftId !== "" && shifts.some((s) => s.id === bulkShiftId) ? bulkShiftId : "";
+  const rosterEmployeeSelectValue = rosterEmployeeId !== "" && employees.some((e) => e.id === rosterEmployeeId) ? rosterEmployeeId : "";
+  const rosterShiftSelectValue = rosterShiftId !== "" && shifts.some((s) => s.id === rosterShiftId) ? rosterShiftId : "";
   const filteredEmployees = useMemo(() => {
     const q = employeeQuery.trim().toLowerCase();
     if (!q) return employees;
@@ -275,6 +305,58 @@ export default function AdminPage() {
       await refresh();
     } catch (e: any) {
       setErr(e?.response?.data?.error ?? "Assign office failed");
+    }
+  }
+
+  async function assignEmployeeRole(employee: Employee, companyRoleId: number | "") {
+    if (companyRoleId === "") return;
+    setErr(null);
+    setOk(null);
+    try {
+      const res = await api.post<Employee>(`/api/admin/employees/${employee.id}`, {
+        employeeNumber: employee.employeeNumber,
+        name: employee.name,
+        companyRoleId,
+        officeLocationId: employee.assignedOfficeLocation?.id ?? null,
+        departmentId: employee.department?.id ?? null,
+        shiftId: employee.shift?.id ?? null,
+        joinDate: employee.joinDate ?? null,
+      });
+      setEmployees((prev) => prev.map((item) => (item.id === employee.id ? res.data : item)));
+      setSelectedEmployee((prev) => (prev?.id === employee.id ? res.data : prev));
+      setOk("Employee role assigned");
+    } catch (e: any) {
+      setErr(e?.response?.data?.error ?? "Assign role failed");
+    }
+  }
+
+  async function updateEmployeeOrg(
+    employee: Employee,
+    overrides: { companyRoleId?: number; departmentId?: number | null; shiftId?: number | null; officeLocationId?: number | null },
+    successMessage: string,
+  ) {
+    const companyRoleId = overrides.companyRoleId ?? employee.companyRole?.id;
+    if (!companyRoleId) {
+      setErr("Assign a company role before updating department or shift");
+      return;
+    }
+    setErr(null);
+    setOk(null);
+    try {
+      const res = await api.post<Employee>(`/api/admin/employees/${employee.id}`, {
+        employeeNumber: employee.employeeNumber,
+        name: employee.name,
+        companyRoleId,
+        officeLocationId: overrides.officeLocationId !== undefined ? overrides.officeLocationId : (employee.assignedOfficeLocation?.id ?? null),
+        departmentId: overrides.departmentId !== undefined ? overrides.departmentId : (employee.department?.id ?? null),
+        shiftId: overrides.shiftId !== undefined ? overrides.shiftId : (employee.shift?.id ?? null),
+        joinDate: employee.joinDate ?? null,
+      });
+      setEmployees((prev) => prev.map((item) => (item.id === employee.id ? res.data : item)));
+      setSelectedEmployee((prev) => (prev?.id === employee.id ? res.data : prev));
+      setOk(successMessage);
+    } catch (e: any) {
+      setErr(e?.response?.data?.error ?? "Employee update failed");
     }
   }
 
@@ -443,6 +525,8 @@ export default function AdminPage() {
         password: empPassword,
         companyRoleId: empRoleId,
         officeLocationId: empOfficeId === "" ? null : empOfficeId,
+        departmentId: empDepartmentId === "" ? null : empDepartmentId,
+        shiftId: empShiftId === "" ? null : empShiftId,
       });
       setEmpNo("");
       setEmpName("");
@@ -450,6 +534,8 @@ export default function AdminPage() {
       setEmpPassword("");
       setEmpRoleId("");
       setEmpOfficeId("");
+      setEmpDepartmentId("");
+      setEmpShiftId("");
       setOk("Employee created");
       await refresh();
     } catch (e: any) {
@@ -481,6 +567,23 @@ export default function AdminPage() {
     await refresh();
   }
 
+  async function saveEmployeeUsername(employee: Employee) {
+    const username = (usernameEdits[employee.id] ?? employee.username ?? "").trim();
+    if (!username) {
+      setErr("Username is required");
+      return;
+    }
+    const res = await api.post<Employee>(`/api/admin/employees/${employee.id}/username`, { username });
+    setEmployees((prev) => prev.map((item) => (item.id === employee.id ? res.data : item)));
+    setSelectedEmployee((prev) => (prev?.id === employee.id ? res.data : prev));
+    setUsernameEdits((prev) => {
+      const next = { ...prev };
+      delete next[employee.id];
+      return next;
+    });
+    setOk("Employee username updated");
+  }
+
   async function bulkResetPasswords() {
     const employeeIds = employees.map((e) => e.id);
     const res = await api.post<{ updated: number }>("/api/admin/employees/passwords/bulk-reset", { employeeIds, newPassword: bulkPassword });
@@ -493,12 +596,14 @@ export default function AdminPage() {
     const res = await api.post<{ updated: number }>("/api/admin/employees/bulk-edit", {
       employeeIds: selectedEmployeeIds,
       officeLocationId: bulkOfficeId === "" ? null : bulkOfficeId,
+      departmentId: bulkDepartmentId === "" ? null : bulkDepartmentId,
       shiftId: bulkShiftId === "" ? null : bulkShiftId,
       status: bulkStatus || null,
       newPassword: bulkPassword.trim() || null,
     });
     setOk(`Bulk updated ${res.data.updated} employees`);
     setBulkPassword("");
+    setBulkDepartmentId("");
     await refresh();
   }
 
@@ -633,7 +738,7 @@ export default function AdminPage() {
 
   return (
     <Layout title="Admin Dashboard">
-      <div className="grid gap-6">
+      <div className="grid gap-4 md:gap-6">
         {err ? <Alert severity="error">{err}</Alert> : null}
         {ok ? <Alert severity="success">{ok}</Alert> : null}
 
@@ -733,7 +838,7 @@ export default function AdminPage() {
           </AppCard>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Company roles" value={roles.length} helper="Defined role profiles" icon={<BadgeIcon />} />
           <StatCard label="Employees" value={employees.length} helper="Active accounts in system" icon={<GroupsIcon />} accent="#0f766e" />
           <StatCard label="Holidays" value={holidays.length} helper={`Saved for ${holidayMonth}`} icon={<CalendarMonthIcon />} accent="#7c3aed" />
@@ -746,7 +851,7 @@ export default function AdminPage() {
 
         <ProductionControls />
 
-        <div className="grid gap-6 lg:grid-cols-12">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-12">
           <div className="lg:col-span-4">
             <AppCard>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>Production checklist</Typography>
@@ -1194,9 +1299,9 @@ export default function AdminPage() {
                   label="Allowed office IP/CIDR ranges"
                   value={allowedOfficeCidrs}
                   onChange={(e) => setAllowedOfficeCidrs(e.target.value)}
-                  placeholder="192.168.1.0/24,203.0.113.25/32"
+                  placeholder="192.168.1.0/24,127.0.0.1/32,::1/128"
                   disabled={!officeIpRestrictionEnabled}
-                  helperText="Use /24 for office Wi-Fi ranges or /32 for one public office IP."
+                  helperText="Local testing on localhost needs 127.0.0.1/32 and ::1/128. Real office use /24 for Wi-Fi or /32 for one public IP."
                 />
                 <Autocomplete
                   multiple
@@ -1246,7 +1351,7 @@ export default function AdminPage() {
                 <TextField
                   select
                   label="Company role"
-                  value={empRoleId}
+                  value={roleSelectValue}
                   onChange={(e) => setEmpRoleId(e.target.value === "" ? "" : Number(e.target.value))}
                   sx={{ gridColumn: "1 / -1" }}
                 >
@@ -1260,7 +1365,7 @@ export default function AdminPage() {
                 <TextField
                   select
                   label="Assigned office"
-                  value={empOfficeId}
+                  value={employeeOfficeSelectValue}
                   onChange={(e) => setEmpOfficeId(e.target.value === "" ? "" : Number(e.target.value))}
                   sx={{ gridColumn: "1 / -1" }}
                 >
@@ -1268,6 +1373,32 @@ export default function AdminPage() {
                   {officeLocations.map((loc) => (
                     <MenuItem key={loc.id} value={loc.id}>
                       {loc.officeName || `Office ${loc.id}`}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Department"
+                  value={employeeDepartmentSelectValue}
+                  onChange={(e) => setEmpDepartmentId(e.target.value === "" ? "" : Number(e.target.value))}
+                >
+                  <MenuItem value="">No department</MenuItem>
+                  {departments.map((department) => (
+                    <MenuItem key={department.id} value={department.id}>
+                      {department.name}
+                    </MenuItem>
+                  ))}
+                </TextField>
+                <TextField
+                  select
+                  label="Default shift"
+                  value={employeeShiftSelectValue}
+                  onChange={(e) => setEmpShiftId(e.target.value === "" ? "" : Number(e.target.value))}
+                >
+                  <MenuItem value="">No default shift</MenuItem>
+                  {shifts.map((shift) => (
+                    <MenuItem key={shift.id} value={shift.id}>
+                      {shift.name} ({shift.inTime?.slice(0, 5)}-{shift.outTime?.slice(0, 5)})
                     </MenuItem>
                   ))}
                 </TextField>
@@ -1287,7 +1418,7 @@ export default function AdminPage() {
 
           <div id="admin-employees" className="lg:col-span-12">
             <AppCard>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1fr auto" }, gap: 2, alignItems: "flex-start" }}>
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 900 }}>
                     Employees ({filteredEmployees.length})
@@ -1296,13 +1427,13 @@ export default function AdminPage() {
                     Quick list of employees, lifecycle status, roles, offices, and account controls.
                   </Typography>
                 </Box>
-                <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+                <Box sx={{ display: "grid", gap: 1, alignItems: "center", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "180px 180px auto auto" } }}>
                   <TextField
                     size="small"
                     label="Search"
                     value={employeeQuery}
                     onChange={(e) => setEmployeeQuery(e.target.value)}
-                    sx={{ width: 180 }}
+                    sx={{ width: "100%" }}
                   />
                   <TextField
                     size="small"
@@ -1310,7 +1441,7 @@ export default function AdminPage() {
                     type="password"
                     value={bulkPassword}
                     onChange={(e) => setBulkPassword(e.target.value)}
-                    sx={{ width: 180 }}
+                    sx={{ width: "100%" }}
                   />
                   <Button variant="outlined" onClick={() => bulkResetPasswords().catch((e) => setErr(e?.response?.data?.error ?? "Bulk reset failed"))} disabled={!bulkPassword.trim() || !employees.length}>
                     Bulk reset
@@ -1329,12 +1460,16 @@ export default function AdminPage() {
                   <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.3 }}>
                     Selected employees: {selectedEmployeeIds.length}
                   </Typography>
-                  <Box sx={{ mt: 1.2, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(4,1fr)" } }}>
-                    <TextField select label="Office" value={bulkOfficeId} onChange={(e) => setBulkOfficeId(e.target.value === "" ? "" : Number(e.target.value))}>
+                  <Box sx={{ mt: 1.2, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(5,1fr)" } }}>
+                    <TextField select label="Office" value={bulkOfficeSelectValue} onChange={(e) => setBulkOfficeId(e.target.value === "" ? "" : Number(e.target.value))}>
                       <MenuItem value="">No change</MenuItem>
                       {officeLocations.map((loc) => <MenuItem key={loc.id} value={loc.id}>{loc.officeName || `Office ${loc.id}`}</MenuItem>)}
                     </TextField>
-                    <TextField select label="Shift" value={bulkShiftId} onChange={(e) => setBulkShiftId(e.target.value === "" ? "" : Number(e.target.value))}>
+                    <TextField select label="Department" value={bulkDepartmentSelectValue} onChange={(e) => setBulkDepartmentId(e.target.value === "" ? "" : Number(e.target.value))}>
+                      <MenuItem value="">No change</MenuItem>
+                      {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+                    </TextField>
+                    <TextField select label="Default shift" value={bulkShiftSelectValue} onChange={(e) => setBulkShiftId(e.target.value === "" ? "" : Number(e.target.value))}>
                       <MenuItem value="">No change</MenuItem>
                       {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
                     </TextField>
@@ -1350,14 +1485,14 @@ export default function AdminPage() {
                 <Box sx={{ p: 1.5, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#f8fafc" }}>
                   <Typography sx={{ fontWeight: 950 }}>Shift calendar / roster</Typography>
                   <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.3 }}>
-                    Assign shift by date range, including night shifts.
+                    Assign an employee shift for one day or a date range. Employee dashboard uses this shift for countdown and attendance rules.
                   </Typography>
                   <Box sx={{ mt: 1.2, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr auto" } }}>
-                    <TextField select label="Employee" value={rosterEmployeeId} onChange={(e) => setRosterEmployeeId(e.target.value === "" ? "" : Number(e.target.value))}>
+                    <TextField select label="Employee" value={rosterEmployeeSelectValue} onChange={(e) => setRosterEmployeeId(e.target.value === "" ? "" : Number(e.target.value))}>
                       <MenuItem value="">Select</MenuItem>
                       {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>)}
                     </TextField>
-                    <TextField select label="Shift" value={rosterShiftId} onChange={(e) => setRosterShiftId(e.target.value === "" ? "" : Number(e.target.value))}>
+                    <TextField select label="Shift" value={rosterShiftSelectValue} onChange={(e) => setRosterShiftId(e.target.value === "" ? "" : Number(e.target.value))}>
                       <MenuItem value="">Select</MenuItem>
                       {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name} ({s.inTime?.slice(0, 5)}-{s.outTime?.slice(0, 5)})</MenuItem>)}
                     </TextField>
@@ -1369,91 +1504,161 @@ export default function AdminPage() {
                   </Box>
                 </Box>
               </Box>
-              <Box sx={{ mt: 2, border: "1px solid #e5e7eb", borderRadius: 1, overflow: "hidden", bgcolor: "#ffffff" }}>
-                <Box sx={{ display: { xs: "none", xl: "grid" }, gridTemplateColumns: "86px minmax(280px,1.8fr) 160px 210px 160px 180px 120px 110px 86px", gap: 1, px: 1.25, py: 1, bgcolor: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
-                  {["Select", "Employee", "Lifecycle", "Office", "Account", "Password", "Last login", "Toggle", "ID"].map((h) => (
-                    <Typography key={h} sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>
-                      {h}
-                    </Typography>
-                  ))}
-                </Box>
-                <Box sx={{ display: "grid", maxHeight: 680, overflow: "auto" }}>
+              <Box sx={{ mt: 2 }}>
+                <Box sx={{ display: "grid", gap: 1.25, maxHeight: { xs: "none", xl: 720 }, overflowY: "auto", overflowX: "hidden", pr: { xl: 0.5 } }}>
                   {filteredEmployees.map((e) => {
                     const r = e.companyRole?.id ? roleById.get(e.companyRole.id) : e.companyRole;
-                    const assignedOfficeId = e.assignedOfficeLocation?.id ?? "";
+                    const assignedOfficeId =
+                      e.assignedOfficeLocation?.id && officeLocations.some((loc) => loc.id === e.assignedOfficeLocation?.id)
+                        ? e.assignedOfficeLocation.id
+                        : "";
                     return (
                       <Box
                         key={e.id}
                         sx={{
                           display: "grid",
-                          gridTemplateColumns: { xs: "1fr", xl: "86px minmax(280px,1.8fr) 160px 210px 160px 180px 120px 110px 86px" },
-                          gap: 1,
-                          alignItems: "center",
-                          px: 1.25,
-                          py: 1.1,
-                          borderBottom: "1px solid #eef2f7",
+                          gridTemplateColumns: { xs: "1fr", md: "1.25fr 1fr", xl: "1.35fr 1fr 1fr 0.8fr" },
+                          gap: 1.1,
+                          alignItems: "stretch",
+                          p: { xs: 1.1, sm: 1.25 },
+                          border: "1px solid #e5e7eb",
+                          borderRadius: 1,
+                          bgcolor: "#ffffff",
+                          boxShadow: "0 8px 20px rgba(15,23,42,0.04)",
                         }}
                       >
-                        <Button
-                          size="small"
-                          variant={selectedEmployeeIds.includes(e.id) ? "contained" : "outlined"}
-                          onClick={() => toggleEmployeeSelection(e.id)}
-                        >
-                          {selectedEmployeeIds.includes(e.id) ? "Selected" : "Select"}
-                        </Button>
-                        <Box sx={{ display: "grid", gridTemplateColumns: "48px 1fr", gap: 1.2, alignItems: "center", minWidth: 0 }}>
-                          <Avatar src={e.profilePhotoUrl ?? r?.photoUrl ?? undefined} sx={{ width: 42, height: 42 }}>{e.name[0]}</Avatar>
-                          <Box sx={{ minWidth: 0, cursor: "pointer" }} onClick={() => setSelectedEmployee(e)}>
-                            <Typography sx={{ fontWeight: 950, fontSize: 13.5, lineHeight: 1.2, wordBreak: "break-word" }}>
-                              {e.name}
-                            </Typography>
-                            <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.2 }}>
-                              {e.employeeNumber} | {r?.name ?? "No role"}
-                            </Typography>
-                            <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.15, lineHeight: 1.25, wordBreak: "break-word" }}>
-                              {e.department?.name ?? "--"} | {e.shift?.name ?? "--"}
+                        <Box sx={{ display: "grid", gap: 1 }}>
+                          <Box sx={{ display: "grid", gridTemplateColumns: "48px minmax(0,1fr)", gap: 1.2, alignItems: "center", minWidth: 0 }}>
+                            <Avatar src={e.profilePhotoUrl ?? r?.photoUrl ?? undefined} sx={{ width: 42, height: 42 }}>{e.name[0]}</Avatar>
+                            <Box sx={{ minWidth: 0, cursor: "pointer" }} onClick={() => setSelectedEmployee(e)}>
+                              <Typography sx={{ fontWeight: 950, fontSize: 14, lineHeight: 1.2, wordBreak: "break-word" }}>
+                                {e.name}
+                              </Typography>
+                              <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.2 }}>
+                                {e.employeeNumber} | #{e.id}
+                              </Typography>
+                              <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.15, lineHeight: 1.25, wordBreak: "break-word" }}>
+                                {e.department?.name ?? "No department"} | {e.shift?.name ?? "No default shift"}
+                              </Typography>
+                            </Box>
+                          </Box>
+                          <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", alignItems: "center" }}>
+                            <Button
+                              size="small"
+                              variant={selectedEmployeeIds.includes(e.id) ? "contained" : "outlined"}
+                              onClick={() => toggleEmployeeSelection(e.id)}
+                            >
+                              {selectedEmployeeIds.includes(e.id) ? "Selected" : "Select"}
+                            </Button>
+                            <Chip size="small" label={(e.status ?? "ACTIVE").replaceAll("_", " ")} color={employeeStatusColor(e.status)} sx={{ borderRadius: 1, fontWeight: 900 }} />
+                            <Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>
+                              Join {e.joinDate ?? "--"}{e.exitDate ? ` | Exit ${e.exitDate}` : ""}
                             </Typography>
                           </Box>
                         </Box>
-                        <Box sx={{ display: "grid", gap: 0.6 }}>
-                          <Chip size="small" label={(e.status ?? "ACTIVE").replaceAll("_", " ")} color={employeeStatusColor(e.status)} sx={{ borderRadius: 1, fontWeight: 900, justifySelf: "start" }} />
-                          <Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>
-                            Join {e.joinDate ?? "--"}{e.exitDate ? ` | Exit ${e.exitDate}` : ""}
-                          </Typography>
+
+                        <Box sx={{ display: "grid", gap: 0.75 }}>
+                          <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>Role and org</Typography>
+                          <TextField
+                            select
+                            size="small"
+                            label="Role"
+                            value={e.companyRole?.id && roles.some((role) => role.id === e.companyRole?.id) ? e.companyRole.id : ""}
+                            onChange={(event) => assignEmployeeRole(e, event.target.value === "" ? "" : Number(event.target.value))}
+                          >
+                            <MenuItem value="">Select role</MenuItem>
+                            {roles.map((role) => (
+                              <MenuItem key={role.id} value={role.id}>
+                                {role.name}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            select
+                            size="small"
+                            label="Department"
+                            value={e.department?.id && departments.some((department) => department.id === e.department?.id) ? e.department.id : ""}
+                            onChange={(event) =>
+                              updateEmployeeOrg(
+                                e,
+                                { departmentId: event.target.value === "" ? null : Number(event.target.value) },
+                                "Employee department assigned",
+                              )
+                            }
+                          >
+                            <MenuItem value="">No department</MenuItem>
+                            {departments.map((department) => (
+                              <MenuItem key={department.id} value={department.id}>
+                                {department.name}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            select
+                            size="small"
+                            label="Default shift"
+                            value={e.shift?.id && shifts.some((shift) => shift.id === e.shift?.id) ? e.shift.id : ""}
+                            onChange={(event) =>
+                              updateEmployeeOrg(
+                                e,
+                                { shiftId: event.target.value === "" ? null : Number(event.target.value) },
+                                "Employee default shift assigned",
+                              )
+                            }
+                          >
+                            <MenuItem value="">No default shift</MenuItem>
+                            {shifts.map((shift) => (
+                              <MenuItem key={shift.id} value={shift.id}>
+                                {shift.name} ({shift.inTime?.slice(0, 5)}-{shift.outTime?.slice(0, 5)})
+                              </MenuItem>
+                            ))}
+                          </TextField>
                         </Box>
-                        <TextField
-                          select
-                          size="small"
-                          label="Office"
-                          value={assignedOfficeId}
-                          onChange={(event) =>
-                            assignEmployeeOffice(
-                              e.id,
-                              event.target.value === "" ? "" : Number(event.target.value),
-                            )
-                          }
-                        >
-                          <MenuItem value="">Default active office</MenuItem>
-                          {officeLocations.map((loc) => (
-                            <MenuItem key={loc.id} value={loc.id}>
-                              {loc.officeName || `Office ${loc.id}`}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                        <TextField
-                          select
-                          size="small"
-                          label="Lifecycle"
-                          value={e.status ?? "ACTIVE"}
-                          onChange={(event) => setEmployeeStatus(e.id, event.target.value as Employee["status"]).catch((err) => setErr(err?.response?.data?.error ?? "Lifecycle update failed"))}
-                        >
-                          {["ACTIVE", "PROBATION", "NOTICE_PERIOD", "INACTIVE", "RESIGNED"].map((status) => (
-                            <MenuItem key={status} value={status}>
-                              {status.replaceAll("_", " ")}
-                            </MenuItem>
-                          ))}
-                        </TextField>
-                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr auto", xl: "1fr" }, gap: 0.6 }}>
+
+                        <Box sx={{ display: "grid", gap: 0.75 }}>
+                          <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>Office and account</Typography>
+                          <TextField
+                            select
+                            size="small"
+                            label="Office"
+                            value={assignedOfficeId}
+                            onChange={(event) =>
+                              assignEmployeeOffice(
+                                e.id,
+                                event.target.value === "" ? "" : Number(event.target.value),
+                              )
+                            }
+                          >
+                            <MenuItem value="">Default active office</MenuItem>
+                            {officeLocations.map((loc) => (
+                              <MenuItem key={loc.id} value={loc.id}>
+                                {loc.officeName || `Office ${loc.id}`}
+                              </MenuItem>
+                            ))}
+                          </TextField>
+                          <TextField
+                            size="small"
+                            label="Username"
+                            value={usernameEdits[e.id] ?? e.username ?? ""}
+                            onChange={(event) => setUsernameEdits((prev) => ({ ...prev, [e.id]: event.target.value }))}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                saveEmployeeUsername(e).catch((err) => setErr(err?.response?.data?.error ?? "Username update failed"));
+                              }
+                            }}
+                          />
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            onClick={() => saveEmployeeUsername(e).catch((err) => setErr(err?.response?.data?.error ?? "Username update failed"))}
+                            disabled={(usernameEdits[e.id] ?? e.username ?? "").trim() === (e.username ?? "").trim()}
+                          >
+                            Save
+                          </Button>
+                        </Box>
+
+                        <Box sx={{ display: "grid", gap: 0.75 }}>
+                          <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>Security</Typography>
                           <TextField
                             size="small"
                             label="New password"
@@ -1469,18 +1674,19 @@ export default function AdminPage() {
                           >
                             Reset
                           </Button>
+                          <Box sx={{ display: "flex", gap: 1, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
+                            <Typography sx={{ color: "text.secondary", fontSize: 12 }}>
+                              Last login: {e.lastLoginAt ? new Date(e.lastLoginAt).toLocaleDateString() : "--"}
+                            </Typography>
+                            <Button
+                              variant="outlined"
+                              color={e.enabled === false ? "success" : "error"}
+                              onClick={() => setEmployeeEnabled(e.id, !(e.enabled ?? true)).catch((err) => setErr(err?.response?.data?.error ?? "Status update failed"))}
+                            >
+                              {e.enabled === false ? "Enable" : "Disable"}
+                            </Button>
+                          </Box>
                         </Box>
-                        <Typography sx={{ color: "text.secondary", fontSize: 12 }}>
-                          {e.lastLoginAt ? new Date(e.lastLoginAt).toLocaleDateString() : "--"}
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          color={e.enabled === false ? "success" : "error"}
-                          onClick={() => setEmployeeEnabled(e.id, !(e.enabled ?? true)).catch((err) => setErr(err?.response?.data?.error ?? "Status update failed"))}
-                        >
-                          {e.enabled === false ? "Enable" : "Disable"}
-                        </Button>
-                        <Typography sx={{ opacity: 0.7, fontSize: 12 }}>#{e.id}</Typography>
                       </Box>
                     );
                   })}
@@ -1552,6 +1758,7 @@ export default function AdminPage() {
               </Box>
               <Divider />
               <Typography sx={{ fontSize: 13 }}><b>Status:</b> {(selectedEmployee.status ?? "ACTIVE").replaceAll("_", " ")}</Typography>
+              <Typography sx={{ fontSize: 13 }}><b>Username:</b> {selectedEmployee.username ?? "--"}</Typography>
               <Typography sx={{ fontSize: 13 }}><b>Department:</b> {selectedEmployee.department?.name ?? "--"}</Typography>
               <Typography sx={{ fontSize: 13 }}><b>Shift:</b> {selectedEmployee.shift?.name ?? "--"}</Typography>
               <Typography sx={{ fontSize: 13 }}><b>Office:</b> {selectedEmployee.assignedOfficeLocation?.officeName ?? "Default office"}</Typography>

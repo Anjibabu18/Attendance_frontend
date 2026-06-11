@@ -12,6 +12,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.URL;
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -39,10 +40,7 @@ public class FaceVerificationService {
       return new FaceVerificationResult(null, false, "Profile photo missing");
     }
     if (appConfig.getFace().isServiceEnabled()) {
-      FaceVerificationResult serviceResult = verifyWithFaceService(employee, punchPhoto);
-      if (serviceResult.similarityScore() != null) {
-        return serviceResult;
-      }
+      return verifyWithFaceService(employee, punchPhoto);
     }
     try {
       BufferedImage profile = readProfile(employee.getProfilePhotoUrl());
@@ -61,6 +59,56 @@ public class FaceVerificationService {
     }
   }
 
+  public FaceDetectionResult detectFace(MultipartFile photo) {
+    if (photo == null || photo.isEmpty()) {
+      return new FaceDetectionResult(false, 0, "Photo is required");
+    }
+    if (appConfig.getFace().isServiceEnabled()) {
+      FaceDetectionResult serviceResult = detectWithFaceService(photo);
+      if (serviceResult.available()) {
+        return serviceResult;
+      }
+    }
+    try {
+      BufferedImage image = readPunch(photo);
+      return new FaceDetectionResult(
+          image != null,
+          image == null ? 0 : 1,
+          image == null ? "Unreadable image" : "Image accepted; face service disabled");
+    } catch (Exception ex) {
+      return new FaceDetectionResult(false, 0, "Unreadable image");
+    }
+  }
+
+  private FaceDetectionResult detectWithFaceService(MultipartFile photo) {
+    try {
+      String boundary = "----attendance-face-detect-" + System.nanoTime();
+      ByteArrayOutputStream out = new ByteArrayOutputStream();
+      writePart(out, boundary, "image", "image.jpg", contentType(photo), photo.getBytes());
+      out.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+      HttpRequest request =
+          HttpRequest.newBuilder(detectUri())
+              .timeout(Duration.ofMillis(Math.max(1000, appConfig.getFace().getTimeoutMillis())))
+              .header("Content-Type", "multipart/form-data; boundary=" + boundary)
+              .POST(HttpRequest.BodyPublishers.ofByteArray(out.toByteArray()))
+              .build();
+      HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+      if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        return new FaceDetectionResult(false, 0, "Face detection service unavailable", false);
+      }
+      JsonNode json = JSON.readTree(response.body());
+      boolean detected = json.path("faceDetected").asBoolean(false);
+      int count = json.path("faceCount").asInt(detected ? 1 : 0);
+      String message =
+          json.has("message")
+              ? json.path("message").asText()
+              : detected ? "Face detected" : "No face detected";
+      return new FaceDetectionResult(detected, count, message, true);
+    } catch (Exception ex) {
+      return new FaceDetectionResult(false, 0, "Face detection service unavailable", false);
+    }
+  }
+
   private FaceVerificationResult verifyWithFaceService(Employee employee, MultipartFile punchPhoto) {
     try {
       byte[] profileBytes = readProfileBytes(employee.getProfilePhotoUrl());
@@ -76,7 +124,7 @@ public class FaceVerificationService {
               .build();
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
       if (response.statusCode() < 200 || response.statusCode() >= 300) {
-        return new FaceVerificationResult(null, false, "Face service unavailable");
+        return new FaceVerificationResult(null, false, serviceErrorMessage(response.body(), "Face service unavailable"));
       }
       JsonNode json = JSON.readTree(response.body());
       double score = json.path("score").asDouble(-1d);
@@ -84,13 +132,31 @@ public class FaceVerificationService {
         return new FaceVerificationResult(null, false, "Face service returned no score");
       }
       boolean verified =
-          json.has("verified")
+          (json.has("verified")
               ? json.path("verified").asBoolean(false)
-              : score >= appConfig.getFace().getMinScore();
+              : true)
+              && score >= appConfig.getFace().getMinScore();
       String model = json.path("model").asText("face-service");
-      return new FaceVerificationResult(score, verified, verified ? "Verified by " + model : "Face mismatch by " + model);
+      String serviceMessage = json.path("message").asText("");
+      String message =
+          verified
+              ? "Verified by " + model
+              : serviceMessage.isBlank()
+                  ? "Face mismatch by " + model + "; required " + Math.round(appConfig.getFace().getMinScore() * 100) + "%"
+                  : serviceMessage;
+      return new FaceVerificationResult(score, verified, message);
     } catch (Exception ex) {
       return new FaceVerificationResult(null, false, "Face service unavailable");
+    }
+  }
+
+  private static String serviceErrorMessage(String body, String fallback) {
+    try {
+      JsonNode json = JSON.readTree(body);
+      String detail = json.path("detail").asText("");
+      return detail.isBlank() ? fallback : detail;
+    } catch (Exception ex) {
+      return fallback;
     }
   }
 
@@ -98,6 +164,20 @@ public class FaceVerificationService {
     try (InputStream in = new URL(photoUrl).openStream()) {
       return in.readAllBytes();
     }
+  }
+
+  private URI detectUri() throws URISyntaxException {
+    URI verify = URI.create(appConfig.getFace().getServiceUrl());
+    String path = verify.getPath() == null || verify.getPath().isBlank() ? "/detect" : verify.getPath().replaceFirst("/verify$", "/detect");
+    if (path.equals(verify.getPath())) {
+      path = "/detect";
+    }
+    return new URI(verify.getScheme(), verify.getAuthority(), path, verify.getQuery(), verify.getFragment());
+  }
+
+  private static String contentType(MultipartFile file) {
+    String type = file.getContentType();
+    return type == null || type.isBlank() ? "image/jpeg" : type;
   }
 
   private static byte[] multipartBody(String boundary, byte[] profileBytes, byte[] punchBytes) throws Exception {
@@ -171,4 +251,10 @@ public class FaceVerificationService {
   }
 
   public record FaceVerificationResult(Double similarityScore, boolean verified, String message) {}
+
+  public record FaceDetectionResult(boolean faceDetected, int faceCount, String message, boolean available) {
+    public FaceDetectionResult(boolean faceDetected, int faceCount, String message) {
+      this(faceDetected, faceCount, message, true);
+    }
+  }
 }

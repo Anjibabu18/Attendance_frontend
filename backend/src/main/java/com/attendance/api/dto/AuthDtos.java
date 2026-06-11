@@ -27,12 +27,14 @@ public class AuthDtos {
 
   public static class LoginResponse {
     private String token;
+    private String refreshToken;
     private Role role;
     private Long employeeId;
     private String name;
 
-    public LoginResponse(String token, Role role, Long employeeId, String name) {
+    public LoginResponse(String token, String refreshToken, Role role, Long employeeId, String name) {
       this.token = token;
+      this.refreshToken = refreshToken;
       this.role = role;
       this.employeeId = employeeId;
       this.name = name;
@@ -40,6 +42,10 @@ public class AuthDtos {
 
     public String getToken() {
       return token;
+    }
+
+    public String getRefreshToken() {
+      return refreshToken;
     }
 
     public Role getRole() {
@@ -53,6 +59,26 @@ public class AuthDtos {
     public String getName() {
       return name;
     }
+  }
+
+  public static class RefreshRequest {
+    @NotBlank private String refreshToken;
+
+    public String getRefreshToken() { return refreshToken; }
+    public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
+  }
+
+  public static class RefreshResponse {
+    private String token;
+    private String refreshToken;
+
+    public RefreshResponse(String token, String refreshToken) {
+      this.token = token;
+      this.refreshToken = refreshToken;
+    }
+
+    public String getToken() { return token; }
+    public String getRefreshToken() { return refreshToken; }
   }
 }
 

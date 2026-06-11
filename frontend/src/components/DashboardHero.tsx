@@ -11,9 +11,9 @@ export default function DashboardHero(props: {
     <Box
       sx={{
         border: "1px solid rgba(203,213,225,0.95)",
-        borderRadius: 1.5,
-        background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96))",
-        boxShadow: "0 22px 60px rgba(15,23,42,0.12)",
+        borderRadius: 1.25,
+        background: "#ffffff",
+        boxShadow: "0 14px 34px rgba(15,23,42,0.08)",
         overflow: "hidden",
         position: "relative",
         "&:before": {
@@ -30,14 +30,13 @@ export default function DashboardHero(props: {
       <Box
         sx={{
           display: "grid",
-          gap: 3,
+          gap: { xs: 1.5, md: 2 },
           gridTemplateColumns: { xs: "1fr", lg: props.right ? "minmax(0,1fr) auto" : "1fr" },
           alignItems: "center",
-          px: { xs: 2.5, md: 4 },
-          py: { xs: 2.5, md: 3.5 },
+          px: { xs: 1.5, sm: 2.25, md: 3 },
+          py: { xs: 1.75, md: 2.25 },
           borderBottom: props.children ? "1px solid #edf1f7" : "none",
-          background:
-            "linear-gradient(135deg, rgba(37,99,235,0.13), rgba(15,118,110,0.08) 42%, rgba(255,255,255,0.78) 78%)",
+          background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(15,118,110,0.04) 46%, rgba(255,255,255,0.92) 100%)",
         }}
       >
         <Box sx={{ minWidth: 0 }}>
@@ -53,16 +52,16 @@ export default function DashboardHero(props: {
               height: 26,
             }}
           />
-          <Typography sx={{ mt: 0.8, fontSize: { xs: 27, md: 36 }, lineHeight: 1.06, fontWeight: 950 }}>
+          <Typography sx={{ mt: 0.7, fontSize: { xs: 23, sm: 27, md: 32 }, lineHeight: 1.08, fontWeight: 950 }}>
             {props.title}
           </Typography>
-          <Typography sx={{ mt: 1, color: "text.secondary", maxWidth: 760, fontSize: 15, lineHeight: 1.65 }}>
+          <Typography sx={{ mt: 0.75, color: "text.secondary", maxWidth: 760, fontSize: { xs: 13, md: 14 }, lineHeight: { xs: 1.45, md: 1.55 } }}>
             {props.subtitle}
           </Typography>
         </Box>
         {props.right ? <Box sx={{ justifySelf: { xs: "stretch", lg: "end" } }}>{props.right}</Box> : null}
       </Box>
-      {props.children ? <Box sx={{ px: { xs: 2.5, md: 4 }, py: 2.25, bgcolor: "#fbfdff" }}>{props.children}</Box> : null}
+      {props.children ? <Box sx={{ px: { xs: 1.5, sm: 2.25, md: 3 }, py: { xs: 1.25, md: 1.75 }, bgcolor: "#fbfdff" }}>{props.children}</Box> : null}
     </Box>
   );
 }

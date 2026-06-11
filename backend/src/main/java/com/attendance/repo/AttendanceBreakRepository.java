@@ -18,5 +18,6 @@ public interface AttendanceBreakRepository extends JpaRepository<AttendanceBreak
   List<AttendanceBreak> findAllByDateAndBreakEndIsNull(LocalDate date);
 
   @EntityGraph(attributePaths = "employee")
-  Optional<AttendanceBreak> findTopByEmployee_IdAndDateAndBreakEndIsNullOrderByBreakStartDesc(Long employeeId, LocalDate date);
+  Optional<AttendanceBreak> findTopByEmployee_IdAndDateAndBreakEndIsNullOrderByBreakStartDesc(Long employeeId,
+      LocalDate date);
 }

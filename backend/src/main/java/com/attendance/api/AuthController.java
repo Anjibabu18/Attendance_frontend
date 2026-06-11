@@ -10,6 +10,7 @@ import com.attendance.security.LoginAttemptService;
 import com.attendance.service.ApiException;
 import com.attendance.service.AuditLogService;
 import com.attendance.service.ProductionFeatureService;
+import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Map;
@@ -81,15 +82,39 @@ public class AuthController {
     userRepository.save(user);
     productionFeatureService.recordSession(user, remoteAddress, user.getLastUserAgent());
     auditLogService.record(user.getUsername(), "LOGIN_SUCCESS", "USER", user.getId(), "ip=" + remoteAddress);
-    String token = jwtService.createToken(user.getUsername(), user.getRole());
+    String token = jwtService.createAccessToken(user.getUsername(), user.getRole());
+    String refreshToken = jwtService.createRefreshToken(user.getUsername(), user.getRole());
     if (user.getRole() == Role.ROLE_EMPLOYEE) {
       var emp =
           employeeRepository
               .findByUser_Id(user.getId())
               .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "Employee profile missing"));
-      return new AuthDtos.LoginResponse(token, user.getRole(), emp.getId(), emp.getName());
+      return new AuthDtos.LoginResponse(token, refreshToken, user.getRole(), emp.getId(), emp.getName());
     }
-    return new AuthDtos.LoginResponse(token, user.getRole(), null, user.getUsername());
+    return new AuthDtos.LoginResponse(token, refreshToken, user.getRole(), null, user.getUsername());
+  }
+
+  @PostMapping("/refresh")
+  public AuthDtos.RefreshResponse refresh(@Valid @RequestBody AuthDtos.RefreshRequest req) {
+    try {
+      Claims claims = jwtService.parseClaims(req.getRefreshToken());
+      if (claims.get("type") == null || !"refresh".equals(claims.get("type"))) {
+        throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid refresh token type");
+      }
+      String username = claims.getSubject();
+      String roleStr = claims.get("role", String.class);
+      Role role = Role.valueOf(roleStr);
+      AppUser user = userRepository.findByUsername(username)
+          .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "User not found"));
+      if (!user.isEnabled()) {
+        throw new ApiException(HttpStatus.UNAUTHORIZED, "User is disabled");
+      }
+      String newAccessToken = jwtService.createAccessToken(username, role);
+      String newRefreshToken = jwtService.createRefreshToken(username, role);
+      return new AuthDtos.RefreshResponse(newAccessToken, newRefreshToken);
+    } catch (Exception e) {
+      throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
+    }
   }
 
   @GetMapping("/me")

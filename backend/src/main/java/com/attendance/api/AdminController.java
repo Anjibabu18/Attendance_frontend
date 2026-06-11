@@ -167,6 +167,13 @@ public class AdminController {
     return toEmployeeView(userService.setEmployeeStatus(id, req.getStatus(), req.getExitDate(), actor));
   }
 
+  @PostMapping("/employees/{id}/username")
+  public ViewDtos.EmployeeView updateEmployeeUsername(
+      @PathVariable("id") Long id, @Valid @RequestBody AdminDtos.UpdateEmployeeUsernameRequest req) {
+    String actor = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    return toEmployeeView(userService.updateEmployeeUsername(id, req.getUsername(), actor));
+  }
+
   @PostMapping("/employees/{id}/password")
   public java.util.Map<String, Object> resetEmployeePassword(
       @PathVariable("id") Long id, @Valid @RequestBody AccountDtos.ResetPasswordRequest req) {
@@ -188,7 +195,7 @@ public class AdminController {
   @PostMapping("/employees/bulk-edit")
   public Map<String, Object> bulkEditEmployees(@Valid @RequestBody AdminDtos.BulkEmployeeEditRequest req) {
     String actor = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    return Map.of("updated", userService.bulkEditEmployees(req.getEmployeeIds(), req.getOfficeLocationId(), req.getShiftId(), req.getStatus(), req.getNewPassword(), actor));
+    return Map.of("updated", userService.bulkEditEmployees(req.getEmployeeIds(), req.getOfficeLocationId(), req.getDepartmentId(), req.getShiftId(), req.getStatus(), req.getNewPassword(), actor));
   }
 
   @PostMapping("/roster")
@@ -363,8 +370,10 @@ public class AdminController {
     var loc = AdminOfficeLocationController.toResponse(e.getAssignedOfficeLocation());
     var d = e.getDepartment() == null ? null : new ViewDtos.DepartmentView(e.getDepartment().getId(), e.getDepartment().getName());
     var s = e.getShift() == null ? null : new ViewDtos.ShiftView(e.getShift().getId(), e.getShift().getName(), e.getShift().getInTime(), e.getShift().getOutTime(), e.getShift().isFlexible());
-    return new ViewDtos.EmployeeView(
+    ViewDtos.EmployeeView view = new ViewDtos.EmployeeView(
         e.getId(), e.getEmployeeNumber(), e.getName(), "ROLE_EMPLOYEE", rv, loc, d, s, e.getUser().isEnabled(), e.getUser().getLastLoginAt(), e.getUser().getLastLoginIp(), e.getStatus().name(), e.getProfilePhotoUrl(), e.getJoinDate(), e.getExitDate());
+    view.setUsername(e.getUser().getUsername());
+    return view;
   }
 
   private static String csv(String value) {

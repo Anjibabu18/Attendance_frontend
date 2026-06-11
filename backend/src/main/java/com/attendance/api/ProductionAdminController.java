@@ -45,7 +45,7 @@ public class ProductionAdminController {
 
   @PostMapping("/qr")
   public Object qr(@RequestBody ProductionDtos.QrRequest req) {
-    return service.createQr(req.getOfficeId(), req.getMinutes());
+    return service.qrResponse(service.createQr(req.getOfficeId(), req.getMinutes()));
   }
 
   @GetMapping("/qr/latest")
@@ -53,8 +53,7 @@ public class ProductionAdminController {
     var q = service.latestQr(officeId);
     if (q == null)
       return Map.of();
-    return Map.of("token", q.getToken(), "createdAt", q.getCreatedAt(), "expiresAt", q.getExpiresAt(), "officeId",
-        q.getOfficeLocation().getId());
+    return service.qrResponse(q);
   }
 
   // Alternative endpoint to avoid path-matching conflicts with the image endpoint
@@ -62,12 +61,12 @@ public class ProductionAdminController {
   public Object latestQrToken(@RequestParam(required = false) Long officeId) {
     log.debug("latestQrToken called, officeId={}", officeId);
     var q = service.latestQr(officeId);
-    if (q == null)
+    if (q == null) {
       log.debug("latestQrToken: no token found for officeId={}", officeId);
-    return Map.of();
+      return Map.of();
+    }
     log.debug("latestQrToken: returning token {} for officeId={}", q.getToken(), officeId);
-    return Map.of("token", q.getToken(), "createdAt", q.getCreatedAt(), "expiresAt", q.getExpiresAt(), "officeId",
-        q.getOfficeLocation().getId());
+    return service.qrResponse(q);
   }
 
   @GetMapping("/qr/{token}.png")

@@ -3,14 +3,16 @@ import { Card, CardContent, type CardContentProps, type CardProps, type SxProps,
 const baseCardSx: SxProps<Theme> = {
   border: "1px solid rgba(203,213,225,0.9)",
   borderRadius: 1,
-  background: "linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.94))",
-  boxShadow: "0 10px 28px rgba(15,23,42,0.07)",
+  background: "linear-gradient(180deg, rgba(255,255,255,0.99), rgba(248,250,252,0.96))",
+  boxShadow: "0 12px 30px rgba(15,23,42,0.075)",
   position: "relative",
   overflow: "hidden",
-  transition: "border-color .16s ease, box-shadow .16s ease, transform .16s ease",
+  animation: "attendanceFadeUp .34s cubic-bezier(.2,.8,.2,1) both",
+  transition: "border-color .2s ease, box-shadow .2s ease, transform .2s cubic-bezier(.2,.8,.2,1), background-color .2s ease",
   "&:hover": {
-    borderColor: "#cbd5e1",
-    boxShadow: "0 16px 38px rgba(15,23,42,0.10)",
+    borderColor: "#bfdbfe",
+    boxShadow: "0 18px 44px rgba(15,23,42,0.105)",
+    transform: "translateY(-2px)",
   },
 };
 
@@ -25,7 +27,7 @@ export default function AppCard(
       <CardContent
         {...contentProps}
         sx={[
-          { p: { xs: 2.25, md: 3 }, "&:last-child": { pb: { xs: 2.25, md: 3 } } },
+          { p: { xs: 1.6, sm: 2.25, md: 3 }, "&:last-child": { pb: { xs: 1.6, sm: 2.25, md: 3 } } },
           ...(Array.isArray(contentSx) ? contentSx : [contentSx]),
         ]}
       >

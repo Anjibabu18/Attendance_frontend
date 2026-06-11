@@ -18,6 +18,7 @@ import InsightsIcon from "@mui/icons-material/Insights";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import { useToast } from "../components/Toast";
 import AppCard from "../components/AppCard";
 import DashboardHero from "../components/DashboardHero";
 import Layout from "../components/Layout";
@@ -87,6 +88,7 @@ type QueueItem =
     };
 
 export default function ManagerPage() {
+  const { toastSuccess, toastError } = useToast();
   const [team, setTeam] = useState<Employee[]>([]);
   const [pendingCorrections, setPendingCorrections] = useState<RegularizationRequest[]>([]);
   const [pendingWorkRequests, setPendingWorkRequests] = useState<WorkRequest[]>([]);
@@ -97,6 +99,20 @@ export default function ManagerPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (err) {
+      toastError(err);
+      setErr(null);
+    }
+  }, [err, toastError]);
+
+  useEffect(() => {
+    if (ok) {
+      toastSuccess(ok);
+      setOk(null);
+    }
+  }, [ok, toastSuccess]);
 
   async function refresh() {
     const [teamRes, correctionsRes, workRes] = await Promise.all([

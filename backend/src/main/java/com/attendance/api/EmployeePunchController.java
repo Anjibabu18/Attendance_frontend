@@ -74,11 +74,7 @@ public class EmployeePunchController {
   @GetMapping("/qr")
   public java.util.Map<String, Object> qr(@RequestParam("token") String token) {
     var qr = productionFeatureService.validateQr(token);
-    return java.util.Map.of(
-        "valid", true,
-        "officeId", qr.getOfficeLocation().getId(),
-        "officeName", qr.getOfficeLocation().getOfficeName(),
-        "expiresAt", qr.getExpiresAt());
+    return productionFeatureService.qrResponse(qr);
   }
 
   @GetMapping("/device")

@@ -65,13 +65,13 @@ public class AttendancePunchService {
     AttendanceEntry entry =
         attendanceService.upsert(employee.getId(), today, inTime, null, null, false);
 
+    applyFaceVerification(entry, employee, photo, true);
     var upload =
         cloudinaryService.uploadAttendancePhoto(
             photo, "emp-" + employee.getId() + "/" + today + "/checkin");
     entry.setCheckInLatitude(latitude);
     entry.setCheckInLongitude(longitude);
     entry.setCheckInPhotoUrl(upload.url());
-    applyFaceVerification(entry, employee, photo, true);
     var saved = attendanceRepository.save(entry);
     inspectFraudSignals(employee, "CHECK_IN", latitude, longitude);
     recordAttempt(employee, "CHECK_IN", latitude, longitude, true, "Selfie verified and inside office radius");
@@ -103,13 +103,13 @@ public class AttendancePunchService {
     AttendanceEntry entry =
         attendanceService.upsert(employee.getId(), today, existing.getInTime(), outTime, null, false);
 
+    applyFaceVerification(entry, employee, photo, false);
     var upload =
         cloudinaryService.uploadAttendancePhoto(
             photo, "emp-" + employee.getId() + "/" + today + "/checkout");
     entry.setCheckOutLatitude(latitude);
     entry.setCheckOutLongitude(longitude);
     entry.setCheckOutPhotoUrl(upload.url());
-    applyFaceVerification(entry, employee, photo, false);
     var saved = attendanceRepository.save(entry);
     inspectFraudSignals(employee, "CHECK_OUT", latitude, longitude);
     recordAttempt(employee, "CHECK_OUT", latitude, longitude, true, "Selfie verified and inside office radius");
@@ -215,7 +215,7 @@ public class AttendancePunchService {
     }
     if (result.similarityScore() == null) {
       productionFeatureService.createException(employee, "FACE_VERIFICATION_UNAVAILABLE", result.message());
-      return;
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Face verification failed: " + result.message());
     }
     auditLogService.record(
         employee.getUser().getUsername(),
@@ -227,7 +227,12 @@ public class AttendancePunchService {
       productionFeatureService.createException(
           employee,
           "FACE_MISMATCH_ALERT",
-          "Punch selfie similarity score " + Math.round(result.similarityScore() * 100) + "%");
+          "Punch selfie similarity score " + Math.round(result.similarityScore() * 100) + "%: " + result.message());
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          "Face verification failed. Score "
+              + Math.round(result.similarityScore() * 100)
+              + "%. " + result.message());
     }
   }
 

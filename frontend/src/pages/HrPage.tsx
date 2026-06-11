@@ -8,6 +8,7 @@ import Autocomplete from "@mui/material/Autocomplete";
 import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
+import { useToast } from "../components/Toast";
 import AnalyticsPanel from "../components/AnalyticsPanel";
 import AppCard from "../components/AppCard";
 import DashboardHero from "../components/DashboardHero";
@@ -152,6 +153,7 @@ type PayrollRow = {
 };
 
 export default function HrPage() {
+  const { toastSuccess, toastError } = useToast();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [search, setSearch] = useState("");
   const [employeeId, setEmployeeId] = useState<number | "">("");
@@ -183,6 +185,20 @@ export default function HrPage() {
   const [selectedInboxItem, setSelectedInboxItem] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (err) {
+      toastError(err);
+      setErr(null);
+    }
+  }, [err, toastError]);
+
+  useEffect(() => {
+    if (ok) {
+      toastSuccess(ok);
+      setOk(null);
+    }
+  }, [ok, toastSuccess]);
 
   async function loadEmployees() {
     const res = await api.get<Employee[]>("/api/hr/employees");

@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { alpha, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import "./styles/tailwind.css";
 import App from "./router/App";
+import { ToastProvider } from "./components/Toast";
 
 const theme = createTheme({
   palette: {
@@ -34,9 +35,14 @@ const theme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: {
+        "*": {
+          boxSizing: "border-box",
+        },
         body: {
           minHeight: "100vh",
           backgroundColor: "#eef4f8",
+          textRendering: "geometricPrecision",
+          WebkitFontSmoothing: "antialiased",
         },
       },
     },
@@ -48,7 +54,10 @@ const theme = createTheme({
           boxShadow: "none",
           minHeight: 38,
           fontWeight: 800,
-          transition: "transform .15s ease, box-shadow .15s ease, background-color .15s ease",
+          transition: "transform .18s cubic-bezier(.2,.8,.2,1), box-shadow .18s ease, background-color .18s ease, border-color .18s ease",
+          "&:hover": {
+            transform: "translateY(-1px)",
+          },
           "&:active": {
             transform: "translateY(1px)",
           },
@@ -75,6 +84,7 @@ const theme = createTheme({
         root: {
           borderRadius: 8,
           fontWeight: 800,
+          transition: "background-color .18s ease, color .18s ease, border-color .18s ease",
         },
       },
     },
@@ -83,7 +93,7 @@ const theme = createTheme({
         root: {
           borderRadius: 8,
           background: "#ffffff",
-          transition: "border-color .15s ease, box-shadow .15s ease",
+          transition: "border-color .18s ease, box-shadow .18s ease, background-color .18s ease",
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
             borderColor: "#2563eb",
             boxShadow: "0 0 0 3px rgba(37,99,235,0.12)",
@@ -110,6 +120,16 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           backgroundImage: "none",
+        },
+      },
+    },
+    MuiTableRow: {
+      styleOverrides: {
+        root: {
+          transition: "background-color .16s ease",
+          "&:hover": {
+            backgroundColor: "rgba(37,99,235,0.035)",
+          },
         },
       },
     },
@@ -149,7 +169,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <BrowserRouter>
-        <App />
+        <ToastProvider>
+          <App />
+        </ToastProvider>
       </BrowserRouter>
     </ThemeProvider>
   </React.StrictMode>,

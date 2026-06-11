@@ -2,15 +2,18 @@ package com.attendance.service;
 
 import com.attendance.domain.*;
 import com.attendance.repo.*;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.Map;
-import java.util.UUID;
-import java.io.ByteArrayOutputStream;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.qrcode.QRCodeWriter;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -59,7 +62,7 @@ public class ProductionFeatureService {
     d.setUser(user);
     d.setDeviceId(deviceId);
     d.setLabel(label);
-    d.setApproved(false);
+    d.setApproved(true);
     auditLogService.record(username, "DEVICE_REGISTERED", "DEVICE", deviceId, label);
     return deviceRepo.save(d);
   }
@@ -95,6 +98,12 @@ public class ProductionFeatureService {
     OfficeLocation office = officeRepo.findById(officeId)
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Office not found"));
     var settings = settingsService.get();
+    if (Boolean.TRUE.equals(settings.getPermanentOfficeQr())) {
+      var existing = qrRepo.findTopByOfficeLocation_IdOrderByCreatedAtDesc(officeId).orElse(null);
+      if (existing != null && existing.getExpiresAt().isAfter(Instant.now())) {
+        return existing;
+      }
+    }
     int effectiveMinutes = minutes != null && minutes > 0
         ? minutes
         : (settings.getQrTokenValidityMinutes() == null || settings.getQrTokenValidityMinutes() <= 0
@@ -114,8 +123,12 @@ public class ProductionFeatureService {
   public OfficeQrToken validateQr(String token) {
     OfficeQrToken q = qrRepo.findByToken(token)
         .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid QR token"));
-    if (q.getExpiresAt().isBefore(Instant.now()))
-      throw new ApiException(HttpStatus.BAD_REQUEST, "QR token expired");
+    if (q.getExpiresAt().isBefore(Instant.now())) {
+      throw new ApiException(HttpStatus.BAD_REQUEST,
+          Boolean.TRUE.equals(settingsService.get().getPermanentOfficeQr())
+              ? "Printed office QR expired. Admin must regenerate it."
+              : "QR token expired");
+    }
     return q;
   }
 
@@ -147,6 +160,40 @@ public class ProductionFeatureService {
       return out.toByteArray();
     } catch (Exception e) {
       throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "QR image generation failed");
+    }
+  }
+
+  public Map<String, Object> qrResponse(OfficeQrToken q) {
+    boolean permanent = Boolean.TRUE.equals(settingsService.get().getPermanentOfficeQr());
+    Instant dailyExpiresAt = dailyQrExpiresAt();
+    return Map.of(
+        "valid", true,
+        "token", q.getToken(),
+        "officeId", q.getOfficeLocation().getId(),
+        "officeName", q.getOfficeLocation().getOfficeName(),
+        "createdAt", q.getCreatedAt(),
+        "expiresAt", permanent ? dailyExpiresAt : q.getExpiresAt(),
+        "printedQrExpiresAt", q.getExpiresAt(),
+        "dailyCode", permanent ? dailyQrCode(q.getToken()) : "",
+        "mode", permanent ? "FIXED_QR_DAILY_CODE" : "ROTATING_TOKEN");
+  }
+
+  private Instant dailyQrExpiresAt() {
+    ZoneId zone = ZoneId.systemDefault();
+    return LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant();
+  }
+
+  private String dailyQrCode(String token) {
+    try {
+      String raw = token + "|" + LocalDate.now(ZoneId.systemDefault());
+      byte[] hash = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < 4; i++) {
+        sb.append(String.format("%02X", hash[i]));
+      }
+      return sb.toString();
+    } catch (Exception e) {
+      throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Daily QR code generation failed");
     }
   }
 

@@ -6,6 +6,8 @@ backend/target/
 backend/.env
 backend/.m2repo/
 backend/backend-dev.*.log
+backend/*.log
+backend/hs_err_pid*.log
 
 # Frontend
 frontend/node_modules/
@@ -13,6 +15,11 @@ frontend/dist/
 frontend/.env
 frontend/.npm-cache/
 frontend/vite-dev.*.log
+
+# Face service
+face-service/.venv/
+face-service/__pycache__/
+face-service/*.log
 
 # Scripts temp
 scripts/.tmp/

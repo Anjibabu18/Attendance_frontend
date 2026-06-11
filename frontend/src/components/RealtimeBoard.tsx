@@ -77,6 +77,7 @@ export default function RealtimeBoard(props: { month: string }) {
   const [department, setDepartment] = useState("ALL");
   const [office, setOffice] = useState("ALL");
   const [pushState, setPushState] = useState<"connecting" | "live" | "fallback">("connecting");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const auth = getAuth();
   const boardAllowed = auth?.role === "ROLE_ADMIN" || auth?.role === "ROLE_HR";
 
@@ -150,6 +151,20 @@ export default function RealtimeBoard(props: { month: string }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardAllowed, props.month]);
+
+  useEffect(() => {
+    if (!board?.generatedAt) {
+      setElapsedSeconds(0);
+      return;
+    }
+
+    const interval = window.setInterval(() => {
+      const elapsed = Math.floor((Date.now() - new Date(board.generatedAt).getTime()) / 1000);
+      setElapsedSeconds(Math.max(0, elapsed));
+    }, 1000);
+
+    return () => window.clearInterval(interval);
+  }, [board?.generatedAt]);
 
   const departments = useMemo(() => ["ALL", ...Array.from(new Set((board?.rows ?? []).map((r) => r.department)))], [board]);
   const offices = useMemo(() => ["ALL", ...Array.from(new Set((board?.rows ?? []).map((r) => r.office)))], [board]);

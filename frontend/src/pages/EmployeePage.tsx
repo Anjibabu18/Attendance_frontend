@@ -20,9 +20,10 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import dayjs from "dayjs";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api/client";
 import AppCard from "../components/AppCard";
+import { useToast } from "../components/Toast";
 import DashboardHero from "../components/DashboardHero";
 import Layout from "../components/Layout";
 import MonthCalendar, { DayStatus } from "../components/MonthCalendar";
@@ -202,12 +203,42 @@ function getDeviceId() {
   return next;
 }
 
+function parseTodayClock(value?: string | null) {
+  if (!value) return null;
+  const normalized = value.length === 5 ? `${value}:00` : value;
+  const parsed = dayjs(`${dayjs().format("YYYY-MM-DD")}T${normalized}`);
+  return parsed.isValid() ? parsed : null;
+}
+
+function formatDurationSeconds(totalSeconds: number) {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 export default function EmployeePage() {
+  const { toastSuccess, toastError } = useToast();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [month, setMonth] = useState(dayjs().format("YYYY-MM"));
   const [entries, setEntries] = useState<Attendance[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (err) {
+      toastError(err);
+      setErr(null);
+    }
+  }, [err, toastError]);
+
+  useEffect(() => {
+    if (ok) {
+      toastSuccess(ok);
+      setOk(null);
+    }
+  }, [ok, toastSuccess]);
   const [selectedDate, setSelectedDate] = useState<string>(dayjs().format("YYYY-MM-DD"));
   const [monthSummary, setMonthSummary] = useState<MonthSummary | null>(null);
   const [settings, setSettings] = useState<AttendanceSettings | null>(null);
@@ -241,14 +272,25 @@ export default function EmployeePage() {
   const [leaveAttachment, setLeaveAttachment] = useState<File | null>(null);
   const [workAttachment, setWorkAttachment] = useState<File | null>(null);
   const [todayEntry, setTodayEntry] = useState<Attendance | null>(null);
+  const [clockNow, setClockNow] = useState(dayjs());
   const [punchBusy, setPunchBusy] = useState(false);
   const [placeBusy, setPlaceBusy] = useState(false);
   const [place, setPlace] = useState<PunchPlace | null>(null);
   const [qrToken, setQrToken] = useState("");
   const [qrOk, setQrOk] = useState(false);
   const [qrMessage, setQrMessage] = useState<string | null>(null);
+  const [qrCameraOpen, setQrCameraOpen] = useState(false);
+  const [qrCameraBusy, setQrCameraBusy] = useState(false);
+  const [selfieOpen, setSelfieOpen] = useState(false);
+  const [selfieKind, setSelfieKind] = useState<"checkin" | "checkout">("checkin");
+  const [selfieBusy, setSelfieBusy] = useState(false);
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus | null>(null);
   const [payslip, setPayslip] = useState<Payslip | null>(null);
+  const qrVideoRef = useRef<HTMLVideoElement | null>(null);
+  const qrStreamRef = useRef<MediaStream | null>(null);
+  const qrScanActiveRef = useRef(false);
+  const selfieVideoRef = useRef<HTMLVideoElement | null>(null);
+  const selfieStreamRef = useRef<MediaStream | null>(null);
 
   function scrollToSection(id: string) {
     const node = document.getElementById(id);
@@ -388,12 +430,22 @@ export default function EmployeePage() {
       return false;
     }
     try {
-      const res = await api.get<{ valid: boolean; officeName?: string; expiresAt?: string }>("/api/employee/punch/qr", {
+      const res = await api.get<{ valid: boolean; officeId?: number; officeName?: string; expiresAt?: string; dailyCode?: string; mode?: string }>("/api/employee/punch/qr", {
         params: { token: normalized },
       });
+      const assignedOfficeId = profile?.assignedOfficeLocation?.id;
+      if (assignedOfficeId && res.data.officeId && assignedOfficeId !== res.data.officeId) {
+        const msg = `This QR belongs to ${res.data.officeName ?? "another office"}. Use the QR for ${
+          profile?.assignedOfficeLocation?.officeName ?? "your assigned office"
+        }.`;
+        setQrMessage(msg);
+        setErr(msg);
+        return false;
+      }
       setQrToken(normalized);
       setQrOk(true);
-      setQrMessage(`QR verified for ${res.data.officeName ?? "office"}`);
+      const dailyCode = res.data.dailyCode ? ` | Today code ${res.data.dailyCode}` : "";
+      setQrMessage(`QR verified for ${res.data.officeName ?? "office"}${dailyCode}`);
       setOk(`QR verified. Expires: ${res.data.expiresAt ? new Date(res.data.expiresAt).toLocaleTimeString() : "--"}`);
       return true;
     } catch (e: any) {
@@ -427,6 +479,71 @@ export default function EmployeePage() {
     } catch (e: any) {
       setErr(e?.message ?? "QR scan failed");
     }
+  }
+
+  async function startQrCamera() {
+    setErr(null);
+    setQrCameraBusy(true);
+    const Detector = (window as any).BarcodeDetector;
+    if (!Detector) {
+      setQrCameraBusy(false);
+      setErr("Live QR scanning is not supported in this browser. Use Scan QR image or paste the token.");
+      return;
+    }
+    try {
+      stopQrCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "environment" } },
+        audio: false,
+      });
+      qrStreamRef.current = stream;
+      setQrCameraOpen(true);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (qrVideoRef.current) {
+        qrVideoRef.current.srcObject = stream;
+        await qrVideoRef.current.play();
+      }
+      qrScanActiveRef.current = true;
+      const detector = new Detector({ formats: ["qr_code"] });
+      scanQrFromCamera(detector);
+    } catch (e: any) {
+      setErr(e?.message ?? "Unable to open camera for QR scan");
+      stopQrCamera();
+    } finally {
+      setQrCameraBusy(false);
+    }
+  }
+
+  function stopQrCamera() {
+    qrScanActiveRef.current = false;
+    qrStreamRef.current?.getTracks().forEach((track) => track.stop());
+    qrStreamRef.current = null;
+    if (qrVideoRef.current) {
+      qrVideoRef.current.srcObject = null;
+    }
+    setQrCameraOpen(false);
+  }
+
+  async function scanQrFromCamera(detector: any) {
+    if (!qrScanActiveRef.current) return;
+    try {
+      const video = qrVideoRef.current;
+      if (video && video.readyState >= 2) {
+        const codes = await detector.detect(video);
+        const value = codes?.[0]?.rawValue;
+        if (value) {
+          stopQrCamera();
+          const valid = await verifyQr(value);
+          if (valid) {
+            await verifyPlace();
+          }
+          return;
+        }
+      }
+    } catch {
+      // Keep scanning; some frames are not decodable.
+    }
+    window.setTimeout(() => scanQrFromCamera(detector), 350);
   }
 
   function getLocation(): Promise<{ latitude: number; longitude: number; accuracy?: number }> {
@@ -525,6 +642,65 @@ export default function EmployeePage() {
     } finally {
       setPunchBusy(false);
     }
+  }
+
+  async function openSelfieCamera(kind: "checkin" | "checkout") {
+    setErr(null);
+    setSelfieKind(kind);
+    setSelfieBusy(true);
+    try {
+      stopSelfieCamera();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: "user" } },
+        audio: false,
+      });
+      selfieStreamRef.current = stream;
+      setSelfieOpen(true);
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      if (selfieVideoRef.current) {
+        selfieVideoRef.current.srcObject = stream;
+        await selfieVideoRef.current.play();
+      }
+    } catch (e: any) {
+      setErr(e?.message ?? "Unable to open camera for selfie");
+      stopSelfieCamera();
+    } finally {
+      setSelfieBusy(false);
+    }
+  }
+
+  function stopSelfieCamera() {
+    selfieStreamRef.current?.getTracks().forEach((track) => track.stop());
+    selfieStreamRef.current = null;
+    if (selfieVideoRef.current) {
+      selfieVideoRef.current.srcObject = null;
+    }
+    setSelfieOpen(false);
+  }
+
+  async function captureSelfieAndPunch() {
+    const video = selfieVideoRef.current;
+    if (!video || video.videoWidth <= 0 || video.videoHeight <= 0) {
+      setErr("Camera is not ready yet");
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      setErr("Unable to capture selfie");
+      return;
+    }
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) {
+      setErr("Unable to capture selfie");
+      return;
+    }
+    const file = new File([blob], `${selfieKind}-${dayjs().format("YYYYMMDD-HHmmss")}.jpg`, { type: "image/jpeg" });
+    stopSelfieCamera();
+    await punch(selfieKind, file);
   }
 
   async function submitLeaveRequest() {
@@ -658,6 +834,21 @@ export default function EmployeePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [month]);
 
+  useEffect(() => {
+    setClockNow(dayjs());
+    if (!todayEntry?.inTime || todayEntry?.outTime) return undefined;
+    const timer = window.setInterval(() => setClockNow(dayjs()), 1000);
+    return () => window.clearInterval(timer);
+  }, [todayEntry?.inTime, todayEntry?.outTime]);
+
+  useEffect(() => {
+    return () => {
+      stopQrCamera();
+      stopSelfieCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const statusByDate: Record<string, DayStatus> = useMemo(() => {
     if (!settings || !monthSummary) return {};
 
@@ -729,6 +920,85 @@ export default function EmployeePage() {
   const totalOvertimeMinutes = useMemo(() => entries.reduce((acc, e) => acc + (e.overtimeMinutes ?? 0), 0), [entries]);
   const hh = Math.floor(workedMinutes / 60);
   const mm = workedMinutes % 60;
+  const latestFaceScore =
+    todayEntry?.checkOutFaceScore != null
+      ? todayEntry.checkOutFaceScore
+      : todayEntry?.checkInFaceScore != null
+        ? todayEntry.checkInFaceScore
+        : null;
+  const latestFaceVerified =
+    todayEntry?.checkOutFaceScore != null
+      ? todayEntry.checkOutFaceVerified
+      : todayEntry?.checkInFaceScore != null
+        ? todayEntry.checkInFaceVerified
+        : null;
+  const faceScoreText = latestFaceScore == null ? "Pending" : `${Math.round(latestFaceScore * 100)}%`;
+  const faceScoreHelper =
+    latestFaceScore == null
+      ? "Selfie is checked after check-in/check-out"
+      : latestFaceVerified
+        ? "Latest punch selfie matched reference"
+        : "Latest punch selfie did not match reference";
+  const punchCountdown = useMemo(() => {
+    const checkedInAt = parseTodayClock(todayEntry?.inTime);
+    if (!checkedInAt) return null;
+
+    const checkedOutAt = parseTodayClock(todayEntry?.outTime);
+    const requiredMinutes = settings?.fullDayMinutes && settings.fullDayMinutes > 0 ? settings.fullDayMinutes : 480;
+    const workTargetAt = checkedInAt.add(requiredMinutes, "minute");
+
+    if (checkedOutAt) {
+      const workedSeconds = Math.max(0, checkedOutAt.diff(checkedInAt, "second"));
+      return {
+        label: "Shift completed",
+        value: formatDurationSeconds(workedSeconds),
+        helper: `Checked in ${todayEntry?.inTime ?? "--"} -> checked out ${todayEntry?.outTime ?? "--"}`,
+        accent: "#16a34a",
+      };
+    }
+
+    const remainingSeconds = workTargetAt.diff(clockNow, "second");
+    if (remainingSeconds >= 0) {
+      return {
+        label: "Work time left",
+        value: formatDurationSeconds(remainingSeconds),
+        helper: `Checked in ${todayEntry?.inTime ?? "--"} | ${Math.round(requiredMinutes / 60)}h target ends ${workTargetAt.format("hh:mm A")}`,
+        accent: "#2563eb",
+      };
+    }
+
+    return {
+      label: "Overtime running",
+      value: formatDurationSeconds(Math.abs(remainingSeconds)),
+      helper: `${Math.round(requiredMinutes / 60)}h completed at ${workTargetAt.format("hh:mm A")} | Check out when work is done`,
+      accent: "#b45309",
+    };
+  }, [
+    clockNow,
+    settings?.fullDayMinutes,
+    todayEntry?.inTime,
+    todayEntry?.outTime,
+  ]);
+
+  const afterCheckinCount = useMemo(() => {
+    const checkedInAt = parseTodayClock(todayEntry?.inTime);
+    if (!checkedInAt) return null;
+
+    const checkedOutAt = parseTodayClock(todayEntry?.outTime);
+    const end = checkedOutAt || clockNow;
+    const diffSec = Math.max(0, end.diff(checkedInAt, "second"));
+
+    const hrs = Math.floor(diffSec / 3600);
+    const mins = Math.floor((diffSec % 3600) / 60);
+    const secs = diffSec % 60;
+
+    return {
+      seconds: diffSec,
+      minutes: (diffSec / 60).toFixed(1),
+      hours: (diffSec / 3600).toFixed(2),
+      all: `${hrs}h ${mins}m ${secs}s`,
+    };
+  }, [clockNow, todayEntry?.inTime, todayEntry?.outTime]);
 
   const selectedStatus = statusByDate[selectedDate] ?? "";
   const selectedStatusColor =
@@ -745,9 +1015,126 @@ export default function EmployeePage() {
 
   return (
     <Layout title="Employee Dashboard">
-      <div className="grid gap-6">
+      <div className="grid gap-4 md:gap-6">
         {err ? <Alert severity="error">{err}</Alert> : null}
         {ok ? <Alert severity="success">{ok}</Alert> : null}
+
+        {punchCountdown ? (
+          <Box
+            sx={{
+              display: "grid",
+              gap: { xs: 1, md: 2 },
+              gridTemplateColumns: { xs: "1fr", md: "minmax(0,1fr) auto" },
+              alignItems: "center",
+              p: { xs: 1.5, md: 2 },
+              border: `1px solid ${punchCountdown.accent}33`,
+              borderRadius: 1,
+              bgcolor: "#ffffff",
+              boxShadow: `0 14px 34px ${punchCountdown.accent}16`,
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>
+                {punchCountdown.label}
+              </Typography>
+              <Typography sx={{ mt: 0.5, color: punchCountdown.accent, fontSize: { xs: 34, md: 42 }, lineHeight: 1, fontWeight: 950 }}>
+                {punchCountdown.value}
+              </Typography>
+              <Typography sx={{ mt: 0.75, color: "text.secondary", fontSize: 13, lineHeight: 1.45 }}>
+                {punchCountdown.helper}
+              </Typography>
+
+              {afterCheckinCount ? (
+                <Box
+                  sx={{
+                    mt: 2.25,
+                    p: 2,
+                    borderRadius: "12px",
+                    background: "linear-gradient(135deg, rgba(37, 99, 235, 0.04) 0%, rgba(139, 92, 246, 0.04) 100%)",
+                    border: "1px solid rgba(37, 99, 235, 0.16)",
+                    boxShadow: "0 6px 20px rgba(37, 99, 235, 0.02)",
+                    backdropFilter: "blur(4px)",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      transform: "translateY(-2px)",
+                      boxShadow: "0 10px 28px rgba(37, 99, 235, 0.05)",
+                      borderColor: "rgba(37, 99, 235, 0.28)",
+                    }
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1.5 }}>
+                    <Typography sx={{ fontSize: 11, fontWeight: 950, letterSpacing: 1.1, textTransform: "uppercase", color: "primary.main" }}>
+                      After Check-In Count
+                    </Typography>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+                      <Box
+                        sx={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          bgcolor: "#10b981",
+                          boxShadow: "0 0 8px #10b981",
+                          animation: "pulseLive 1.8s infinite ease-in-out",
+                          "@keyframes pulseLive": {
+                            "0%": { opacity: 0.4, transform: "scale(0.9)" },
+                            "50%": { opacity: 1, transform: "scale(1.25)" },
+                            "100%": { opacity: 0.4, transform: "scale(0.9)" }
+                          }
+                        }}
+                      />
+                      <Typography sx={{ fontSize: 10, fontWeight: 900, color: "#10b981", letterSpacing: 0.5 }}>
+                        LIVE
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "repeat(2, 1fr)", sm: "repeat(4, 1fr)" }, gap: 1.25 }}>
+                    {[
+                      { label: "Seconds", value: `${afterCheckinCount.seconds.toLocaleString()}s`, color: "#2563eb", bg: "rgba(37, 99, 235, 0.04)" },
+                      { label: "Minutes", value: `${afterCheckinCount.minutes}m`, color: "#8b5cf6", bg: "rgba(139, 92, 246, 0.04)" },
+                      { label: "Hours", value: `${afterCheckinCount.hours}h`, color: "#d97706", bg: "rgba(217, 119, 6, 0.04)" },
+                      { label: "All", value: afterCheckinCount.all, color: "#10b981", bg: "rgba(16, 185, 129, 0.04)", highlight: true }
+                    ].map((stat, i) => (
+                      <Box
+                        key={i}
+                        sx={{
+                          p: 1.25,
+                          borderRadius: "8px",
+                          bgcolor: stat.bg,
+                          border: `1px solid ${stat.color}18`,
+                          textAlign: "center",
+                          transition: "all 0.2s ease",
+                          "&:hover": {
+                            transform: "scale(1.03)",
+                            borderColor: `${stat.color}33`,
+                            bgcolor: `${stat.bg.replace("0.04", "0.06")}`,
+                          }
+                        }}
+                      >
+                        <Typography sx={{ fontSize: 9.5, fontWeight: 900, textTransform: "uppercase", color: "text.secondary", mb: 0.5 }}>
+                          {stat.label}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            fontWeight: 950,
+                            fontSize: 13.5,
+                            color: stat.highlight ? stat.color : "text.primary"
+                          }}
+                        >
+                          {stat.value}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Box>
+              ) : null}
+            </Box>
+            {!todayEntry?.outTime ? (
+              <Button variant="contained" onClick={() => scrollToSection("employee-punch")} sx={{ justifySelf: { xs: "stretch", md: "end" } }}>
+                Go to checkout
+              </Button>
+            ) : null}
+          </Box>
+        ) : null}
 
         <DashboardHero
           eyebrow="Employee workspace"
@@ -767,8 +1154,9 @@ export default function EmployeePage() {
             </Box>
           }
         >
-          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "repeat(3,1fr)" } }}>
+          <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", sm: "repeat(2,1fr)", xl: "repeat(4,1fr)" } }}>
             {[
+              ["Role", profile?.companyRole?.name ?? "--"],
               ["Department", profile?.department?.name ?? "--"],
               ["Shift", profile?.shift ? `${profile.shift.name} (${profile.shift.inTime?.slice(0, 5)}-${profile.shift.outTime?.slice(0, 5)})` : "--"],
               ["Office", profile?.assignedOfficeLocation?.officeName ?? "Default active office"],
@@ -781,10 +1169,11 @@ export default function EmployeePage() {
           </Box>
         </DashboardHero>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-5">
           <StatCard label="Working days" value={monthSummary?.workingDays ?? "-"} helper={`Counted till today in ${month}`} icon={<CalendarMonthIcon />} />
           <StatCard label="Present" value={monthSummary?.presentDays ?? presentCount} helper="Approved present days this month" icon={<VerifiedUserIcon />} accent="#16a34a" />
           <StatCard label="Leave / absent" value={monthSummary?.leaveDays ?? leaveCount} helper="Non-working marked days" icon={<AccessTimeIcon />} accent="#dc2626" />
+          <StatCard label="Face match" value={faceScoreText} helper={faceScoreHelper} icon={<VerifiedUserIcon />} accent={latestFaceVerified === false ? "#dc2626" : "#0f766e"} />
           <StatCard label="Photo linked" value={selectedDailyPhoto ? "Daily" : "None"} helper={`Source for ${selectedDate}`} icon={<PhotoCameraIcon />} accent="#b45309" />
         </div>
 
@@ -815,7 +1204,7 @@ export default function EmployeePage() {
             <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
               Monthly payable-days and deduction preview for {payslip.month}.
             </Typography>
-            <Box sx={{ mt: 2, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4,1fr)" } }}>
+            <Box sx={{ mt: 2, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", md: "repeat(4,1fr)" } }}>
               <Metric label="Payable days" value={payslip.payableDays} />
               <Metric label="Late deduction" value={`Rs ${payslip.lateDeduction}`} />
               <Metric label="OT pay" value={`Rs ${payslip.overtimePay}`} />
@@ -827,12 +1216,12 @@ export default function EmployeePage() {
           </AppCard>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-4 grid gap-6">
+        <div className="grid gap-4 md:gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-4 grid gap-4 md:gap-6">
             <AppCard>
               <Box id="employee-profile" />
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                <Avatar src={profile?.profilePhotoUrl ?? profile?.companyRole?.photoUrl ?? undefined} sx={{ width: 62, height: 62 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Avatar src={profile?.profilePhotoUrl ?? profile?.companyRole?.photoUrl ?? undefined} sx={{ width: { xs: 52, sm: 62 }, height: { xs: 52, sm: 62 } }}>
                   {profile?.name?.[0] ?? "E"}
                 </Avatar>
                 <Box sx={{ minWidth: 0 }}>
@@ -853,7 +1242,7 @@ export default function EmployeePage() {
                 <input hidden type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProfilePhoto(f).catch((err) => setErr(apiMessage(err, "Upload failed"))); }} />
               </Button>
               <Typography sx={{ mt: 1, opacity: 0.72, fontSize: 12 }}>
-                This photo is compared with check-in/check-out selfies for face recognition.
+                A clear face must be detected before this photo is saved for recognition.
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Typography sx={{ fontWeight: 900 }}>This month (till date)</Typography>
@@ -898,11 +1287,19 @@ export default function EmployeePage() {
               <Divider sx={{ my: 2 }} />
               {!profile?.profilePhotoUrl ? (
                 <Alert severity="warning" sx={{ borderRadius: 2, mb: 1.5 }}>
-                  Upload a face reference photo before punching so face recognition can verify your selfie.
+                  <Box sx={{ display: "grid", gap: 1 }}>
+                    <Typography sx={{ fontSize: 13 }}>
+                      Upload a face reference photo before punching so face recognition can verify your selfie.
+                    </Typography>
+                    <Button variant="outlined" component="label" size="small" sx={{ justifySelf: "start" }}>
+                      Upload face reference photo
+                      <input hidden type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProfilePhoto(f).catch((err) => setErr(apiMessage(err, "Upload failed"))); }} />
+                    </Button>
+                  </Box>
                 </Alert>
               ) : null}
 
-              <Box sx={{ display: "grid", gap: 0.75, p: 1.5, borderRadius: 3, background: "linear-gradient(180deg, rgba(239,246,255,0.9), rgba(255,255,255,0.95))", border: "1px solid rgba(59,130,246,0.16)" }}>
+              <Box sx={{ display: "grid", gap: 0.75, p: { xs: 1.1, sm: 1.5 }, borderRadius: 2, background: "linear-gradient(180deg, rgba(239,246,255,0.9), rgba(255,255,255,0.95))", border: "1px solid rgba(59,130,246,0.16)" }}>
                 <Typography sx={{ fontWeight: 900 }}>Device approval</Typography>
                 <Box
                   sx={{
@@ -957,8 +1354,11 @@ export default function EmployeePage() {
                     {qrOk ? "QR verified" : "Verify QR"}
                   </Button>
                 </Box>
-                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", alignItems: "center" }}>
-                  <Button variant="outlined" component="label">
+                <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", sm: "auto auto 1fr" }, alignItems: "center" }}>
+                  <Button variant="contained" onClick={() => startQrCamera()} disabled={qrCameraBusy || punchBusy} fullWidth>
+                    {qrCameraBusy ? "Opening..." : "Scan live QR"}
+                  </Button>
+                  <Button variant="outlined" component="label" fullWidth>
                     Scan QR image
                     <input
                       hidden
@@ -973,11 +1373,30 @@ export default function EmployeePage() {
                     />
                   </Button>
                   {qrMessage ? (
-                    <Typography sx={{ color: qrOk ? "success.main" : "error.main", fontSize: 12, fontWeight: 800 }}>
+                    <Typography sx={{ color: qrOk ? "success.main" : "error.main", fontSize: 12, fontWeight: 800, wordBreak: "break-word" }}>
                       {qrMessage}
                     </Typography>
                   ) : null}
                 </Box>
+                {qrCameraOpen ? (
+                  <Box sx={{ display: "grid", gap: 1, p: 1, border: "1px solid #dbeafe", borderRadius: 1, bgcolor: "#eff6ff" }}>
+                    <Box
+                      component="video"
+                      ref={qrVideoRef}
+                      muted
+                      playsInline
+                      sx={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 1, bgcolor: "#111827" }}
+                    />
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto" }, gap: 1, alignItems: "center" }}>
+                      <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
+                        Point camera at the office QR. After scan, QR and location are verified.
+                      </Typography>
+                      <Button size="small" variant="outlined" onClick={stopQrCamera}>
+                        Stop
+                      </Button>
+                    </Box>
+                  </Box>
+                ) : null}
                 <Divider sx={{ my: 1 }} />
                 <Typography sx={{ opacity: 0.9 }}>
                   Workplace:{" "}
@@ -1024,50 +1443,66 @@ export default function EmployeePage() {
                     Face check-out score: <b style={{ color: todayEntry.checkOutFaceVerified ? "#16a34a" : "#dc2626" }}>{Math.round(todayEntry.checkOutFaceScore * 100)}%</b>
                   </Typography>
                 ) : null}
+
+                {afterCheckinCount ? (
+                  <Box sx={{ mt: 1.5, p: 1.25, border: "1px solid rgba(15,23,42,0.08)", borderRadius: 1.5, bgcolor: "rgba(15,23,42,0.02)" }}>
+                    <Typography sx={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "text.secondary", mb: 0.75 }}>
+                      After Check-In Count
+                    </Typography>
+                    <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1, textAlign: "center" }}>
+                      <Box>
+                        <Typography sx={{ fontSize: 10, color: "text.secondary" }}>Seconds</Typography>
+                        <Typography sx={{ fontWeight: 950, fontSize: 12 }}>{afterCheckinCount.seconds}s</Typography>
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontSize: 10, color: "text.secondary" }}>Minutes</Typography>
+                        <Typography sx={{ fontWeight: 950, fontSize: 12 }}>{afterCheckinCount.minutes}m</Typography>
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontSize: 10, color: "text.secondary" }}>Hours</Typography>
+                        <Typography sx={{ fontWeight: 950, fontSize: 12 }}>{afterCheckinCount.hours}h</Typography>
+                      </Box>
+                      <Box>
+                        <Typography sx={{ fontSize: 10, color: "text.secondary" }}>All</Typography>
+                        <Typography sx={{ fontWeight: 950, fontSize: 12, whiteSpace: "nowrap", color: "primary.main" }}>{afterCheckinCount.all}</Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                ) : null}
               </Box>
 
               <Box sx={{ display: "grid", gap: 1, mt: 2, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr 1fr" }, alignItems: "stretch" }}>
-                <Button variant="outlined" onClick={() => verifyPlace()} disabled={placeBusy || punchBusy}>
+                <Button variant="outlined" onClick={() => verifyPlace()} disabled={placeBusy || punchBusy} fullWidth>
                   {placeBusy ? "Checking..." : "Verify place"}
                 </Button>
                 <Button
-                  component="label"
                   variant="contained"
-                  disabled={punchBusy || !!todayEntry?.inTime}
+                  onClick={() => openSelfieCamera("checkin")}
+                  disabled={punchBusy || selfieBusy || !!todayEntry?.inTime || (qrRequired() && !qrOk) || !deviceStatus?.approved}
                   sx={{ minHeight: 54, fontWeight: 900 }}
+                  fullWidth
                 >
-                  {punchBusy ? "Working..." : "Check in"}
-                  <input
-                    hidden
-                    type="file"
-                    accept="image/*"
-                    capture="user"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.currentTarget.value = "";
-                      if (f) punch("checkin", f);
-                    }}
-                  />
+                  {punchBusy || selfieBusy ? "Working..." : "Check in"}
                 </Button>
 
                 <Button
-                  component="label"
                   variant="outlined"
-                  disabled={punchBusy || !todayEntry?.inTime || !!todayEntry?.outTime}
+                  onClick={() => openSelfieCamera("checkout")}
+                  disabled={punchBusy || selfieBusy || !todayEntry?.inTime || !!todayEntry?.outTime || (qrRequired() && !qrOk) || !deviceStatus?.approved}
                   sx={{ minHeight: 54, fontWeight: 900 }}
+                  fullWidth
                 >
-                  {punchBusy ? "Working..." : "Check out"}
-                  <input
-                    hidden
-                    type="file"
-                    accept="image/*"
-                    capture="user"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      e.currentTarget.value = "";
-                      if (f) punch("checkout", f);
-                    }}
-                  />
+                  {punchBusy || selfieBusy ? "Working..." : "Check out"}
+                </Button>
+              </Box>
+              <Box sx={{ display: "grid", gap: 0.75, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, mt: 1 }}>
+                <Button component="label" size="small" variant="text" disabled={punchBusy || !!todayEntry?.inTime} fullWidth>
+                  Upload check-in selfie
+                  <input hidden type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; e.currentTarget.value = ""; if (f) punch("checkin", f); }} />
+                </Button>
+                <Button component="label" size="small" variant="text" disabled={punchBusy || !todayEntry?.inTime || !!todayEntry?.outTime} fullWidth>
+                  Upload check-out selfie
+                  <input hidden type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; e.currentTarget.value = ""; if (f) punch("checkout", f); }} />
                 </Button>
               </Box>
             </AppCard>
@@ -1261,7 +1696,7 @@ export default function EmployeePage() {
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1.5 }}>
                 <Typography sx={{ fontWeight: 900, fontSize: 13 }}>Selected date: {selectedDate}</Typography>
-                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1.5 }}>
                   <TextField label="In time" type="time" value={correctionIn} onChange={(e) => setCorrectionIn(e.target.value)} InputLabelProps={{ shrink: true }} />
                   <TextField label="Out time" type="time" value={correctionOut} onChange={(e) => setCorrectionOut(e.target.value)} InputLabelProps={{ shrink: true }} />
                 </Box>
@@ -1374,16 +1809,16 @@ export default function EmployeePage() {
               <Box
                 sx={{
                   mt: 2,
-                  borderRadius: 4,
+                  borderRadius: 2,
                   overflow: "hidden",
                   border: "1px solid rgba(15,23,42,0.08)",
                   background: "linear-gradient(135deg, rgba(30,64,175,0.06), rgba(124,58,237,0.06))",
                 }}
               >
                 {selectedDailyPhoto?.photoUrl ? (
-                  <Box component="img" alt="Daily group" src={selectedDailyPhoto.photoUrl} sx={{ width: "100%", height: 200, objectFit: "cover", display: "block" }} />
+                  <Box component="img" alt="Daily group" src={selectedDailyPhoto.photoUrl} sx={{ width: "100%", height: { xs: 170, sm: 200 }, objectFit: "cover", display: "block" }} />
                 ) : (
-                  <Box sx={{ height: 200, display: "grid", placeItems: "center" }}>
+                  <Box sx={{ height: { xs: 170, sm: 200 }, display: "grid", placeItems: "center", textAlign: "center", px: 1 }}>
                     <Typography sx={{ opacity: 0.75 }}>No daily group photo uploaded for this date</Typography>
                   </Box>
                 )}
@@ -1394,13 +1829,13 @@ export default function EmployeePage() {
                   <Typography sx={{ opacity: 0.7, fontSize: 12, mb: 1 }}>
                     Attendance selfies
                   </Typography>
-                  <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: "1fr 1fr" }}>
+                  <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" } }}>
                     <Box
                       sx={{
-                        borderRadius: 4,
+                        borderRadius: 2,
                         overflow: "hidden",
                         border: "1px solid rgba(15,23,42,0.08)",
-                        height: 160,
+                        height: { xs: 190, sm: 160 },
                         background: "rgba(15, 23, 42, 0.02)",
                       }}
                     >
@@ -1414,10 +1849,10 @@ export default function EmployeePage() {
                     </Box>
                     <Box
                       sx={{
-                        borderRadius: 4,
+                        borderRadius: 2,
                         overflow: "hidden",
                         border: "1px solid rgba(15,23,42,0.08)",
-                        height: 160,
+                        height: { xs: 190, sm: 160 },
                         background: "rgba(15, 23, 42, 0.02)",
                       }}
                     >
@@ -1438,7 +1873,7 @@ export default function EmployeePage() {
           <div className="lg:col-span-8">
             <AppCard>
               <Box id="employee-calendar" />
-              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto" }, alignItems: "center", gap: 1.5 }}>
                 <Typography variant="h6" sx={{ fontWeight: 900 }}>
                   Attendance calendar
                 </Typography>
@@ -1448,7 +1883,7 @@ export default function EmployeePage() {
                   value={month}
                   onChange={(e) => setMonth(e.target.value)}
                   InputLabelProps={{ shrink: true }}
-                  sx={{ width: 170 }}
+                  sx={{ width: { xs: "100%", sm: 170 } }}
                 />
               </Box>
               <Divider sx={{ my: 2 }} />
@@ -1465,6 +1900,30 @@ export default function EmployeePage() {
           </div>
         </div>
       </div>
+
+      <Dialog open={selfieOpen} onClose={stopSelfieCamera} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ fontWeight: 950 }}>
+          {selfieKind === "checkin" ? "Check-in selfie" : "Check-out selfie"}
+        </DialogTitle>
+        <DialogContent sx={{ display: "grid", gap: 1.5 }}>
+          <Typography sx={{ color: "text.secondary", fontSize: 13 }}>
+            Center your face clearly. This photo is checked against your face reference before attendance is marked.
+          </Typography>
+          <Box
+            component="video"
+            ref={selfieVideoRef}
+            muted
+            playsInline
+            sx={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 1, bgcolor: "#111827" }}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={stopSelfieCamera}>Cancel</Button>
+          <Button variant="contained" onClick={() => captureSelfieAndPunch().catch((e) => setErr(apiMessage(e, "Punch failed")))} disabled={punchBusy}>
+            Capture and {selfieKind === "checkin" ? "check in" : "check out"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog open={leaveOpen} onClose={() => setLeaveOpen(false)} fullWidth maxWidth="sm">
         <DialogTitle sx={{ fontWeight: 950 }}>Compose leave mail to HR</DialogTitle>

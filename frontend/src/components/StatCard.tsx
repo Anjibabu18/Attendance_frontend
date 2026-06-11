@@ -11,7 +11,24 @@ export default function StatCard(props: {
 }) {
   const accent = props.accent ?? "#2563eb";
   return (
-    <AppCard contentSx={{ p: 2.25, "&:last-child": { pb: 2.25 } }} sx={props.sx}>
+    <AppCard
+      contentSx={{ p: { xs: 1.5, md: 2.25 }, "&:last-child": { pb: { xs: 1.5, md: 2.25 } } }}
+      sx={[
+        {
+          "&:after": {
+            content: '""',
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: 3,
+            bgcolor: accent,
+            opacity: 0.9,
+          },
+        },
+        ...(Array.isArray(props.sx) ? props.sx : [props.sx]),
+      ]}
+    >
       <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.5, alignItems: "flex-start" }}>
         <Box sx={{ minWidth: 0 }}>
           <Typography
@@ -25,7 +42,7 @@ export default function StatCard(props: {
           >
             {props.label}
           </Typography>
-          <Typography sx={{ mt: 0.9, fontSize: 30, lineHeight: 1, fontWeight: 950, color: accent }}>
+          <Typography sx={{ mt: 0.9, fontSize: { xs: 25, md: 30 }, lineHeight: 1, fontWeight: 950, color: accent, wordBreak: "break-word" }}>
             {props.value}
           </Typography>
           <Box sx={{ mt: 1, width: 44, height: 3, borderRadius: 99, bgcolor: accent }} />
@@ -33,8 +50,8 @@ export default function StatCard(props: {
         {props.icon ? (
           <Box
             sx={{
-              width: 42,
-              height: 42,
+              width: { xs: 36, md: 42 },
+              height: { xs: 36, md: 42 },
               borderRadius: 2,
               display: "grid",
               placeItems: "center",
@@ -43,6 +60,11 @@ export default function StatCard(props: {
               border: `1px solid ${accent}26`,
               boxShadow: `0 10px 22px ${accent}18`,
               flexShrink: 0,
+              transition: "transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s ease",
+              ".MuiCard-root:hover &": {
+                transform: "scale(1.06) rotate(-2deg)",
+                boxShadow: `0 14px 30px ${accent}24`,
+              },
             }}
           >
             {props.icon}

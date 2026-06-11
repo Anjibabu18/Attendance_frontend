@@ -1,4 +1,4 @@
-import { Alert, AppBar, Avatar, Badge, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, IconButton, LinearProgress, TextField, Toolbar, Tooltip, Typography } from "@mui/material";
+import { Alert, AppBar, Avatar, Badge, Box, Button, Chip, Container, Dialog, DialogActions, DialogContent, DialogTitle, Divider, Drawer, IconButton, LinearProgress, Menu, MenuItem, TextField, Toolbar, Tooltip, Typography } from "@mui/material";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import BadgeIcon from "@mui/icons-material/Badge";
 import LockIcon from "@mui/icons-material/Lock";
@@ -7,10 +7,12 @@ import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
-import { clearAuth, getAuth } from "../auth/auth";
+import { clearAuth, ensureLoginStartedAt, getAuth } from "../auth/auth";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useEffect, useState } from "react";
+import { useToast } from "./Toast";
+import dayjs from "dayjs";
 
 type CompanyProfile = { groupPhotoUrl?: string | null };
 type Notification = { id: number; title: string; message: string; read: boolean; createdAt: string };
@@ -19,6 +21,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const nav = useNavigate();
   const location = useLocation();
   const auth = getAuth();
+  const loginStartedAtIso = ensureLoginStartedAt();
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -29,12 +32,110 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [booting, setBooting] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [mobileActionsAnchor, setMobileActionsAnchor] = useState<null | HTMLElement>(null);
+  const [sessionNow, setSessionNow] = useState(() => Date.now());
+  const [todayPunch, setTodayPunch] = useState<{ inTime: string | null; outTime: string | null } | null>(null);
 
   useEffect(() => {
-    Promise.all([
+    const promises: Promise<any>[] = [
       api.get<CompanyProfile>("/api/company").then((r) => setCompany(r.data)).catch(() => { }),
       api.get<Notification[]>("/api/notifications").then((r) => setNotifications(r.data)).catch(() => { }),
-    ]).finally(() => setBooting(false));
+    ];
+    if (auth?.role === "ROLE_EMPLOYEE") {
+      promises.push(
+        api.get<any>("/api/employee/punch/today").then((r) => setTodayPunch(r.data)).catch(() => { })
+      );
+    }
+    Promise.all(promises).finally(() => setBooting(false));
+  }, []);
+
+  const { showToast } = useToast();
+  const [toastedIds] = useState<Set<number>>(() => {
+    try {
+      const stored = sessionStorage.getItem("toasted_notifications");
+      return stored ? new Set(JSON.parse(stored).map(Number)) : new Set<number>();
+    } catch {
+      return new Set<number>();
+    }
+  });
+
+  useEffect(() => {
+    if (!auth || notifications.length === 0) return;
+
+    const isFirstLoad = sessionStorage.getItem("notifications_initialized") !== "true";
+    let updated = false;
+
+    if (isFirstLoad) {
+      let toastedCount = 0;
+      notifications.forEach((n) => {
+        if (!n.read && !toastedIds.has(n.id)) {
+          if (toastedCount < 5) {
+            let type: "info" | "warning" | "success" | "error" = "info";
+            const lowerTitle = n.title.toLowerCase();
+            const lowerMsg = n.message.toLowerCase();
+
+            if (lowerTitle.includes("approve") || lowerTitle.includes("success") || lowerMsg.includes("approved")) {
+              type = "success";
+            } else if (lowerTitle.includes("reject") || lowerTitle.includes("fail") || lowerTitle.includes("error") || lowerMsg.includes("rejected")) {
+              type = "error";
+            } else if (lowerTitle.includes("warn") || lowerTitle.includes("late") || lowerTitle.includes("absent") || lowerMsg.includes("late")) {
+              type = "warning";
+            }
+
+            showToast(n.message, type, 6000, n.title);
+            toastedCount++;
+          }
+        }
+        toastedIds.add(n.id);
+      });
+      sessionStorage.setItem("notifications_initialized", "true");
+      updated = true;
+    } else {
+      notifications.forEach((n) => {
+        if (!n.read && !toastedIds.has(n.id)) {
+          let type: "info" | "warning" | "success" | "error" = "info";
+          const lowerTitle = n.title.toLowerCase();
+          const lowerMsg = n.message.toLowerCase();
+
+          if (lowerTitle.includes("approve") || lowerTitle.includes("success") || lowerMsg.includes("approved")) {
+            type = "success";
+          } else if (lowerTitle.includes("reject") || lowerTitle.includes("fail") || lowerTitle.includes("error") || lowerMsg.includes("rejected")) {
+            type = "error";
+          } else if (lowerTitle.includes("warn") || lowerTitle.includes("late") || lowerTitle.includes("absent") || lowerMsg.includes("late")) {
+            type = "warning";
+          }
+
+          showToast(n.message, type, 6000, n.title);
+          toastedIds.add(n.id);
+          updated = true;
+        }
+      });
+    }
+
+    if (updated) {
+      sessionStorage.setItem("toasted_notifications", JSON.stringify(Array.from(toastedIds)));
+    }
+  }, [notifications, toastedIds, showToast, auth]);
+
+  useEffect(() => {
+    if (!auth) return;
+    const interval = setInterval(() => {
+      api.get<Notification[]>("/api/notifications")
+        .then((r) => setNotifications(r.data))
+        .catch(() => { });
+
+      if (auth.role === "ROLE_EMPLOYEE") {
+        api.get<any>("/api/employee/punch/today")
+          .then((r) => setTodayPunch(r.data))
+          .catch(() => { });
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [auth]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setSessionNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
   }, []);
   const navItems = [
     auth?.role === "ROLE_ADMIN" ? { label: "Admin", path: "/admin", icon: <AdminPanelSettingsIcon fontSize="small" /> } : null,
@@ -58,6 +159,53 @@ export default function Layout(props: { title: string; children: React.ReactNode
 
   const unread = notifications.filter((n) => !n.read).length || notifications.length;
   const roleLabel = auth?.role?.replace("ROLE_", "") ?? "USER";
+
+  const loginStartedAt = loginStartedAtIso ? new Date(loginStartedAtIso).getTime() : null;
+  const loginActiveSecs = loginStartedAt && Number.isFinite(loginStartedAt) ? Math.max(0, Math.floor((sessionNow - loginStartedAt) / 1000)) : 0;
+
+  let activeSeconds = loginActiveSecs;
+  let activeLabel = "Login active";
+  let chipBg = "#ecfdf3";
+  let chipColor = "#15803d";
+  let chipBorder = "1px solid #bbf7d0";
+
+  if (auth?.role === "ROLE_EMPLOYEE" && todayPunch) {
+    const parseClock = (timeStr: string | null) => {
+      if (!timeStr) return null;
+      const parts = timeStr.split(":");
+      if (parts.length < 2) return null;
+      const hrs = parseInt(parts[0], 10);
+      const mins = parseInt(parts[1], 10);
+      const secs = parts[2] ? parseInt(parts[2], 10) : 0;
+      return dayjs().hour(hrs).minute(mins).second(secs).millisecond(0);
+    };
+
+    const inTime = parseClock(todayPunch.inTime);
+    const outTime = parseClock(todayPunch.outTime);
+
+    if (inTime) {
+      activeLabel = "Check-in active";
+      if (outTime) {
+        activeSeconds = Math.max(0, outTime.diff(inTime, "second"));
+        chipBg = "rgba(71,85,105,0.06)";
+        chipColor = "#475569";
+        chipBorder = "1px solid rgba(71,85,105,0.24)";
+      } else {
+        activeSeconds = Math.max(0, dayjs(sessionNow).diff(inTime, "second"));
+      }
+    } else {
+      activeLabel = "Check-in active";
+      activeSeconds = 0;
+      chipBg = "rgba(220,38,38,0.06)";
+      chipColor = "#dc2626";
+      chipBorder = "1px solid rgba(220,38,38,0.24)";
+    }
+  }
+
+  const activeHours = Math.floor(activeSeconds / 3600);
+  const activeMinutes = Math.floor((activeSeconds % 3600) / 60);
+  const activeSecs = activeSeconds % 60;
+  const activeTimeText = `${String(activeHours).padStart(2, "0")}:${String(activeMinutes).padStart(2, "0")}:${String(activeSecs).padStart(2, "0")}`;
   const sidebar = (
     <Box
       sx={{
@@ -92,6 +240,12 @@ export default function Layout(props: { title: string; children: React.ReactNode
               px: 1.35,
               color: active ? "white" : "text.primary",
               bgcolor: active ? "primary.main" : "transparent",
+              transition: "transform .18s cubic-bezier(.2,.8,.2,1), background-color .18s ease, box-shadow .18s ease",
+              boxShadow: active ? "0 10px 22px rgba(37,99,235,0.22)" : "none",
+              "&:hover": {
+                transform: "translateX(2px)",
+                bgcolor: active ? "primary.main" : "rgba(37,99,235,0.07)",
+              },
             }}
           >
             {item.label}
@@ -108,6 +262,8 @@ export default function Layout(props: { title: string; children: React.ReactNode
       <Button
         startIcon={<LogoutIcon fontSize="small" />}
         onClick={() => {
+          sessionStorage.removeItem("notifications_initialized");
+          sessionStorage.removeItem("toasted_notifications");
           clearAuth();
           nav("/login");
         }}
@@ -119,32 +275,32 @@ export default function Layout(props: { title: string; children: React.ReactNode
   );
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)]">
+    <div className="min-h-screen app-shell">
       <AppBar
         position="sticky"
         elevation={0}
         sx={{
-          background: "rgba(255,255,255,0.86)",
+          background: "rgba(255,255,255,0.88)",
           backdropFilter: "blur(18px)",
           color: "text.primary",
           borderBottom: "1px solid rgba(203,213,225,0.9)",
-          boxShadow: "0 12px 34px rgba(15,23,42,0.08)",
+          boxShadow: "0 10px 30px rgba(15,23,42,0.075)",
         }}
       >
         {booting ? <LinearProgress sx={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2 }} /> : null}
-        <Toolbar sx={{ minHeight: 74, flexWrap: { xs: "wrap", md: "nowrap" }, gap: 1.15, py: { xs: 1, md: 0 } }}>
+        <Toolbar sx={{ minHeight: { xs: 64, md: 74 }, gap: { xs: 0.8, md: 1.15 }, py: { xs: 0.75, md: 0 }, px: { xs: 1.25, sm: 2, md: 3 } }}>
           <IconButton
             onClick={() => setMobileNavOpen(true)}
             sx={{ display: { xs: "inline-flex", md: "none" }, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}
           >
             <MenuIcon fontSize="small" />
           </IconButton>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexGrow: 1, minWidth: 0 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, md: 1.5 }, flexGrow: 1, minWidth: 0 }}>
             <Avatar
               src={company?.groupPhotoUrl ?? undefined}
               sx={{
-                width: 44,
-                height: 44,
+                width: { xs: 38, md: 44 },
+                height: { xs: 38, md: 44 },
                 border: "1px solid rgba(255,255,255,0.8)",
                 bgcolor: "#111827",
                 color: "white",
@@ -156,19 +312,19 @@ export default function Layout(props: { title: string; children: React.ReactNode
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
               <Box sx={{ display: "flex", gap: 0.8, alignItems: "center", flexWrap: "wrap" }}>
-                <Typography variant="h6" sx={{ fontWeight: 950, lineHeight: 1.08, fontSize: 18 }}>
+                <Typography variant="h6" sx={{ fontWeight: 950, lineHeight: 1.08, fontSize: { xs: 16, md: 18 }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: { xs: 185, sm: 320, md: "none" } }}>
                   {props.title}
                 </Typography>
-                <Chip size="small" icon={<ShieldOutlinedIcon />} label={roleLabel} sx={{ height: 24, bgcolor: "#eef2ff", color: "#1d4ed8" }} />
+                <Chip size="small" icon={<ShieldOutlinedIcon />} label={roleLabel} sx={{ display: { xs: "none", sm: "inline-flex" }, height: 24, bgcolor: "#eef2ff", color: "#1d4ed8" }} />
               </Box>
-              <Typography sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.2, mt: 0.35 }}>
-                {auth?.name ? auth.name : "Attendance Management"} | Secure attendance operations
+              <Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: 12, color: "text.secondary", lineHeight: 1.2, mt: 0.35 }}>
+                {auth?.name ? auth.name : "Attendance Management"} | {activeLabel} {activeTimeText}
               </Typography>
             </Box>
           </Box>
           <Box
             sx={{
-              display: { xs: "flex", md: "none" },
+              display: { xs: "none", md: "none" },
               gap: 0.5,
               flexWrap: "wrap",
               alignItems: "center",
@@ -200,12 +356,24 @@ export default function Layout(props: { title: string; children: React.ReactNode
             })}
           </Box>
           <Tooltip title="Change password">
-            <IconButton onClick={() => setPasswordOpen(true)} sx={{ border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}>
+            <IconButton onClick={() => setPasswordOpen(true)} sx={{ display: { xs: "none", md: "inline-flex" }, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff", transition: "transform .18s ease, box-shadow .18s ease", "&:hover": { transform: "translateY(-1px)", boxShadow: "0 10px 22px rgba(15,23,42,0.10)" } }}>
               <LockIcon fontSize="small" />
             </IconButton>
           </Tooltip>
+          <Chip
+            size="small"
+            label={`Active ${activeTimeText}`}
+            sx={{
+              display: { xs: "none", lg: "inline-flex" },
+              height: 34,
+              bgcolor: chipBg,
+              color: chipColor,
+              border: chipBorder,
+              fontWeight: 950,
+            }}
+          />
           <Tooltip title="Notifications">
-            <IconButton onClick={() => setNotificationsOpen(true)} sx={{ border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}>
+            <IconButton onClick={() => setNotificationsOpen(true)} sx={{ display: { xs: "none", md: "inline-flex" }, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff", transition: "transform .18s ease, box-shadow .18s ease", "&:hover": { transform: "translateY(-1px)", boxShadow: "0 10px 22px rgba(15,23,42,0.10)" } }}>
               <Badge badgeContent={unread} color="error">
                 <NotificationsIcon fontSize="small" />
               </Badge>
@@ -214,30 +382,70 @@ export default function Layout(props: { title: string; children: React.ReactNode
           <Button
             variant="outlined"
             startIcon={<LogoutIcon fontSize="small" />}
-            sx={{ borderColor: "#cbd5e1", color: "text.primary", bgcolor: "#ffffff" }}
+            sx={{ display: { xs: "none", md: "inline-flex" }, borderColor: "#cbd5e1", color: "text.primary", bgcolor: "#ffffff" }}
             onClick={() => {
+              sessionStorage.removeItem("notifications_initialized");
+              sessionStorage.removeItem("toasted_notifications");
               clearAuth();
               nav("/login");
             }}
           >
             Logout
           </Button>
+          <IconButton
+            onClick={(e) => setMobileActionsAnchor(e.currentTarget)}
+            sx={{ display: { xs: "inline-flex", md: "none" }, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}
+          >
+            <Badge badgeContent={unread} color="error">
+              <NotificationsIcon fontSize="small" />
+            </Badge>
+          </IconButton>
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ py: { xs: 2.25, md: 3.5 }, position: "relative" }}>
-        <Box sx={{ position: "absolute", inset: "0 24px auto 24px", height: 1, background: "linear-gradient(90deg, transparent, rgba(37,99,235,0.22), transparent)" }} />
+      <Container maxWidth="xl" sx={{ px: { xs: 1.25, sm: 2, md: 3 }, py: { xs: 1.5, md: 3.25 }, position: "relative" }}>
+        <Box sx={{ position: "absolute", inset: "0 24px auto 24px", height: 1, background: "linear-gradient(90deg, transparent, rgba(37,99,235,0.20), rgba(15,118,110,0.16), transparent)" }} />
         <Box sx={{ display: "grid", gap: { xs: 2.25, md: 3 }, gridTemplateColumns: { xs: "1fr", md: "240px minmax(0,1fr)" }, alignItems: "start" }}>
           <Box sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 96 }}>
             {sidebar}
           </Box>
-          <Box sx={{ display: "grid", gap: { xs: 2.25, md: 3 }, minWidth: 0 }}>{props.children}</Box>
+          <Box sx={{ display: "grid", gap: { xs: 2.25, md: 3 }, minWidth: 0, animation: "attendancePageIn .32s cubic-bezier(.2,.8,.2,1) both" }}>{props.children}</Box>
         </Box>
       </Container>
 
       <Drawer anchor="left" open={mobileNavOpen} onClose={() => setMobileNavOpen(false)}>
         <Box sx={{ width: 290, p: 2 }}>{sidebar}</Box>
       </Drawer>
+
+      <Menu anchorEl={mobileActionsAnchor} open={Boolean(mobileActionsAnchor)} onClose={() => setMobileActionsAnchor(null)}>
+        <MenuItem disabled>{activeLabel} {activeTimeText}</MenuItem>
+        <MenuItem
+          onClick={() => {
+            setMobileActionsAnchor(null);
+            setPasswordOpen(true);
+          }}
+        >
+          Change password
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            setMobileActionsAnchor(null);
+            setNotificationsOpen(true);
+          }}
+        >
+          Notifications
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            sessionStorage.removeItem("notifications_initialized");
+            sessionStorage.removeItem("toasted_notifications");
+            clearAuth();
+            nav("/login");
+          }}
+        >
+          Logout
+        </MenuItem>
+      </Menu>
 
       <Dialog open={passwordOpen} onClose={() => setPasswordOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle sx={{ fontWeight: 950, pb: 1 }}>Change password</DialogTitle>

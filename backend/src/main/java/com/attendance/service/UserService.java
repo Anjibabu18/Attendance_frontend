@@ -182,6 +182,38 @@ public class UserService {
   }
 
   @Transactional
+  public Employee updateEmployeeUsername(Long employeeId, String username, String actorUsername) {
+    String nextUsername = username == null ? "" : username.trim();
+    if (nextUsername.isBlank()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Username is required");
+    }
+    Employee employee =
+        employeeRepository
+            .findById(employeeId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
+    AppUser user = employee.getUser();
+    if (user == null) {
+      throw new ApiException(HttpStatus.CONFLICT, "Employee login account missing");
+    }
+    if (user.getUsername().equals(nextUsername)) {
+      return employee;
+    }
+    if (userRepository.existsByUsername(nextUsername)) {
+      throw new ApiException(HttpStatus.CONFLICT, "Username already exists");
+    }
+    String oldUsername = user.getUsername();
+    user.setUsername(nextUsername);
+    userRepository.save(user);
+    auditLogService.record(
+        actorUsername,
+        "EMPLOYEE_USERNAME_UPDATED",
+        "USER",
+        user.getId(),
+        "employee=" + employee.getEmployeeNumber() + ", oldUsername=" + oldUsername + ", newUsername=" + nextUsername);
+    return employee;
+  }
+
+  @Transactional
   public Employee setEmployeeEnabled(Long employeeId, boolean enabled, String actorUsername) {
     Employee employee =
         employeeRepository
@@ -285,6 +317,7 @@ public class UserService {
   public int bulkEditEmployees(
       List<Long> employeeIds,
       Long officeLocationId,
+      Long departmentId,
       Long shiftId,
       EmployeeStatus status,
       String newPassword,
@@ -300,6 +333,7 @@ public class UserService {
               .findById(employeeId)
               .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found: " + employeeId));
       if (officeLocationId != null) employee.setAssignedOfficeLocation(resolveOffice(officeLocationId));
+      if (departmentId != null) employee.setDepartment(resolveDepartment(departmentId));
       if (shiftId != null) employee.setShift(resolveShift(shiftId));
       if (status != null) {
         employee.setStatus(status);

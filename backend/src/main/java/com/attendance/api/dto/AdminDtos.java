@@ -168,6 +168,12 @@ public class AdminDtos {
     public void setExitDate(LocalDate exitDate) { this.exitDate = exitDate; }
   }
 
+  public static class UpdateEmployeeUsernameRequest {
+    @NotBlank private String username;
+    public String getUsername() { return username; }
+    public void setUsername(String username) { this.username = username; }
+  }
+
   public static class BulkPasswordResetRequest {
     @NotNull private List<Long> employeeIds;
     @NotBlank private String newPassword;
@@ -180,6 +186,7 @@ public class AdminDtos {
   public static class BulkEmployeeEditRequest {
     @NotNull private List<Long> employeeIds;
     private Long officeLocationId;
+    private Long departmentId;
     private Long shiftId;
     private EmployeeStatus status;
     private String newPassword;
@@ -187,6 +194,8 @@ public class AdminDtos {
     public void setEmployeeIds(List<Long> employeeIds) { this.employeeIds = employeeIds; }
     public Long getOfficeLocationId() { return officeLocationId; }
     public void setOfficeLocationId(Long officeLocationId) { this.officeLocationId = officeLocationId; }
+    public Long getDepartmentId() { return departmentId; }
+    public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
     public Long getShiftId() { return shiftId; }
     public void setShiftId(Long shiftId) { this.shiftId = shiftId; }
     public EmployeeStatus getStatus() { return status; }

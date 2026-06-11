@@ -27,12 +27,12 @@ export default function MonthCalendar(props: {
 
   return (
     <Box>
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 0.75, mb: 1 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: { xs: 0.35, sm: 0.75 }, mb: 1 }}>
         {labels.map((l) => (
           <Typography
             key={l}
             sx={{
-              fontSize: 12,
+              fontSize: { xs: 10, sm: 12 },
               opacity: 0.72,
               textAlign: "center",
               fontWeight: 800,
@@ -44,7 +44,7 @@ export default function MonthCalendar(props: {
           </Typography>
         ))}
       </Box>
-      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 0.75 }}>
+      <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: { xs: 0.35, sm: 0.75 } }}>
         {cells.map((c, idx) => {
           const day = c.date ? dayjs(c.date).date() : "";
           const bg =
@@ -94,11 +94,11 @@ export default function MonthCalendar(props: {
                 }
               }}
               sx={{
-                height: { xs: 62, md: 74 },
-                borderRadius: 2,
+                height: { xs: 44, sm: 62, md: 74 },
+                borderRadius: { xs: 1, sm: 2 },
                 border,
                 background: bg,
-                p: 1,
+                p: { xs: 0.55, sm: 1 },
                 display: "flex",
                 flexDirection: "column",
                 justifyContent: "space-between",
@@ -114,8 +114,8 @@ export default function MonthCalendar(props: {
                     : undefined,
               }}
             >
-              <Typography sx={{ fontSize: 12, fontWeight: 900, opacity: 0.86 }}>{day}</Typography>
-              <Typography sx={{ fontSize: { xs: 16, md: 18 }, fontWeight: 900, textAlign: "right", color: letterColor }}>
+              <Typography sx={{ fontSize: { xs: 10, sm: 12 }, fontWeight: 900, opacity: 0.86 }}>{day}</Typography>
+              <Typography sx={{ fontSize: { xs: 12, sm: 16, md: 18 }, fontWeight: 900, textAlign: "right", color: letterColor }}>
                 {c.date ? c.status : ""}
               </Typography>
             </Box>

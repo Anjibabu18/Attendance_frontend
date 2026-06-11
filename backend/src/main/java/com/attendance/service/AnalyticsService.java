@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AnalyticsService {
@@ -23,6 +24,7 @@ public class AnalyticsService {
     this.attendanceRepository = attendanceRepository;
   }
 
+  @Transactional(readOnly = true)
   public Map<String, Object> month(YearMonth month) {
     var entries = attendanceRepository.findAllByDateBetween(month.atDay(1), month.atEndOfMonth());
     List<Employee> employees = employeeRepository.findAll();

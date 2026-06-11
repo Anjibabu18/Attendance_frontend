@@ -11,6 +11,7 @@ import com.attendance.api.dto.CompOffDtos;
 import com.attendance.domain.AppUser;
 import com.attendance.domain.Role;
 import com.attendance.repo.EmployeeRepository;
+import com.attendance.repo.ShiftRosterAssignmentRepository;
 import com.attendance.repo.UserRepository;
 import com.attendance.service.ApiException;
 import com.attendance.service.AttendanceExportService;
@@ -23,9 +24,11 @@ import com.attendance.service.RegularizationRequestService;
 import com.attendance.service.WorkRequestService;
 import com.attendance.service.ProductionFeatureService;
 import com.attendance.service.CompOffService;
+import com.attendance.service.FaceVerificationService;
 import com.attendance.service.PayrollService;
 import jakarta.validation.Valid;
 import java.time.YearMonth;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -33,6 +36,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,6 +52,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class EmployeeController {
   private final UserRepository userRepository;
   private final EmployeeRepository employeeRepository;
+  private final ShiftRosterAssignmentRepository shiftRosterAssignmentRepository;
   private final AttendanceService attendanceService;
   private final LeaveRequestService leaveRequestService;
   private final AttendanceExportService attendanceExportService;
@@ -59,10 +64,12 @@ public class EmployeeController {
   private final CompOffService compOffService;
   private final CloudinaryService cloudinaryService;
   private final PayrollService payrollService;
+  private final FaceVerificationService faceVerificationService;
 
   public EmployeeController(
       UserRepository userRepository,
       EmployeeRepository employeeRepository,
+      ShiftRosterAssignmentRepository shiftRosterAssignmentRepository,
       AttendanceService attendanceService,
       LeaveRequestService leaveRequestService,
       AttendanceExportService attendanceExportService,
@@ -73,9 +80,11 @@ public class EmployeeController {
       ProductionFeatureService productionFeatureService,
       CompOffService compOffService,
       CloudinaryService cloudinaryService,
-      PayrollService payrollService) {
+      PayrollService payrollService,
+      FaceVerificationService faceVerificationService) {
     this.userRepository = userRepository;
     this.employeeRepository = employeeRepository;
+    this.shiftRosterAssignmentRepository = shiftRosterAssignmentRepository;
     this.attendanceService = attendanceService;
     this.leaveRequestService = leaveRequestService;
     this.attendanceExportService = attendanceExportService;
@@ -87,9 +96,11 @@ public class EmployeeController {
     this.compOffService = compOffService;
     this.cloudinaryService = cloudinaryService;
     this.payrollService = payrollService;
+    this.faceVerificationService = faceVerificationService;
   }
 
   @GetMapping("/profile")
+  @Transactional(readOnly = true)
   public ViewDtos.EmployeeProfileView profile() {
     var emp = currentEmployee();
     var r = emp.getCompanyRole();
@@ -97,14 +108,27 @@ public class EmployeeController {
         r == null ? null : new ViewDtos.CompanyRoleView(r.getId(), r.getName(), r.getPhotoUrl());
     var loc = AdminOfficeLocationController.toResponse(emp.getAssignedOfficeLocation());
     var d = emp.getDepartment() == null ? null : new ViewDtos.DepartmentView(emp.getDepartment().getId(), emp.getDepartment().getName());
-    var s = emp.getShift() == null ? null : new ViewDtos.ShiftView(emp.getShift().getId(), emp.getShift().getName(), emp.getShift().getInTime(), emp.getShift().getOutTime(), emp.getShift().isFlexible());
+    var effectiveShift =
+        shiftRosterAssignmentRepository
+            .findByEmployee_IdAndDate(emp.getId(), LocalDate.now())
+            .map(com.attendance.domain.ShiftRosterAssignment::getShift)
+            .orElse(emp.getShift());
+    var s = effectiveShift == null ? null : new ViewDtos.ShiftView(effectiveShift.getId(), effectiveShift.getName(), effectiveShift.getInTime(), effectiveShift.getOutTime(), effectiveShift.isFlexible());
     return new ViewDtos.EmployeeProfileView(
         emp.getId(), emp.getEmployeeNumber(), emp.getName(), rv, loc, d, s, emp.getStatus().name(), emp.getProfilePhotoUrl());
   }
 
   @PostMapping("/profile/photo")
+  @Transactional
   public ViewDtos.EmployeeProfileView uploadProfilePhoto(@RequestParam("file") MultipartFile file) {
     var emp = currentEmployee();
+    var detection = faceVerificationService.detectFace(file);
+    if (!detection.faceDetected()) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, detection.message());
+    }
+    if (detection.faceCount() != 1) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Use one clear face only for the reference photo");
+    }
     var upload =
         cloudinaryService.uploadGroupPhoto(file, "employee-profile-" + emp.getId());
     emp.setProfilePhotoUrl(upload.url());

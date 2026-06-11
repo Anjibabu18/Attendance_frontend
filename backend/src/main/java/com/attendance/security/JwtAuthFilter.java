@@ -37,6 +37,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     if (token != null) {
         try {
           Claims claims = jwtService.parseClaims(token);
+          if (claims.get("type") != null && "refresh".equals(claims.get("type"))) {
+            throw new IllegalArgumentException("Refresh token cannot be used as access token");
+          }
           String username = claims.getSubject();
           String role = claims.get("role", String.class);
           if (username == null || username.isBlank() || !ALLOWED_ROLES.contains(role)) {

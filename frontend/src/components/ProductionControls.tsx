@@ -11,6 +11,9 @@ export default function ProductionControls() {
   const [err, setErr] = useState<string | null>(null);
   const [qrOfficeId, setQrOfficeId] = useState("");
   const [qrToken, setQrToken] = useState<string | null>(null);
+  const [qrDailyCode, setQrDailyCode] = useState<string | null>(null);
+  const [qrMode, setQrMode] = useState<string | null>(null);
+  const [qrExpiresAt, setQrExpiresAt] = useState<string | null>(null);
   const [qrImageUrl, setQrImageUrl] = useState<string | null>(null);
   const [policyName, setPolicyName] = useState("Production policy");
 
@@ -51,11 +54,17 @@ export default function ProductionControls() {
       setErr(null);
       if (qrRes.data && qrRes.data.token) {
         setQrToken(qrRes.data.token);
+        setQrDailyCode(qrRes.data.dailyCode || null);
+        setQrMode(qrRes.data.mode || null);
+        setQrExpiresAt(qrRes.data.expiresAt || null);
         const image = await api.get<Blob>(`/api/admin/production/qr/${encodeURIComponent(qrRes.data.token)}.png`, { responseType: "blob" });
         if (qrImageUrl) URL.revokeObjectURL(qrImageUrl);
         setQrImageUrl(URL.createObjectURL(image.data));
       } else {
         setQrToken(null);
+        setQrDailyCode(null);
+        setQrMode(null);
+        setQrExpiresAt(null);
         if (qrImageUrl) {
           URL.revokeObjectURL(qrImageUrl);
           setQrImageUrl(null);
@@ -65,6 +74,9 @@ export default function ProductionControls() {
       const msg = e?.response?.data?.error ?? e?.message ?? "Failed to load latest QR";
       setErr(`Load latest QR failed: ${msg}`);
       setQrToken(null);
+      setQrDailyCode(null);
+      setQrMode(null);
+      setQrExpiresAt(null);
       // fallback to localStorage cached token
       try {
         const key = `attendance_latest_qr_${officeId || 'global'}`;
@@ -73,6 +85,9 @@ export default function ProductionControls() {
           const parsed = JSON.parse(raw);
           if (parsed?.token) {
             setQrToken(parsed.token);
+            setQrDailyCode(parsed.dailyCode || null);
+            setQrMode(parsed.mode || null);
+            setQrExpiresAt(parsed.expiresAt || null);
             // Use public QR image service as a fallback so admin sees the QR image without backend image fetch
             setQrImageUrl(`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(parsed.token)}`);
             setErr(null);
@@ -88,13 +103,16 @@ export default function ProductionControls() {
   async function createQr() {
     const res = await api.post<any>("/api/admin/production/qr", { officeId: Number(qrOfficeId) });
     setQrToken(res.data.token);
+    setQrDailyCode(res.data.dailyCode || null);
+    setQrMode(res.data.mode || null);
+    setQrExpiresAt(res.data.expiresAt || null);
     const image = await api.get<Blob>(`/api/admin/production/qr/${encodeURIComponent(res.data.token)}.png`, { responseType: "blob" });
     if (qrImageUrl) URL.revokeObjectURL(qrImageUrl);
     setQrImageUrl(URL.createObjectURL(image.data));
     // save latest token to localStorage as fallback for UI refresh/debugging
     try {
       const key = `attendance_latest_qr_${qrOfficeId || 'global'}`;
-      localStorage.setItem(key, JSON.stringify({ token: res.data.token, createdAt: new Date().toISOString() }));
+      localStorage.setItem(key, JSON.stringify({ token: res.data.token, dailyCode: res.data.dailyCode, mode: res.data.mode, expiresAt: res.data.expiresAt, createdAt: new Date().toISOString() }));
     } catch {
       // ignore storage errors
     }
@@ -155,7 +173,10 @@ export default function ProductionControls() {
       </Box>
       <Box sx={{ mt: 2, display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
         <Box sx={{ p: 1.6, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#f8fafc" }}>
-          <Typography sx={{ fontWeight: 900 }}>QR attendance token</Typography>
+          <Typography sx={{ fontWeight: 900 }}>Fixed office QR</Typography>
+          <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.4 }}>
+            With Permanent office QR enabled, print this QR once. The QR image stays same; today's server code changes daily.
+          </Typography>
           <Box sx={{ display: "flex", gap: 1, mt: 1 }}>
             <TextField label="Office ID" value={qrOfficeId} onChange={(e) => setQrOfficeId(e.target.value)} fullWidth />
             <Button variant="contained" onClick={() => createQr().catch(() => { })} disabled={!qrOfficeId}>Generate</Button>
@@ -168,7 +189,16 @@ export default function ProductionControls() {
                 src={qrImageUrl ?? ""}
                 sx={{ width: 180, height: 180, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "white" }}
               />
-              <Typography sx={{ fontSize: 12, wordBreak: "break-all" }}>Token: <b>{qrToken}</b></Typography>
+              <Typography sx={{ fontSize: 12, wordBreak: "break-all" }}>Printed QR token: <b>{qrToken}</b></Typography>
+              <Typography sx={{ fontSize: 12 }}>
+                Mode: <b>{qrMode === "FIXED_QR_DAILY_CODE" ? "Fixed QR + daily code" : "Rotating token"}</b>
+              </Typography>
+              {qrDailyCode ? (
+                <Typography sx={{ fontSize: 12 }}>Today's code: <b>{qrDailyCode}</b></Typography>
+              ) : null}
+              {qrExpiresAt ? (
+                <Typography sx={{ fontSize: 12 }}>Valid until: <b>{new Date(qrExpiresAt).toLocaleString()}</b></Typography>
+              ) : null}
             </Box>
           ) : null}
         </Box>

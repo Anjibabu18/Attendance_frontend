@@ -1,5 +1,5 @@
 import axios, { AxiosHeaders } from "axios";
-import { clearAuth, getAuth } from "../auth/auth";
+import { clearAuth, getAuth, setAuth } from "../auth/auth";
 
 const LAST_AUTH_ERROR_KEY = "attendance_last_auth_error_v1";
 
@@ -45,10 +45,48 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
+  async (err) => {
+    const originalRequest = err.config;
     const status = err?.response?.status;
     const url = err?.config?.url;
     const method = err?.config?.method;
+    const isLoginRequest = url && (url.includes("/api/auth/login") || url.includes("/api/auth/refresh"));
+
+    if (status === 401 && !isLoginRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const auth = getAuth();
+      if (auth?.refreshToken) {
+        try {
+          const refreshRes = await axios.post<{ token: string; refreshToken: string }>(
+            `${resolvedBaseUrl}/api/auth/refresh`,
+            { refreshToken: auth.refreshToken }
+          );
+
+          const newAuth = {
+            ...auth,
+            token: refreshRes.data.token,
+            refreshToken: refreshRes.data.refreshToken,
+          };
+          setAuth(newAuth);
+
+          if (!originalRequest.headers) {
+            originalRequest.headers = new AxiosHeaders();
+          }
+          const anyHeaders: any = originalRequest.headers as any;
+          if (typeof anyHeaders.set === "function") {
+            anyHeaders.set("Authorization", `Bearer ${refreshRes.data.token}`);
+          } else {
+            anyHeaders.Authorization = `Bearer ${refreshRes.data.token}`;
+          }
+          return api(originalRequest);
+        } catch (refreshErr) {
+          clearAuth();
+          window.location.href = "/login";
+          return Promise.reject(refreshErr);
+        }
+      }
+    }
+
     if (status === 401 || status === 403) {
       try {
         localStorage.setItem(

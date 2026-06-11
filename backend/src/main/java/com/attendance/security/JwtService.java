@@ -31,14 +31,32 @@ public class JwtService {
   }
 
   public String createToken(String username, Role role) {
+    return createAccessToken(username, role);
+  }
+
+  public String createAccessToken(String username, Role role) {
     Instant now = Instant.now();
-    Instant expiry = now.plusSeconds(appConfig.getJwt().getExpiresMinutes() * 60L);
+    Instant expiry = now.plusSeconds(15L * 60L); // 15 minutes
     return Jwts.builder()
         .issuer(appConfig.getJwt().getIssuer())
         .subject(username)
         .issuedAt(Date.from(now))
         .expiration(Date.from(expiry))
         .claim("role", role.name())
+        .signWith(signingKey(), SignatureAlgorithm.HS256)
+        .compact();
+  }
+
+  public String createRefreshToken(String username, Role role) {
+    Instant now = Instant.now();
+    Instant expiry = now.plusSeconds(30L * 24L * 60L * 60L); // 30 days
+    return Jwts.builder()
+        .issuer(appConfig.getJwt().getIssuer())
+        .subject(username)
+        .issuedAt(Date.from(now))
+        .expiration(Date.from(expiry))
+        .claim("role", role.name())
+        .claim("type", "refresh")
         .signWith(signingKey(), SignatureAlgorithm.HS256)
         .compact();
   }

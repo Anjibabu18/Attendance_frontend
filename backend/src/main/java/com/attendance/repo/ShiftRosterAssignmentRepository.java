@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ShiftRosterAssignmentRepository extends JpaRepository<ShiftRosterAssignment, Long> {
+  @EntityGraph(attributePaths = {"shift"})
   Optional<ShiftRosterAssignment> findByEmployee_IdAndDate(Long employeeId, LocalDate date);
   @EntityGraph(attributePaths = {"employee", "shift"})
   List<ShiftRosterAssignment> findAllByDateBetweenOrderByDateAsc(LocalDate from, LocalDate to);
