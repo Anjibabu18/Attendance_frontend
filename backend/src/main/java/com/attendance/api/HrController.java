@@ -22,6 +22,7 @@ import com.attendance.service.ApiException;
 import com.attendance.service.AttendanceExportService;
 import com.attendance.service.AttendanceService;
 import jakarta.validation.Valid;
+import org.springframework.transaction.annotation.Transactional;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -248,6 +249,7 @@ public class HrController {
   }
 
   @GetMapping("/leave-requests/pending")
+  @Transactional(readOnly = true)
   public List<LeaveDtos.LeaveRequestResponse> pendingLeaveRequests() {
     return leaveRequestService.listPending().stream().map(HrController::toLeaveResponse).toList();
   }
@@ -274,6 +276,7 @@ public class HrController {
   }
 
   @GetMapping("/comp-off-requests/pending")
+  @Transactional(readOnly = true)
   public List<CompOffDtos.CompOffResponse> pendingCompOffRequests() {
     return compOffService.pending().stream().map(HrController::toCompOffResponse).toList();
   }
@@ -293,6 +296,7 @@ public class HrController {
   }
 
   @GetMapping("/device-requests/pending")
+  @Transactional(readOnly = true)
   public List<Map<String, Object>> pendingDeviceRequests() {
     return productionFeatureService.pendingDevices().stream().map(HrController::toDeviceResponse).toList();
   }
@@ -310,6 +314,7 @@ public class HrController {
   }
 
   @GetMapping("/exceptions")
+  @Transactional(readOnly = true)
   public List<Map<String, Object>> exceptions() {
     return productionFeatureService.exceptions().stream().map(HrController::toExceptionResponse).toList();
   }
@@ -321,6 +326,7 @@ public class HrController {
   }
 
   @GetMapping("/regularization-requests/pending")
+  @Transactional(readOnly = true)
   public List<RegularizationDtos.RegularizationResponse> pendingRegularizationRequests() {
     return regularizationRequestService.listPending().stream().map(HrController::toRegularizationResponse).toList();
   }
@@ -342,6 +348,7 @@ public class HrController {
   }
 
   @GetMapping("/work-requests/pending")
+  @Transactional(readOnly = true)
   public List<WorkRequestDtos.WorkRequestResponse> pendingWorkRequests() {
     return workRequestService.listPendingForHr().stream().map(HrController::toWorkRequestResponse).toList();
   }
