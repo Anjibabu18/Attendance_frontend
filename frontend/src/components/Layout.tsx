@@ -34,7 +34,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileActionsAnchor, setMobileActionsAnchor] = useState<null | HTMLElement>(null);
   const [sessionNow, setSessionNow] = useState(() => Date.now());
-  const [todayPunch, setTodayPunch] = useState<{ inTime: string | null; outTime: string | null } | null>(null);
+  const [todayPunch, setTodayPunch] = useState<{ date?: string | null; inTime: string | null; outTime: string | null } | null>(null);
 
   useEffect(() => {
     const promises: Promise<any>[] = [
@@ -170,18 +170,18 @@ export default function Layout(props: { title: string; children: React.ReactNode
   let chipBorder = "1px solid #bbf7d0";
 
   if (auth?.role === "ROLE_EMPLOYEE" && todayPunch) {
-    const parseClock = (timeStr: string | null) => {
+    const parseClock = (timeStr: string | null, date?: string | null) => {
       if (!timeStr) return null;
       const parts = timeStr.split(":");
       if (parts.length < 2) return null;
       const hrs = parseInt(parts[0], 10);
       const mins = parseInt(parts[1], 10);
       const secs = parts[2] ? parseInt(parts[2], 10) : 0;
-      return dayjs().hour(hrs).minute(mins).second(secs).millisecond(0);
+      return dayjs(`${date || dayjs().format("YYYY-MM-DD")}T00:00:00`).hour(hrs).minute(mins).second(secs).millisecond(0);
     };
 
-    const inTime = parseClock(todayPunch.inTime);
-    const outTime = parseClock(todayPunch.outTime);
+    const inTime = parseClock(todayPunch.inTime, todayPunch.date);
+    const outTime = parseClock(todayPunch.outTime, todayPunch.date);
 
     if (inTime) {
       activeLabel = "Check-in active";

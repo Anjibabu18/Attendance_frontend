@@ -203,10 +203,10 @@ function getDeviceId() {
   return next;
 }
 
-function parseTodayClock(value?: string | null) {
+function parseEntryClock(value?: string | null, date?: string | null) {
   if (!value) return null;
   const normalized = value.length === 5 ? `${value}:00` : value;
-  const parsed = dayjs(`${dayjs().format("YYYY-MM-DD")}T${normalized}`);
+  const parsed = dayjs(`${date || dayjs().format("YYYY-MM-DD")}T${normalized}`);
   return parsed.isValid() ? parsed : null;
 }
 
@@ -940,10 +940,10 @@ export default function EmployeePage() {
         ? "Latest punch selfie matched reference"
         : "Latest punch selfie did not match reference";
   const punchCountdown = useMemo(() => {
-    const checkedInAt = parseTodayClock(todayEntry?.inTime);
+    const checkedInAt = parseEntryClock(todayEntry?.inTime, todayEntry?.date);
     if (!checkedInAt) return null;
 
-    const checkedOutAt = parseTodayClock(todayEntry?.outTime);
+    const checkedOutAt = parseEntryClock(todayEntry?.outTime, todayEntry?.date);
     const requiredMinutes = settings?.fullDayMinutes && settings.fullDayMinutes > 0 ? settings.fullDayMinutes : 480;
     const workTargetAt = checkedInAt.add(requiredMinutes, "minute");
 
@@ -976,15 +976,16 @@ export default function EmployeePage() {
   }, [
     clockNow,
     settings?.fullDayMinutes,
+    todayEntry?.date,
     todayEntry?.inTime,
     todayEntry?.outTime,
   ]);
 
   const afterCheckinCount = useMemo(() => {
-    const checkedInAt = parseTodayClock(todayEntry?.inTime);
+    const checkedInAt = parseEntryClock(todayEntry?.inTime, todayEntry?.date);
     if (!checkedInAt) return null;
 
-    const checkedOutAt = parseTodayClock(todayEntry?.outTime);
+    const checkedOutAt = parseEntryClock(todayEntry?.outTime, todayEntry?.date);
     const end = checkedOutAt || clockNow;
     const diffSec = Math.max(0, end.diff(checkedInAt, "second"));
 
@@ -998,7 +999,7 @@ export default function EmployeePage() {
       hours: (diffSec / 3600).toFixed(2),
       all: `${hrs}h ${mins}m ${secs}s`,
     };
-  }, [clockNow, todayEntry?.inTime, todayEntry?.outTime]);
+  }, [clockNow, todayEntry?.date, todayEntry?.inTime, todayEntry?.outTime]);
 
   const selectedStatus = statusByDate[selectedDate] ?? "";
   const selectedStatusColor =
