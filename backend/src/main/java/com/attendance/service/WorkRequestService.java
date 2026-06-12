@@ -24,6 +24,7 @@ public class WorkRequestService {
   private final AttendanceService attendanceService;
   private final AttendanceSettingsService attendanceSettingsService;
   private final NotificationService notificationService;
+  private final MailService mailService;
   private final AuditLogService auditLogService;
   private final CloudinaryService cloudinaryService;
 
@@ -33,6 +34,7 @@ public class WorkRequestService {
       AttendanceService attendanceService,
       AttendanceSettingsService attendanceSettingsService,
       NotificationService notificationService,
+      MailService mailService,
       AuditLogService auditLogService,
       CloudinaryService cloudinaryService) {
     this.workRequestRepository = workRequestRepository;
@@ -40,6 +42,7 @@ public class WorkRequestService {
     this.attendanceService = attendanceService;
     this.attendanceSettingsService = attendanceSettingsService;
     this.notificationService = notificationService;
+    this.mailService = mailService;
     this.auditLogService = auditLogService;
     this.cloudinaryService = cloudinaryService;
   }
@@ -77,6 +80,13 @@ public class WorkRequestService {
     wr.setReason(reason.trim());
     WorkRequest saved = workRequestRepository.save(wr);
     auditLogService.record(employee.getUser().getUsername(), "WORK_REQUEST_CREATED", "WORK_REQUEST", saved.getId(), type.name());
+    mailService.notifyHr(
+        label(saved.getType()) + " request: " + employee.getName(),
+        "Employee: " + employee.getName()
+            + "\nEmployee #: " + employee.getEmployeeNumber()
+            + "\nType: " + label(saved.getType())
+            + "\nDates: " + saved.getFromDate() + " -> " + saved.getToDate()
+            + "\nReason: " + saved.getReason());
     return saved;
   }
 
@@ -116,6 +126,12 @@ public class WorkRequestService {
       attendanceService.upsert(saved.getEmployee().getId(), d, s.getDefaultInTime(), s.getDefaultOutTime(), marker + ": " + saved.getReason(), true);
     }
     notificationService.notify(saved.getEmployee().getUser(), label(saved.getType()) + " approved", saved.getFromDate() + " -> " + saved.getToDate());
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        label(saved.getType()) + " approved",
+        "Your " + label(saved.getType()).toLowerCase() + " request for "
+            + saved.getFromDate() + " -> " + saved.getToDate() + " was approved."
+            + remarksText(saved.getRemarks()));
     auditLogService.record(hrUsername, "WORK_REQUEST_APPROVED", "WORK_REQUEST", saved.getId(), saved.getType().name());
     return saved;
   }
@@ -136,6 +152,12 @@ public class WorkRequestService {
     wr.setRemarks(clean(remarks));
     WorkRequest saved = workRequestRepository.save(wr);
     notificationService.notify(saved.getEmployee().getUser(), label(saved.getType()) + " rejected", saved.getFromDate() + " -> " + saved.getToDate());
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        label(saved.getType()) + " rejected",
+        "Your " + label(saved.getType()).toLowerCase() + " request for "
+            + saved.getFromDate() + " -> " + saved.getToDate() + " was rejected."
+            + remarksText(saved.getRemarks()));
     auditLogService.record(actorUsername, "WORK_REQUEST_REJECTED", "WORK_REQUEST", saved.getId(), saved.getType().name());
     return saved;
   }
@@ -196,5 +218,9 @@ public class WorkRequestService {
 
   private static String label(WorkRequestType type) {
     return type == WorkRequestType.WORK_FROM_HOME ? "Work from home" : "On duty";
+  }
+
+  private static String remarksText(String remarks) {
+    return remarks == null || remarks.isBlank() ? "" : "\nRemarks: " + remarks;
   }
 }

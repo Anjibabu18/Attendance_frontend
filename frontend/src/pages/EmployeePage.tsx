@@ -1047,9 +1047,9 @@ export default function EmployeePage() {
                   <Typography sx={{ fontSize: { xs: 18, sm: 22 }, fontWeight: 900, color: p.color, fontVariantNumeric: "tabular-nums", mb: 0.5 }}>{p.time ?? "--:--"}</Typography>
                   <Box sx={{ mt: "auto", width: "100%" }}>
                     {p.photo ? (
-                      <Box component="img" src={p.photo} alt={p.label} sx={{ width: "100%", height: { xs: 64, sm: 80 }, objectFit: "cover", borderRadius: 1.5, display: "block" }} />
+                      <Box component="img" src={p.photo} alt={p.label} sx={{ width: "100%", height: { xs: 130, sm: 160 }, objectFit: "cover", borderRadius: 2, display: "block", cursor: "pointer", transition: "transform 0.2s ease, box-shadow 0.2s ease", "&:hover": { transform: "scale(1.02)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" } }} onClick={() => window.open(p.photo!, "_blank")} />
                     ) : (
-                      <Box sx={{ width: "100%", height: { xs: 64, sm: 80 }, borderRadius: 1.5, border: `1px dashed ${p.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", bgcolor: `${p.color}03` }}>
+                      <Box sx={{ width: "100%", height: { xs: 130, sm: 160 }, borderRadius: 2, border: `1px dashed ${p.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", bgcolor: `${p.color}03` }}>
                         <PhotoCameraIcon sx={{ fontSize: { xs: 18, sm: 22 }, color: p.color, opacity: 0.35, mb: 0.5 }} />
                         <Typography sx={{ fontSize: { xs: 9, sm: 10 }, fontWeight: 700, color: p.color, opacity: 0.5 }}>Pending</Typography>
                       </Box>
@@ -1197,13 +1197,13 @@ export default function EmployeePage() {
                 ].map(ph => (
                   <Box key={ph.label} sx={{ borderRadius: 2.5, overflow: "hidden", border: "1px solid rgba(15,23,42,0.08)", bgcolor: "rgba(15,23,42,0.02)", position: "relative" }}>
                     {ph.url ? (
-                      <Box component="img" src={ph.url} alt={ph.label} sx={{ width: "100%", height: { xs: 90, sm: 110 }, objectFit: "cover", display: "block" }} />
+                      <Box component="img" src={ph.url} alt={ph.label} sx={{ width: "100%", height: { xs: 130, sm: 160 }, objectFit: "cover", display: "block", cursor: "pointer", transition: "transform 0.2s ease", "&:hover": { transform: "scale(1.03)" } }} onClick={() => window.open(ph.url!, "_blank")} />
                     ) : (
-                      <Box sx={{ height: { xs: 90, sm: 110 }, display: "grid", placeItems: "center" }}>
+                      <Box sx={{ height: { xs: 130, sm: 160 }, display: "grid", placeItems: "center" }}>
                         <Typography sx={{ fontSize: 11, color: "text.secondary", opacity: 0.6, textAlign: "center" }}>No photo</Typography>
                       </Box>
                     )}
-                    <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, px: 1, py: 0.5, background: "linear-gradient(to top,rgba(0,0,0,0.6),transparent)" }}>
+                    <Box sx={{ position: "absolute", bottom: 0, left: 0, right: 0, px: 1, py: 0.5, background: "linear-gradient(to top,rgba(0,0,0,0.6),transparent)", pointerEvents: "none" }}>
                       <Typography sx={{ fontSize: 9.5, color: "#fff", fontWeight: 700 }}>{ph.label}</Typography>
                     </Box>
                   </Box>

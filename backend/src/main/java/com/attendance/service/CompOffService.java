@@ -19,13 +19,15 @@ public class CompOffService {
   private final UserRepository userRepo;
   private final AttendanceService attendanceService;
   private final NotificationService notificationService;
+  private final MailService mailService;
   private final CloudinaryService cloudinaryService;
 
-  public CompOffService(CompOffRequestRepository compOffRepo, UserRepository userRepo, AttendanceService attendanceService, NotificationService notificationService, CloudinaryService cloudinaryService) {
+  public CompOffService(CompOffRequestRepository compOffRepo, UserRepository userRepo, AttendanceService attendanceService, NotificationService notificationService, MailService mailService, CloudinaryService cloudinaryService) {
     this.compOffRepo = compOffRepo;
     this.userRepo = userRepo;
     this.attendanceService = attendanceService;
     this.notificationService = notificationService;
+    this.mailService = mailService;
     this.cloudinaryService = cloudinaryService;
   }
 
@@ -49,7 +51,16 @@ public class CompOffService {
     c.setRequestedDate(requestedDate);
     c.setOvertimeMinutes(overtimeMinutes);
     c.setReason(reason.trim());
-    return compOffRepo.save(c);
+    CompOffRequest saved = compOffRepo.save(c);
+    mailService.notifyHr(
+        "Comp-off request: " + employee.getName(),
+        "Employee: " + employee.getName()
+            + "\nEmployee #: " + employee.getEmployeeNumber()
+            + "\nOvertime date: " + saved.getOvertimeDate()
+            + "\nRequested off date: " + saved.getRequestedDate()
+            + "\nOvertime minutes: " + saved.getOvertimeMinutes()
+            + "\nReason: " + saved.getReason());
+    return saved;
   }
 
   @Transactional
@@ -63,6 +74,11 @@ public class CompOffService {
     CompOffRequest saved = compOffRepo.save(c);
     attendanceService.upsert(saved.getEmployee().getId(), saved.getRequestedDate(), null, null, "Comp-off approved for overtime on " + saved.getOvertimeDate(), true);
     notificationService.notify(saved.getEmployee().getUser(), "Comp-off approved", saved.getRequestedDate().toString());
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        "Comp-off approved",
+        "Your comp-off request for " + saved.getRequestedDate() + " was approved."
+            + remarksText(saved.getHrRemarks()));
     return saved;
   }
 
@@ -76,6 +92,11 @@ public class CompOffService {
     c.setHrRemarks(clean(remarks));
     CompOffRequest saved = compOffRepo.save(c);
     notificationService.notify(saved.getEmployee().getUser(), "Comp-off rejected", saved.getRequestedDate().toString());
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        "Comp-off rejected",
+        "Your comp-off request for " + saved.getRequestedDate() + " was rejected."
+            + remarksText(saved.getHrRemarks()));
     return saved;
   }
 
@@ -106,5 +127,9 @@ public class CompOffService {
   private static String clean(String value) {
     String v = value == null ? "" : value.trim();
     return v.isBlank() ? null : v;
+  }
+
+  private static String remarksText(String remarks) {
+    return remarks == null || remarks.isBlank() ? "" : "\nRemarks: " + remarks;
   }
 }

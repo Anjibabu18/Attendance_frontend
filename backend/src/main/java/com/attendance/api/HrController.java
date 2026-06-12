@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/hr")
-@PreAuthorize("hasAuthority('ROLE_HR')")
+@PreAuthorize("hasAnyAuthority('ROLE_HR','ROLE_ADMIN')")
 public class HrController {
   private final EmployeeRepository employeeRepository;
   private final AttendanceService attendanceService;

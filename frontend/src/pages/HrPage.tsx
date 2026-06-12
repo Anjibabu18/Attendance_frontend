@@ -143,10 +143,12 @@ type PayrollRow = {
   employeeName: string;
   employeeNumber: string;
   month: string;
+  workingDays: number;
   payableDays: number;
   lateMinutes: number;
   overtimeMinutes: number;
   baseSalary: number;
+  dailyRate: number;
   lateDeduction: number;
   unpaidLeaveDeduction: number;
   overtimePay: number;
@@ -154,6 +156,11 @@ type PayrollRow = {
   totalDeductions: number;
   netPay: number;
 };
+
+function formatDurationMinutes(totalMinutes: number) {
+  const safe = Math.max(0, Math.floor(totalMinutes));
+  return `${Math.floor(safe / 60)}h ${safe % 60}m`;
+}
 
 export default function HrPage() {
   const { toastSuccess, toastError } = useToast();
@@ -271,88 +278,116 @@ export default function HrPage() {
     setPayrollRows(res.data);
   }
 
+  async function refreshAfterDecision() {
+    await Promise.all([
+      loadPendingLeaveRequests(),
+      loadPendingRegularizationRequests(),
+      loadPendingWorkRequests(),
+      loadPendingCompOffRequests(),
+      loadPendingDeviceRequests(),
+      loadExceptions(),
+      loadAnalytics(month),
+      loadPayroll(month),
+      employeeId === "" ? Promise.resolve() : loadAttendance(employeeId, month),
+      employeeId === "" ? Promise.resolve() : loadSummary(employeeId, month),
+    ]);
+  }
+
   async function approveLeaveRequest(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/leave-requests/${id}/approve`, { remarks: leaveRemarks[id]?.trim() || null });
+    setLeaveRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Leave request approved");
-    await loadPendingLeaveRequests();
+    await refreshAfterDecision();
   }
 
   async function rejectLeaveRequest(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/leave-requests/${id}/reject`, { remarks: leaveRemarks[id]?.trim() || null });
+    setLeaveRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Leave request rejected");
-    await loadPendingLeaveRequests();
+    await refreshAfterDecision();
   }
 
   async function approveRegularizationRequest(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/regularization-requests/${id}/approve`, { remarks: regularizationRemarks[id]?.trim() || null });
+    setRegularizationRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Attendance correction approved");
-    await Promise.all([loadPendingRegularizationRequests(), employeeId === "" ? Promise.resolve() : loadAttendance(employeeId, month)]);
+    await refreshAfterDecision();
   }
 
   async function rejectRegularizationRequest(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/regularization-requests/${id}/reject`, { remarks: regularizationRemarks[id]?.trim() || null });
+    setRegularizationRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Attendance correction rejected");
-    await loadPendingRegularizationRequests();
+    await refreshAfterDecision();
   }
 
   async function approveWorkRequest(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/work-requests/${id}/approve`, { remarks: workRemarks[id]?.trim() || null });
+    setWorkRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Work request approved");
-    await Promise.all([loadPendingWorkRequests(), employeeId === "" ? Promise.resolve() : loadAttendance(employeeId, month)]);
+    await refreshAfterDecision();
   }
 
   async function rejectWorkRequest(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/work-requests/${id}/reject`, { remarks: workRemarks[id]?.trim() || null });
+    setWorkRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Work request rejected");
-    await loadPendingWorkRequests();
+    await refreshAfterDecision();
   }
 
   async function approveCompOff(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/comp-off-requests/${id}/approve`, { remarks: compOffRemarks[id]?.trim() || null });
+    setCompOffRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Comp-off approved");
-    await Promise.all([loadPendingCompOffRequests(), loadExceptions(), employeeId === "" ? Promise.resolve() : loadAttendance(employeeId, month)]);
+    await refreshAfterDecision();
   }
 
   async function rejectCompOff(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/comp-off-requests/${id}/reject`, { remarks: compOffRemarks[id]?.trim() || null });
+    setCompOffRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Comp-off rejected");
-    await loadPendingCompOffRequests();
+    await refreshAfterDecision();
   }
 
   async function approveLeaveCancellation(id: number) {
     setErr(null);
     setOk(null);
     await api.post(`/api/hr/leave-requests/${id}/approve-cancellation`, { remarks: leaveRemarks[id]?.trim() || null });
+    setLeaveRemarks((prev) => ({ ...prev, [id]: "" }));
     setOk("Leave cancellation approved");
-    await loadPendingLeaveRequests();
+    await refreshAfterDecision();
   }
 
   async function approveDeviceRequest(id: number) {
+    setErr(null);
+    setOk(null);
     await api.post(`/api/hr/device-requests/${id}/approve`);
     setOk("Device approved");
-    await loadPendingDeviceRequests();
+    await refreshAfterDecision();
   }
 
   async function rejectDeviceRequest(id: number) {
+    setErr(null);
+    setOk(null);
     await api.post(`/api/hr/device-requests/${id}/reject`);
     setOk("Device rejected");
-    await loadPendingDeviceRequests();
+    await refreshAfterDecision();
   }
 
   async function resolveException(id: number) {
@@ -584,11 +619,11 @@ export default function HrPage() {
       payrollRows.reduce(
         (acc, row) => {
           acc.netPay += row.netPay ?? 0;
-          acc.overtimePay += row.overtimePay ?? 0;
+          acc.overtimeMinutes += row.overtimeMinutes ?? 0;
           acc.deductions += row.totalDeductions ?? 0;
           return acc;
         },
-        { netPay: 0, overtimePay: 0, deductions: 0 },
+        { netPay: 0, overtimeMinutes: 0, deductions: 0 },
       ),
     [payrollRows],
   );
@@ -669,7 +704,7 @@ export default function HrPage() {
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 900 }}>Payroll register</Typography>
               <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Monthly payable-days, late deductions, overtime pay, and net-pay preview from attendance rules.
+                Monthly payable-days, late deductions, overtime time, and net-pay preview from attendance rules.
               </Typography>
             </Box>
             <Button variant="outlined" onClick={() => loadPayroll(month).catch(() => {})}>
@@ -679,7 +714,7 @@ export default function HrPage() {
           <Box className="grid gap-4 md:grid-cols-3 xl:grid-cols-4" sx={{ mt: 2 }}>
             <StatCard label="Payroll employees" value={payrollRows.length} helper={`Register for ${month}`} icon={<GroupsIcon />} />
             <StatCard label="Net pay total" value={`Rs ${Math.round(payrollTotals.netPay)}`} helper="Attendance-linked net pay" icon={<VerifiedUserIcon />} accent="#0f766e" />
-            <StatCard label="Overtime pay" value={`Rs ${Math.round(payrollTotals.overtimePay)}`} helper="Monthly OT payout" icon={<AccessTimeIcon />} accent="#2563eb" />
+            <StatCard label="Overtime" value={formatDurationMinutes(payrollTotals.overtimeMinutes)} helper="Monthly OT time only" icon={<AccessTimeIcon />} accent="#2563eb" />
             <StatCard label="Deductions" value={`Rs ${Math.round(payrollTotals.deductions)}`} helper="Late + unpaid leave" icon={<PendingActionsIcon />} accent="#b45309" />
           </Box>
           <Divider sx={{ my: 2 }} />
@@ -692,7 +727,7 @@ export default function HrPage() {
                 </Box>
                 <Typography sx={{ fontSize: 12 }}>Payable: <b>{row.payableDays}</b></Typography>
                 <Typography sx={{ fontSize: 12 }}>Late: <b>{row.lateMinutes}m</b></Typography>
-                <Typography sx={{ fontSize: 12 }}>OT pay: <b>Rs {row.overtimePay}</b></Typography>
+                <Typography sx={{ fontSize: 12 }}>OT: <b>{formatDurationMinutes(row.overtimeMinutes)}</b></Typography>
                 <Typography sx={{ fontSize: 12 }}>Deductions: <b>Rs {row.totalDeductions}</b></Typography>
                 <Typography sx={{ fontSize: 12 }}>Net: <b>Rs {row.netPay}</b></Typography>
               </Box>
@@ -701,7 +736,7 @@ export default function HrPage() {
           </Box>
           {settings ? (
             <Typography sx={{ mt: 1.5, opacity: 0.7, fontSize: 12 }}>
-              Payroll rules: base salary Rs {settings.standardMonthlySalary} | late deduction Rs {settings.lateDeductionPerMinute}/min | overtime Rs {settings.overtimePayPerHour}/hr | unpaid leave Rs {settings.unpaidLeaveDailyRate}/day
+              Payroll rules: base salary Rs {settings.standardMonthlySalary} prorated by payable working days | late deduction Rs {settings.lateDeductionPerMinute}/min | overtime tracked as time only
             </Typography>
           ) : null}
         </AppCard>
@@ -722,6 +757,7 @@ export default function HrPage() {
                   loadPendingRegularizationRequests(),
                   loadPendingWorkRequests(),
                   loadPendingCompOffRequests(),
+                  loadPendingDeviceRequests(),
                 ]).catch(() => {})
               }
             >

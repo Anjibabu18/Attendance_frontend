@@ -33,12 +33,13 @@ public class ProductionFeatureService {
   private final UserRepository userRepo;
   private final AttendanceSettingsService settingsService;
   private final AuditLogService auditLogService;
+  private final MailService mailService;
 
   public ProductionFeatureService(DeviceRegistrationRepository deviceRepo, OfficeQrTokenRepository qrRepo,
       OfficeLocationRepository officeRepo, LeaveBalanceRepository balanceRepo, EmployeeRepository employeeRepo,
       AttendancePolicyVersionRepository policyRepo, UserSessionRecordRepository sessionRepo,
       AttendanceExceptionRepository exceptionRepo, LocationHolidayRepository locationHolidayRepo,
-      UserRepository userRepo, AttendanceSettingsService settingsService, AuditLogService auditLogService) {
+      UserRepository userRepo, AttendanceSettingsService settingsService, AuditLogService auditLogService, MailService mailService) {
     this.deviceRepo = deviceRepo;
     this.qrRepo = qrRepo;
     this.officeRepo = officeRepo;
@@ -51,6 +52,7 @@ public class ProductionFeatureService {
     this.userRepo = userRepo;
     this.settingsService = settingsService;
     this.auditLogService = auditLogService;
+    this.mailService = mailService;
   }
 
   @Transactional
@@ -59,12 +61,23 @@ public class ProductionFeatureService {
         .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid token"));
     DeviceRegistration d = deviceRepo.findByUser_UsernameAndDeviceId(username, deviceId)
         .orElseGet(DeviceRegistration::new);
+    boolean isNew = d.getId() == null;
     d.setUser(user);
     d.setDeviceId(deviceId);
     d.setLabel(label);
-    d.setApproved(true);
+    if (isNew) {
+      d.setApproved(false);
+    }
     auditLogService.record(username, "DEVICE_REGISTERED", "DEVICE", deviceId, label);
-    return deviceRepo.save(d);
+    DeviceRegistration saved = deviceRepo.save(d);
+    if (!saved.isApproved()) {
+      mailService.notifyHr(
+          "Device approval request: " + username,
+          "User: " + username
+              + "\nDevice ID: " + saved.getDeviceId()
+              + "\nLabel: " + (saved.getLabel() == null ? "" : saved.getLabel()));
+    }
+    return saved;
   }
 
   @Transactional
@@ -73,7 +86,12 @@ public class ProductionFeatureService {
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Device not found"));
     d.setApproved(approved);
     auditLogService.record(actor, approved ? "DEVICE_APPROVED" : "DEVICE_REVOKED", "DEVICE", id, d.getDeviceId());
-    return deviceRepo.save(d);
+    DeviceRegistration saved = deviceRepo.save(d);
+    mailService.notifyUser(
+        saved.getUser().getUsername(),
+        approved ? "Device approved" : "Device rejected",
+        "Your device " + saved.getDeviceId() + " was " + (approved ? "approved" : "rejected") + ".");
+    return saved;
   }
 
   public boolean deviceApproved(String username, String deviceId) {

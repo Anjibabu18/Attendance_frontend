@@ -13,6 +13,8 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class MailService {
+  private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MailService.class);
+
   private final AppConfig appConfig;
   private final JavaMailSender mailSender;
   private final UserRepository userRepository;
@@ -36,12 +38,16 @@ public class MailService {
     if (!appConfig.getMail().isEnabled()) return;
     if (to == null || to.isEmpty()) return;
 
-    SimpleMailMessage msg = new SimpleMailMessage();
-    msg.setFrom(appConfig.getMail().getFrom());
-    msg.setTo(to.toArray(new String[0]));
-    msg.setSubject(subject);
-    msg.setText(body);
-    mailSender.send(msg);
+    try {
+      SimpleMailMessage msg = new SimpleMailMessage();
+      msg.setFrom(appConfig.getMail().getFrom());
+      msg.setTo(to.toArray(new String[0]));
+      msg.setSubject(subject);
+      msg.setText(body);
+      mailSender.send(msg);
+    } catch (RuntimeException ex) {
+      log.warn("Mail send failed for subject '{}' to {}", subject, to, ex);
+    }
   }
 
   private List<String> hrRecipients() {

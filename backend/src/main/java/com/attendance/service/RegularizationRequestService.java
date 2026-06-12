@@ -24,6 +24,7 @@ public class RegularizationRequestService {
   private final UserRepository userRepository;
   private final AuditLogService auditLogService;
   private final NotificationService notificationService;
+  private final MailService mailService;
   private final CloudinaryService cloudinaryService;
 
   public RegularizationRequestService(
@@ -32,12 +33,14 @@ public class RegularizationRequestService {
       UserRepository userRepository,
       AuditLogService auditLogService,
       NotificationService notificationService,
+      MailService mailService,
       CloudinaryService cloudinaryService) {
     this.regularizationRequestRepository = regularizationRequestRepository;
     this.attendanceService = attendanceService;
     this.userRepository = userRepository;
     this.auditLogService = auditLogService;
     this.notificationService = notificationService;
+    this.mailService = mailService;
     this.cloudinaryService = cloudinaryService;
   }
 
@@ -74,6 +77,14 @@ public class RegularizationRequestService {
     request.setCreatedAt(Instant.now());
     RegularizationRequest saved = regularizationRequestRepository.save(request);
     auditLogService.record(employee.getUser().getUsername(), "REGULARIZATION_CREATED", "REGULARIZATION", saved.getId(), "date=" + date);
+    mailService.notifyHr(
+        "Attendance correction request: " + employee.getName(),
+        "Employee: " + employee.getName()
+            + "\nEmployee #: " + employee.getEmployeeNumber()
+            + "\nDate: " + date
+            + "\nRequested in: " + (inTime == null ? "--" : inTime)
+            + "\nRequested out: " + (outTime == null ? "--" : outTime)
+            + "\nReason: " + normalizedReason);
     return saved;
   }
 
@@ -95,6 +106,11 @@ public class RegularizationRequestService {
         true);
     auditLogService.record(hrUsername, "REGULARIZATION_APPROVED", "REGULARIZATION", saved.getId(), "employee=" + saved.getEmployee().getEmployeeNumber());
     notificationService.notify(saved.getEmployee().getUser(), "Correction approved", "Attendance corrected for " + saved.getDate());
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        "Attendance correction approved",
+        "Your attendance correction for " + saved.getDate() + " was approved."
+            + remarksText(saved.getHrRemarks()));
     return saved;
   }
 
@@ -109,6 +125,11 @@ public class RegularizationRequestService {
     RegularizationRequest saved = regularizationRequestRepository.save(request);
     auditLogService.record(hrUsername, "REGULARIZATION_REJECTED", "REGULARIZATION", saved.getId(), "employee=" + saved.getEmployee().getEmployeeNumber());
     notificationService.notify(saved.getEmployee().getUser(), "Correction rejected", "Attendance correction rejected for " + saved.getDate());
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        "Attendance correction rejected",
+        "Your attendance correction for " + saved.getDate() + " was rejected."
+            + remarksText(saved.getHrRemarks()));
     return saved;
   }
 
@@ -153,5 +174,9 @@ public class RegularizationRequestService {
     String v = value == null ? "" : value.trim();
     if (v.isBlank()) return null;
     return v.length() <= maxLength ? v : v.substring(0, maxLength);
+  }
+
+  private static String remarksText(String remarks) {
+    return remarks == null || remarks.isBlank() ? "" : "\nRemarks: " + remarks;
   }
 }
