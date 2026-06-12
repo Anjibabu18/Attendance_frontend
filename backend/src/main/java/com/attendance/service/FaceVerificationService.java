@@ -25,7 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 public class FaceVerificationService {
   private static final int HASH_SIZE = 16;
-  private static final double VERIFIED_THRESHOLD = 0.72d;
+  private static final double VERIFIED_THRESHOLD = 0.50d;
   private static final ObjectMapper JSON = new ObjectMapper();
   private final AppConfig appConfig;
   private final HttpClient httpClient;
