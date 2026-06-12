@@ -104,9 +104,9 @@ export default function AdminPage() {
   const [overtimeAfterMinutes, setOvertimeAfterMinutes] = useState(480);
   const [weekendDays, setWeekendDays] = useState<string[]>(["SUNDAY"]);
   const [lateDeductionPerMinute, setLateDeductionPerMinute] = useState(1);
-  const [overtimePayPerHour, setOvertimePayPerHour] = useState(75);
+  const [overtimePayPerHour, setOvertimePayPerHour] = useState(0);
   const [unpaidLeaveDailyRate, setUnpaidLeaveDailyRate] = useState(500);
-  const [standardMonthlySalary, setStandardMonthlySalary] = useState(30000);
+  const [standardMonthlySalary, setStandardMonthlySalary] = useState(25000);
   const [requireQrForPunch, setRequireQrForPunch] = useState(false);
   const [permanentOfficeQr, setPermanentOfficeQr] = useState(false);
   const [qrTokenValidityMinutes, setQrTokenValidityMinutes] = useState(10080);
@@ -365,9 +365,9 @@ export default function AdminPage() {
     setEarlyLeaveGraceMinutes(res.data.earlyLeaveGraceMinutes ?? 10);
     setOvertimeAfterMinutes(res.data.overtimeAfterMinutes ?? res.data.fullDayMinutes ?? 480);
     setLateDeductionPerMinute(res.data.lateDeductionPerMinute ?? 1);
-    setOvertimePayPerHour(res.data.overtimePayPerHour ?? 75);
+    setOvertimePayPerHour(res.data.overtimePayPerHour ?? 0);
     setUnpaidLeaveDailyRate(res.data.unpaidLeaveDailyRate ?? 500);
-    setStandardMonthlySalary(res.data.standardMonthlySalary ?? 30000);
+    setStandardMonthlySalary(res.data.standardMonthlySalary ?? 25000);
     setRequireQrForPunch(Boolean(res.data.requireQrForPunch));
     setPermanentOfficeQr(Boolean(res.data.permanentOfficeQr));
     setQrTokenValidityMinutes(res.data.qrTokenValidityMinutes ?? 10080);

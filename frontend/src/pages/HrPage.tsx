@@ -188,6 +188,16 @@ export default function HrPage() {
   const [selectedInboxItem, setSelectedInboxItem] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [statusToMark, setStatusToMark] = useState<"PRESENT" | "ABSENT">("PRESENT");
+  const [bulkStatusToMark, setBulkStatusToMark] = useState<"PRESENT" | "ABSENT">("PRESENT");
+
+  useEffect(() => {
+    if (selectedEntry) {
+      setStatusToMark(selectedEntry.status === "PRESENT" || selectedEntry.status === "HALF_DAY" ? "PRESENT" : "ABSENT");
+    } else {
+      setStatusToMark("PRESENT");
+    }
+  }, [selectedEntry]);
 
   useEffect(() => {
     if (err) {
@@ -481,41 +491,25 @@ export default function HrPage() {
     }
   }, [date, month, monthSummary]);
 
-  async function mark() {
+  async function handleSaveAttendance() {
     if (employeeId === "") return;
     setErr(null);
     setOk(null);
     try {
+      const isPresent = statusToMark === "PRESENT";
+      const defaultIn = settings?.defaultInTime || "09:30:00";
+      const defaultOut = settings?.defaultOutTime || "17:30:00";
       await api.post("/api/hr/attendance", {
         employeeId,
         date,
-        inTime: inTime || null,
-        outTime: outTime || null,
-        leaveReason: leaveReason.trim() || null,
+        inTime: isPresent ? defaultIn : null,
+        outTime: isPresent ? defaultOut : null,
+        leaveReason: isPresent ? null : (leaveReason.trim() || "Absent"),
       });
-      setOk("Attendance saved");
+      setOk(isPresent ? "Marked Present" : "Marked Absent");
       await Promise.all([loadAttendance(employeeId, month), loadSummary(employeeId, month)]);
     } catch (e: any) {
       setErr(e?.response?.data?.error ?? "Save failed");
-    }
-  }
-
-  async function markLeave() {
-    if (employeeId === "") return;
-    setErr(null);
-    setOk(null);
-    try {
-      await api.post("/api/hr/attendance", {
-        employeeId,
-        date,
-        inTime: null,
-        outTime: null,
-        leaveReason: leaveReason.trim(),
-      });
-      setOk("Marked Leave (L)");
-      await Promise.all([loadAttendance(employeeId, month), loadSummary(employeeId, month)]);
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Mark leave failed");
     }
   }
 
@@ -524,14 +518,18 @@ export default function HrPage() {
     setErr(null);
     setOk(null);
     try {
+      const isPresent = bulkStatusToMark === "PRESENT";
+      const defaultIn = settings?.defaultInTime || "09:30:00";
+      const defaultOut = settings?.defaultOutTime || "17:30:00";
       const res = await api.post<{ updatedDays: number }>("/api/hr/attendance/range", {
         employeeId,
         fromDate,
         toDate,
-        inTime: inTime || null,
-        outTime: outTime || null,
+        inTime: isPresent ? defaultIn : null,
+        outTime: isPresent ? defaultOut : null,
+        leaveReason: isPresent ? null : (leaveReason.trim() || "Absent"),
       });
-      setOk(`Bulk updated ${res.data.updatedDays} working days`);
+      setOk(`Bulk updated ${res.data.updatedDays} working days to ${isPresent ? "Present" : "Absent"}`);
       await Promise.all([loadAttendance(employeeId, month), loadSummary(employeeId, month)]);
     } catch (e: any) {
       setErr(e?.response?.data?.error ?? "Bulk update failed");
@@ -1141,47 +1139,46 @@ export default function HrPage() {
                     max: dayjs(`${month}-01`).endOf("month").format("YYYY-MM-DD"),
                   }}
                 />
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "1fr 1fr" }}>
-                  <TextField
-                    label="In time"
-                    type="time"
-                    value={inTime}
-                    onChange={(e) => setInTime(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    label="Out time"
-                    type="time"
-                    value={outTime}
-                    onChange={(e) => setOutTime(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Box>
-                <TextField
-                  label="Leave reason (required for L)"
-                  value={leaveReason}
-                  onChange={(e) => setLeaveReason(e.target.value)}
-                  placeholder="Sick leave, personal work, emergency..."
-                  multiline
-                  minRows={2}
-                />
+                <Tabs
+                  value={statusToMark}
+                  onChange={(_, v) => setStatusToMark(v)}
+                  sx={{
+                    mb: 1,
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontWeight: 900 }
+                  }}
+                >
+                  <Tab value="PRESENT" label="Present" />
+                  <Tab value="ABSENT" label="Absent" />
+                </Tabs>
 
-                <Typography sx={{ opacity: 0.75, fontSize: 12 }}>
-                  Defaults set by Admin: <b>{settings?.defaultInTime?.slice(0, 5) ?? "09:00"}</b> {"->"}{" "}
-                  <b>{settings?.defaultOutTime?.slice(0, 5) ?? "18:00"}</b>
-                </Typography>
+                {statusToMark === "PRESENT" ? (
+                  <Typography sx={{ opacity: 0.75, fontSize: 12 }}>
+                    Default present times: <b>{settings?.defaultInTime?.slice(0, 5) ?? "09:30"}</b> {"->"}{" "}
+                    <b>{settings?.defaultOutTime?.slice(0, 5) ?? "17:30"}</b>
+                  </Typography>
+                ) : (
+                  <TextField
+                    label="Leave / Absence Reason"
+                    value={leaveReason}
+                    onChange={(e) => setLeaveReason(e.target.value)}
+                    placeholder="Sick leave, personal work, emergency, absent..."
+                    multiline
+                    minRows={2}
+                    required
+                  />
+                )}
 
-                <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap" }}>
-                  <Button variant="contained" onClick={mark} disabled={employeeId === "" || !date}>
-                    Save (P/HD/L by hours)
-                  </Button>
+                <Box sx={{ display: "flex", gap: 1.5, flexWrap: "wrap", mt: 1 }}>
                   <Button
-                    variant="outlined"
-                    color="error"
-                    onClick={markLeave}
-                    disabled={employeeId === "" || !date || !leaveReason.trim()}
+                    variant="contained"
+                    color={statusToMark === "PRESENT" ? "primary" : "error"}
+                    onClick={handleSaveAttendance}
+                    disabled={employeeId === "" || !date || (statusToMark === "ABSENT" && !leaveReason.trim())}
+                    fullWidth
                   >
-                    Mark Leave (L)
+                    {statusToMark === "PRESENT" ? "Mark Present" : "Mark Absent"}
                   </Button>
                 </Box>
 
@@ -1250,8 +1247,41 @@ export default function HrPage() {
                     InputLabelProps={{ shrink: true }}
                   />
                 </Box>
-                <Button variant="contained" onClick={bulkUpdate} disabled={employeeId === "" || !fromDate || !toDate}>
-                  Apply range
+
+                <Tabs
+                  value={bulkStatusToMark}
+                  onChange={(_, v) => setBulkStatusToMark(v)}
+                  sx={{
+                    mb: 0.5,
+                    borderBottom: 1,
+                    borderColor: "divider",
+                    "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontWeight: 900 }
+                  }}
+                >
+                  <Tab value="PRESENT" label="Bulk Present" />
+                  <Tab value="ABSENT" label="Bulk Absent" />
+                </Tabs>
+
+                {bulkStatusToMark === "ABSENT" && (
+                  <TextField
+                    label="Leave / Absence Reason"
+                    value={leaveReason}
+                    onChange={(e) => setLeaveReason(e.target.value)}
+                    placeholder="Sick leave, personal work, emergency, absent..."
+                    multiline
+                    minRows={2}
+                    required
+                  />
+                )}
+
+                <Button
+                  variant="contained"
+                  color={bulkStatusToMark === "PRESENT" ? "primary" : "error"}
+                  onClick={bulkUpdate}
+                  disabled={employeeId === "" || !fromDate || !toDate || (bulkStatusToMark === "ABSENT" && !leaveReason.trim())}
+                  fullWidth
+                >
+                  {bulkStatusToMark === "PRESENT" ? "Apply Present Range" : "Apply Absent Range"}
                 </Button>
               </Box>
             </AppCard>

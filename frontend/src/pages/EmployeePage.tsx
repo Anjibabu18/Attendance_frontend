@@ -74,7 +74,7 @@ type Attendance = {
 };
 type MonthSummary = { month: string; fromDate: string; toDate: string; workingDays: number; presentDays: number; halfDayDays: number; leaveDays: number; totalWorkedMinutes: number };
 type AttendanceSettings = { defaultInTime: string; defaultOutTime: string; weekendDays: string; fullDayMinutes: number; halfDayMinutes: number; lateGraceMinutes: number; earlyLeaveGraceMinutes: number; overtimeAfterMinutes: number; lateDeductionPerMinute: number; overtimePayPerHour: number; unpaidLeaveDailyRate: number; standardMonthlySalary: number; requireQrForPunch: boolean; permanentOfficeQr: boolean; qrTokenValidityMinutes: number };
-type Payslip = { employeeId: number; employeeName: string; employeeNumber: string; month: string; presentDays: number; halfDays: number; leaveDays: number; payableDays: number; lateMinutes: number; overtimeMinutes: number; baseSalary: number; lateDeduction: number; unpaidLeaveDeduction: number; overtimePay: number; grossPay: number; totalDeductions: number; netPay: number };
+type Payslip = { employeeId: number; employeeName: string; employeeNumber: string; month: string; workingDays: number; presentDays: number; halfDays: number; leaveDays: number; payableDays: number; lateMinutes: number; overtimeMinutes: number; baseSalary: number; dailyRate: number; lateDeduction: number; unpaidLeaveDeduction: number; overtimePay: number; grossPay: number; totalDeductions: number; netPay: number };
 type Holiday = { id: number; date: string; name: string };
 type DailyGroupPhoto = { id: number; date: string; photoUrl: string };
 type LeaveRequest = { id: number; fromDate: string; toDate: string; reason: string; leaveType?: string | null; mailSubject?: string | null; mailMessage?: string | null; attachmentUrl?: string | null; attachmentName?: string | null; status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CANCELLATION_REQUESTED"; createdAt: string; decidedAt?: string | null; decidedBy?: string | null; hrRemarks?: string | null };
@@ -111,6 +111,10 @@ function entryEndClock(start: dayjs.Dayjs, value?: string | null, date?: string 
 function formatDurationSeconds(totalSeconds: number) {
   const s = Math.max(0, Math.floor(totalSeconds));
   return `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+}
+function formatDurationMinutes(totalMinutes: number) {
+  const safe = Math.max(0, Math.floor(totalMinutes));
+  return `${Math.floor(safe / 60)}h ${safe % 60}m`;
 }
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -919,7 +923,7 @@ export default function EmployeePage() {
                 { label: "Payable Days", val: payslip.payableDays,                color: "#7c3aed" },
                 { label: "Net Pay",      val: `₹${payslip.netPay.toLocaleString()}`, color: "#16a34a" },
                 { label: "Deduction",    val: `₹${payslip.totalDeductions.toLocaleString()}`, color: "#dc2626" },
-                { label: "OT Pay",       val: `₹${payslip.overtimePay.toLocaleString()}`, color: "#d97706" },
+                { label: "Overtime",     val: formatDurationMinutes(payslip.overtimeMinutes), color: "#d97706" },
               ].map(m => (
                 <Box key={m.label} sx={{ p: { xs: 1.25, sm: 1.75 }, borderRadius: 2.5, bgcolor: `${m.color}07`, border: `1px solid ${m.color}18`, transition: "transform 0.2s", "&:hover": { transform: "translateY(-2px)" } }}>
                   <Typography sx={{ fontSize: { xs: 9, sm: 10 }, fontWeight: 800, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>{m.label}</Typography>
@@ -927,7 +931,7 @@ export default function EmployeePage() {
                 </Box>
               ))}
             </Box>
-            <Typography sx={{ mt: 1.5, fontSize: { xs: 11, sm: 12 }, color: "text.secondary" }}>Base ₹{payslip.baseSalary.toLocaleString()} · Late ₹{payslip.lateDeduction.toLocaleString()} deducted · Unpaid ₹{payslip.unpaidLeaveDeduction.toLocaleString()}</Typography>
+            <Typography sx={{ mt: 1.5, fontSize: { xs: 11, sm: 12 }, color: "text.secondary" }}>Base ₹{payslip.baseSalary.toLocaleString()} · {payslip.payableDays}/{payslip.workingDays} payable days · Late ₹{payslip.lateDeduction.toLocaleString()} deducted</Typography>
           </GlassCard>
         )}
       </div>

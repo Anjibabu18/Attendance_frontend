@@ -82,9 +82,9 @@ public class AttendanceSettingsService {
         earlyLeaveGraceMinutes,
         overtimeAfterMinutes,
         1d,
-        75d,
+        0d,
         500d,
-        30000d,
+        25000d,
         false,
         false,
         10080);
@@ -164,9 +164,9 @@ public class AttendanceSettingsService {
     s.setEarlyLeaveGraceMinutes(10);
     s.setOvertimeAfterMinutes(appConfig.getAttendance().getMinDailyMinutes());
     s.setLateDeductionPerMinute(1d);
-    s.setOvertimePayPerHour(75d);
+    s.setOvertimePayPerHour(0d);
     s.setUnpaidLeaveDailyRate(500d);
-    s.setStandardMonthlySalary(30000d);
+    s.setStandardMonthlySalary(25000d);
     s.setRequireQrForPunch(false);
     s.setPermanentOfficeQr(false);
     s.setQrTokenValidityMinutes(10080);
@@ -196,13 +196,13 @@ public class AttendanceSettingsService {
       s.setLateDeductionPerMinute(1d);
     }
     if (s.getOvertimePayPerHour() == null || s.getOvertimePayPerHour() < 0) {
-      s.setOvertimePayPerHour(75d);
+      s.setOvertimePayPerHour(0d);
     }
     if (s.getUnpaidLeaveDailyRate() == null || s.getUnpaidLeaveDailyRate() < 0) {
       s.setUnpaidLeaveDailyRate(500d);
     }
     if (s.getStandardMonthlySalary() == null || s.getStandardMonthlySalary() < 0) {
-      s.setStandardMonthlySalary(30000d);
+      s.setStandardMonthlySalary(25000d);
     }
     if (s.getRequireQrForPunch() == null) {
       s.setRequireQrForPunch(false);
