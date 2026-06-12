@@ -94,33 +94,61 @@ public class DataSeeder implements CommandLineRunner {
       log.info("Seeded local dev HR user '{}'", DEV_HR_USERNAME);
     }
 
-    // Custom attendance seeder block for today's entries
+    // Custom attendance seeder block
     try {
-      log.info("Executing custom startup attendance update query for today's entries (9:30 AM)...");
-      
-      // Update existing entries for today (2026-06-12) to have in_time = 09:30:00
-      int updated = jdbcTemplate.update(
+      log.info("Executing custom startup attendance updates...");
+
+      List<Long> employeeIds = jdbcTemplate.queryForList("SELECT id FROM employees", Long.class);
+
+      // Part 1: Update today's (2026-06-12) entries to start at 09:30:00
+      int updatedToday = jdbcTemplate.update(
           "UPDATE attendance_entries SET in_time = '09:30:00', status = 'PRESENT' WHERE entry_date = '2026-06-12'"
       );
-      log.info("Updated {} existing attendance entries to 09:30:00 for 2026-06-12", updated);
+      log.info("Updated {} existing today entries to 09:30:00", updatedToday);
 
-      // Insert missing attendance entries for all employees for 2026-06-12
-      List<Long> employeeIds = jdbcTemplate.queryForList("SELECT id FROM employees", Long.class);
       for (Long empId : employeeIds) {
-        List<Map<String, Object>> existing = jdbcTemplate.queryForList(
+        List<Map<String, Object>> existingToday = jdbcTemplate.queryForList(
             "SELECT id FROM attendance_entries WHERE employee_id = ? AND entry_date = '2026-06-12'", empId
         );
-        if (existing.isEmpty()) {
+        if (existingToday.isEmpty()) {
           jdbcTemplate.update(
               "INSERT INTO attendance_entries (employee_id, entry_date, in_time, status, timezone_corrected) " +
               "VALUES (?, '2026-06-12', '09:30:00', 'PRESENT', 1)",
               empId
           );
-          log.info("Inserted missing 09:30:00 attendance entry for employee ID {} on 2026-06-12", empId);
+          log.info("Inserted today's missing entry for employee ID {}", empId);
         }
       }
+
+      // Part 2: Bulk update/insert for April 22 to June 11 (09:30:00 to 17:30:00, PRESENT)
+      log.info("Running bulk attendance update for April 22 to June 11...");
+      java.time.LocalDate startDate = java.time.LocalDate.of(2026, 4, 22);
+      java.time.LocalDate endDate = java.time.LocalDate.of(2026, 6, 11);
+      int rangeUpsertCount = 0;
+
+      for (java.time.LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
+        // Skip Sundays
+        if (date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY) {
+          continue;
+        }
+        
+        String dateStr = date.toString();
+        for (Long empId : employeeIds) {
+          jdbcTemplate.update(
+              "INSERT INTO attendance_entries " +
+              "(employee_id, entry_date, in_time, out_time, worked_minutes, status, timezone_corrected, late_minutes, early_leave_minutes, overtime_minutes) " +
+              "VALUES (?, ?, '09:30:00', '17:30:00', 480, 'PRESENT', 1, 0, 0, 0) " +
+              "ON DUPLICATE KEY UPDATE " +
+              "in_time = '09:30:00', out_time = '17:30:00', worked_minutes = 480, status = 'PRESENT'",
+              empId, dateStr
+          );
+          rangeUpsertCount++;
+        }
+      }
+      log.info("Successfully completed bulk range update. Total upserts executed: {}", rangeUpsertCount);
+
     } catch (Exception e) {
-      log.error("Failed to execute custom startup attendance update query", e);
+      log.error("Failed to execute custom startup attendance updates", e);
     }
   }
 
