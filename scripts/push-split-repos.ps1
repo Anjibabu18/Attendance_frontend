@@ -33,7 +33,7 @@ function Publish-Repo([string]$Path, [string]$Repo, [string]$Message) {
     git add .
     git commit -m $Message
     git remote add origin $Repo
-    git push -u origin main
+    git push -f -u origin main
   } finally {
     Pop-Location
   }
