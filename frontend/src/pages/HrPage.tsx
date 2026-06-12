@@ -26,6 +26,7 @@ type Employee = {
   loginRole: string;
   companyRole?: CompanyRole | null;
   assignedOfficeLocation?: OfficeLocation | null;
+  profilePhotoUrl?: string | null;
 };
 type Attendance = {
   id: number;
@@ -1064,7 +1065,7 @@ export default function HrPage() {
                   onChange={(_, v) => setEmployeeId(v ? v.id : "")}
                   renderOption={(props, opt) => (
                     <Box component="li" {...props} sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 1 }}>
-                      <Avatar src={opt.companyRole?.photoUrl ?? undefined} sx={{ width: 32, height: 32 }}>
+                      <Avatar src={opt.profilePhotoUrl ?? opt.companyRole?.photoUrl ?? undefined} sx={{ width: 32, height: 32 }}>
                         {opt.name[0]}
                       </Avatar>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -1084,7 +1085,7 @@ export default function HrPage() {
                 {selected ? (
                   <AppCard contentSx={{ p: 2, "&:last-child": { pb: 2 } }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Avatar src={selected.companyRole?.photoUrl ?? undefined} sx={{ width: 52, height: 52 }}>
+                      <Avatar src={selected.profilePhotoUrl ?? selected.companyRole?.photoUrl ?? undefined} sx={{ width: 52, height: 52 }}>
                         {selected.name[0]}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>
