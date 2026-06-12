@@ -35,11 +35,18 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const [mobileActionsAnchor, setMobileActionsAnchor] = useState<null | HTMLElement>(null);
   const [sessionNow, setSessionNow] = useState(() => Date.now());
   const [todayPunch, setTodayPunch] = useState<{ date?: string | null; inTime: string | null; outTime: string | null } | null>(null);
+  const [notificationsReady, setNotificationsReady] = useState(false);
 
   useEffect(() => {
     const promises: Promise<any>[] = [
       api.get<CompanyProfile>("/api/company").then((r) => setCompany(r.data)).catch(() => { }),
-      api.get<Notification[]>("/api/notifications").then((r) => setNotifications(r.data)).catch(() => { }),
+      api.get<Notification[]>("/api/notifications").then((r) => {
+        setNotifications(r.data.map((n) => ({ ...n, read: true })));
+        if (r.data.some((n) => !n.read)) {
+          api.post("/api/notifications/read").catch(() => { });
+        }
+        setNotificationsReady(true);
+      }).catch(() => setNotificationsReady(true)),
     ];
     if (auth?.role === "ROLE_EMPLOYEE") {
       promises.push(
@@ -60,62 +67,38 @@ export default function Layout(props: { title: string; children: React.ReactNode
   });
 
   useEffect(() => {
-    if (!auth || notifications.length === 0) return;
-
-    const isFirstLoad = sessionStorage.getItem("notifications_initialized") !== "true";
+    if (!auth || !notificationsReady || notifications.length === 0) return;
     let updated = false;
 
-    if (isFirstLoad) {
-      let toastedCount = 0;
-      notifications.forEach((n) => {
-        if (!n.read && !toastedIds.has(n.id)) {
-          if (toastedCount < 5) {
-            let type: "info" | "warning" | "success" | "error" = "info";
-            const lowerTitle = n.title.toLowerCase();
-            const lowerMsg = n.message.toLowerCase();
+    notifications.forEach((n) => {
+      if (!n.read && !toastedIds.has(n.id)) {
+        let type: "info" | "warning" | "success" | "error" = "info";
+        const lowerTitle = n.title.toLowerCase();
+        const lowerMsg = n.message.toLowerCase();
 
-            if (lowerTitle.includes("approve") || lowerTitle.includes("success") || lowerMsg.includes("approved")) {
-              type = "success";
-            } else if (lowerTitle.includes("reject") || lowerTitle.includes("fail") || lowerTitle.includes("error") || lowerMsg.includes("rejected")) {
-              type = "error";
-            } else if (lowerTitle.includes("warn") || lowerTitle.includes("late") || lowerTitle.includes("absent") || lowerMsg.includes("late")) {
-              type = "warning";
-            }
-
-            showToast(n.message, type, 6000, n.title);
-            toastedCount++;
-          }
+        if (lowerTitle.includes("approve") || lowerTitle.includes("success") || lowerMsg.includes("approved")) {
+          type = "success";
+        } else if (lowerTitle.includes("reject") || lowerTitle.includes("fail") || lowerTitle.includes("error") || lowerMsg.includes("rejected")) {
+          type = "error";
+        } else if (lowerTitle.includes("warn") || lowerTitle.includes("late") || lowerTitle.includes("absent") || lowerMsg.includes("late")) {
+          type = "warning";
         }
+
+        showToast(n.message, type, 6000, n.title);
         toastedIds.add(n.id);
-      });
-      sessionStorage.setItem("notifications_initialized", "true");
-      updated = true;
-    } else {
-      notifications.forEach((n) => {
-        if (!n.read && !toastedIds.has(n.id)) {
-          let type: "info" | "warning" | "success" | "error" = "info";
-          const lowerTitle = n.title.toLowerCase();
-          const lowerMsg = n.message.toLowerCase();
+        updated = true;
+      }
+    });
 
-          if (lowerTitle.includes("approve") || lowerTitle.includes("success") || lowerMsg.includes("approved")) {
-            type = "success";
-          } else if (lowerTitle.includes("reject") || lowerTitle.includes("fail") || lowerTitle.includes("error") || lowerMsg.includes("rejected")) {
-            type = "error";
-          } else if (lowerTitle.includes("warn") || lowerTitle.includes("late") || lowerTitle.includes("absent") || lowerMsg.includes("late")) {
-            type = "warning";
-          }
-
-          showToast(n.message, type, 6000, n.title);
-          toastedIds.add(n.id);
-          updated = true;
-        }
-      });
+    if (notifications.some((n) => !n.read)) {
+      api.post("/api/notifications/read").catch(() => { });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     }
 
     if (updated) {
       sessionStorage.setItem("toasted_notifications", JSON.stringify(Array.from(toastedIds)));
     }
-  }, [notifications, toastedIds, showToast, auth]);
+  }, [notifications, toastedIds, showToast, auth, notificationsReady]);
 
   useEffect(() => {
     if (!auth) return;
@@ -157,7 +140,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
     }
   }
 
-  const unread = notifications.filter((n) => !n.read).length || notifications.length;
+  const unread = notifications.filter((n) => !n.read).length;
   const roleLabel = auth?.role?.replace("ROLE_", "") ?? "USER";
 
   const loginStartedAt = loginStartedAtIso ? new Date(loginStartedAtIso).getTime() : null;
@@ -181,7 +164,10 @@ export default function Layout(props: { title: string; children: React.ReactNode
     };
 
     const inTime = parseClock(todayPunch.inTime, todayPunch.date);
-    const outTime = parseClock(todayPunch.outTime, todayPunch.date);
+    let outTime = parseClock(todayPunch.outTime, todayPunch.date);
+    if (inTime && outTime && outTime.isBefore(inTime)) {
+      outTime = outTime.add(1, "day");
+    }
 
     if (inTime) {
       activeLabel = "Check-in active";

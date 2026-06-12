@@ -103,9 +103,7 @@ public class AppConfig {
   public static class Attendance {
     private int minDailyMinutes;
     private String defaultJoinDate;
-    private boolean officeIpRestrictionEnabled;
-    private String allowedOfficeCidrs = "";
-    private boolean trustProxyHeaders;
+
 
     public int getMinDailyMinutes() {
       return minDailyMinutes;
@@ -123,29 +121,7 @@ public class AppConfig {
       this.defaultJoinDate = defaultJoinDate;
     }
 
-    public boolean isOfficeIpRestrictionEnabled() {
-      return officeIpRestrictionEnabled;
-    }
 
-    public void setOfficeIpRestrictionEnabled(boolean officeIpRestrictionEnabled) {
-      this.officeIpRestrictionEnabled = officeIpRestrictionEnabled;
-    }
-
-    public String getAllowedOfficeCidrs() {
-      return allowedOfficeCidrs;
-    }
-
-    public void setAllowedOfficeCidrs(String allowedOfficeCidrs) {
-      this.allowedOfficeCidrs = allowedOfficeCidrs;
-    }
-
-    public boolean isTrustProxyHeaders() {
-      return trustProxyHeaders;
-    }
-
-    public void setTrustProxyHeaders(boolean trustProxyHeaders) {
-      this.trustProxyHeaders = trustProxyHeaders;
-    }
   }
 
   public static class Cloudinary {

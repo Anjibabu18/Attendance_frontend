@@ -121,7 +121,21 @@ public class ProductionFeatureService {
   }
 
   public OfficeQrToken validateQr(String token) {
-    OfficeQrToken q = qrRepo.findByToken(token)
+    String actualToken = token;
+    if (token != null && token.contains("qrToken=")) {
+      try {
+        int idx = token.indexOf("qrToken=");
+        actualToken = token.substring(idx + 8);
+        int ampIdx = actualToken.indexOf('&');
+        if (ampIdx != -1) {
+          actualToken = actualToken.substring(0, ampIdx);
+        }
+        actualToken = actualToken.trim();
+      } catch (Exception e) {
+        // ignore and fallback
+      }
+    }
+    OfficeQrToken q = qrRepo.findByToken(actualToken)
         .orElseThrow(() -> new ApiException(HttpStatus.BAD_REQUEST, "Invalid QR token"));
     if (q.getExpiresAt().isBefore(Instant.now())) {
       throw new ApiException(HttpStatus.BAD_REQUEST,
@@ -154,7 +168,8 @@ public class ProductionFeatureService {
   public byte[] qrPng(String token) {
     validateQr(token);
     try {
-      var matrix = new QRCodeWriter().encode(token, BarcodeFormat.QR_CODE, 320, 320);
+      String qrContent = "https://attendance-two-smoky.vercel.app/?qrToken=" + token;
+      var matrix = new QRCodeWriter().encode(qrContent, BarcodeFormat.QR_CODE, 320, 320);
       ByteArrayOutputStream out = new ByteArrayOutputStream();
       MatrixToImageWriter.writeToStream(matrix, "PNG", out);
       return out.toByteArray();

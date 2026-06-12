@@ -35,9 +35,6 @@ public class SettingsController {
         s.getStandardMonthlySalary(),
         s.getRequireQrForPunch(),
         s.getPermanentOfficeQr(),
-        s.getQrTokenValidityMinutes(),
-        s.getOfficeIpRestrictionEnabled(),
-        s.getAllowedOfficeCidrs(),
-        s.getTrustProxyHeaders());
+        s.getQrTokenValidityMinutes());
   }
 }

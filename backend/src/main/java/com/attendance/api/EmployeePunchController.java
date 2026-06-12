@@ -8,10 +8,11 @@ import com.attendance.repo.EmployeeRepository;
 import com.attendance.repo.UserRepository;
 import com.attendance.service.ApiException;
 import com.attendance.service.AttendancePunchService;
-import com.attendance.service.OfficeNetworkService;
 import com.attendance.service.ProductionFeatureService;
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -31,21 +32,18 @@ public class EmployeePunchController {
   private final AttendanceRepository attendanceRepository;
   private final AttendancePunchService attendancePunchService;
   private final ProductionFeatureService productionFeatureService;
-  private final OfficeNetworkService officeNetworkService;
 
   public EmployeePunchController(
       UserRepository userRepository,
       EmployeeRepository employeeRepository,
       AttendanceRepository attendanceRepository,
       AttendancePunchService attendancePunchService,
-      ProductionFeatureService productionFeatureService,
-      OfficeNetworkService officeNetworkService) {
+      ProductionFeatureService productionFeatureService) {
     this.userRepository = userRepository;
     this.employeeRepository = employeeRepository;
     this.attendanceRepository = attendanceRepository;
     this.attendancePunchService = attendancePunchService;
     this.productionFeatureService = productionFeatureService;
-    this.officeNetworkService = officeNetworkService;
   }
 
   @GetMapping("/today")
@@ -93,7 +91,6 @@ public class EmployeePunchController {
       HttpServletRequest request) {
     var emp = currentEmployee();
     String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    officeNetworkService.validatePunchNetwork(request);
     productionFeatureService.validateApprovedDevice(username, deviceId);
     productionFeatureService.validatePunchQrIfRequired(qrToken, emp);
     var e = attendancePunchService.checkIn(emp, latitude, longitude, file);
@@ -110,9 +107,10 @@ public class EmployeePunchController {
       HttpServletRequest request) {
     var emp = currentEmployee();
     String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    officeNetworkService.validatePunchNetwork(request);
     productionFeatureService.validateApprovedDevice(username, deviceId);
-    productionFeatureService.validatePunchQrIfRequired(qrToken, emp);
+    if (!hasTodayCheckIn(emp.getId())) {
+      productionFeatureService.validatePunchQrIfRequired(qrToken, emp);
+    }
     var e = attendancePunchService.checkOut(emp, latitude, longitude, file);
     return toResponse(e);
   }
@@ -138,7 +136,7 @@ public class EmployeePunchController {
         e.getDate(),
         e.getInTime(),
         e.getOutTime(),
-        e.getWorkedMinutes(),
+        workedMinutesForResponse(e),
         e.getLateMinutes(),
         e.getEarlyLeaveMinutes(),
         e.getOvertimeMinutes(),
@@ -154,5 +152,26 @@ public class EmployeePunchController {
         e.getCheckOutFaceScore(),
         e.getCheckOutFaceVerified(),
         e.getStatus());
+  }
+
+  private static Integer workedMinutesForResponse(com.attendance.domain.AttendanceEntry e) {
+    if (e.getWorkedMinutes() != null || e.getInTime() == null) {
+      return e.getWorkedMinutes();
+    }
+    if (e.getOutTime() == null && !LocalDate.now().equals(e.getDate())) {
+      return null;
+    }
+
+    LocalTime end = e.getOutTime() != null ? e.getOutTime() : LocalTime.now();
+    long minutes = Duration.between(e.getInTime(), end).toMinutes();
+    if (minutes < 0) minutes += 24L * 60L;
+    return (int) Math.max(0, minutes);
+  }
+
+  private boolean hasTodayCheckIn(Long employeeId) {
+    return attendanceRepository
+        .findByEmployee_IdAndDate(employeeId, LocalDate.now())
+        .map(e -> e.getInTime() != null)
+        .orElse(false);
   }
 }

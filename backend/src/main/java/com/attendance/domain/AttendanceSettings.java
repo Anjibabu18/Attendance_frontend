@@ -57,14 +57,7 @@ public class AttendanceSettings {
   @Column(name = "qr_token_validity_minutes")
   private Integer qrTokenValidityMinutes;
 
-  @Column(name = "office_ip_restriction_enabled")
-  private Boolean officeIpRestrictionEnabled;
 
-  @Column(name = "allowed_office_cidrs", length = 1000)
-  private String allowedOfficeCidrs;
-
-  @Column(name = "trust_proxy_headers")
-  private Boolean trustProxyHeaders;
 
   public Long getId() {
     return id;
@@ -194,27 +187,5 @@ public class AttendanceSettings {
     this.qrTokenValidityMinutes = qrTokenValidityMinutes;
   }
 
-  public Boolean getOfficeIpRestrictionEnabled() {
-    return officeIpRestrictionEnabled;
-  }
 
-  public void setOfficeIpRestrictionEnabled(Boolean officeIpRestrictionEnabled) {
-    this.officeIpRestrictionEnabled = officeIpRestrictionEnabled;
-  }
-
-  public String getAllowedOfficeCidrs() {
-    return allowedOfficeCidrs;
-  }
-
-  public void setAllowedOfficeCidrs(String allowedOfficeCidrs) {
-    this.allowedOfficeCidrs = allowedOfficeCidrs;
-  }
-
-  public Boolean getTrustProxyHeaders() {
-    return trustProxyHeaders;
-  }
-
-  public void setTrustProxyHeaders(Boolean trustProxyHeaders) {
-    this.trustProxyHeaders = trustProxyHeaders;
-  }
 }

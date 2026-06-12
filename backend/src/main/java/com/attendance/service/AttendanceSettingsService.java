@@ -87,10 +87,7 @@ public class AttendanceSettingsService {
         30000d,
         false,
         false,
-        10080,
-        appConfig.getAttendance().isOfficeIpRestrictionEnabled(),
-        appConfig.getAttendance().getAllowedOfficeCidrs(),
-        appConfig.getAttendance().isTrustProxyHeaders());
+        10080);
   }
 
   @Transactional
@@ -109,10 +106,7 @@ public class AttendanceSettingsService {
       Double standardMonthlySalary,
       Boolean requireQrForPunch,
       Boolean permanentOfficeQr,
-      Integer qrTokenValidityMinutes,
-      Boolean officeIpRestrictionEnabled,
-      String allowedOfficeCidrs,
-      Boolean trustProxyHeaders) {
+      Integer qrTokenValidityMinutes) {
     if (fullDayMinutes == null || fullDayMinutes <= 0) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "fullDayMinutes must be > 0");
     }
@@ -134,10 +128,6 @@ public class AttendanceSettingsService {
     if (qrTokenValidityMinutes == null || qrTokenValidityMinutes <= 0) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "qrTokenValidityMinutes must be > 0");
     }
-    if (Boolean.TRUE.equals(officeIpRestrictionEnabled)
-        && (allowedOfficeCidrs == null || allowedOfficeCidrs.isBlank())) {
-      throw new ApiException(HttpStatus.BAD_REQUEST, "allowedOfficeCidrs is required when office IP restriction is enabled");
-    }
 
     AttendanceSettings s =
         attendanceSettingsRepository.findById(SINGLETON_ID).orElseGet(AttendanceSettings::new);
@@ -157,9 +147,6 @@ public class AttendanceSettingsService {
     s.setRequireQrForPunch(requireQrForPunch);
     s.setPermanentOfficeQr(permanentOfficeQr);
     s.setQrTokenValidityMinutes(qrTokenValidityMinutes);
-    s.setOfficeIpRestrictionEnabled(Boolean.TRUE.equals(officeIpRestrictionEnabled));
-    s.setAllowedOfficeCidrs(cleanCidrs(allowedOfficeCidrs));
-    s.setTrustProxyHeaders(Boolean.TRUE.equals(trustProxyHeaders));
     ensureDefaults(s);
     return attendanceSettingsRepository.save(s);
   }
@@ -183,9 +170,6 @@ public class AttendanceSettingsService {
     s.setRequireQrForPunch(false);
     s.setPermanentOfficeQr(false);
     s.setQrTokenValidityMinutes(10080);
-    s.setOfficeIpRestrictionEnabled(appConfig.getAttendance().isOfficeIpRestrictionEnabled());
-    s.setAllowedOfficeCidrs(cleanCidrs(appConfig.getAttendance().getAllowedOfficeCidrs()));
-    s.setTrustProxyHeaders(appConfig.getAttendance().isTrustProxyHeaders());
     return attendanceSettingsRepository.save(s);
   }
 
@@ -229,25 +213,5 @@ public class AttendanceSettingsService {
     if (s.getQrTokenValidityMinutes() == null || s.getQrTokenValidityMinutes() <= 0) {
       s.setQrTokenValidityMinutes(10080);
     }
-    if (s.getOfficeIpRestrictionEnabled() == null) {
-      s.setOfficeIpRestrictionEnabled(appConfig.getAttendance().isOfficeIpRestrictionEnabled());
-    }
-    if (s.getAllowedOfficeCidrs() == null) {
-      s.setAllowedOfficeCidrs(cleanCidrs(appConfig.getAttendance().getAllowedOfficeCidrs()));
-    }
-    if (s.getTrustProxyHeaders() == null) {
-      s.setTrustProxyHeaders(appConfig.getAttendance().isTrustProxyHeaders());
-    }
-  }
-
-  private static String cleanCidrs(String value) {
-    if (value == null || value.isBlank()) {
-      return "";
-    }
-    return java.util.Arrays.stream(value.split(","))
-        .map(String::trim)
-        .filter(v -> !v.isBlank())
-        .reduce((a, b) -> a + "," + b)
-        .orElse("");
   }
 }

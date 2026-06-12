@@ -313,10 +313,7 @@ public class AdminController {
         s.getStandardMonthlySalary(),
         s.getRequireQrForPunch(),
         s.getPermanentOfficeQr(),
-        s.getQrTokenValidityMinutes(),
-        s.getOfficeIpRestrictionEnabled(),
-        s.getAllowedOfficeCidrs(),
-        s.getTrustProxyHeaders());
+        s.getQrTokenValidityMinutes());
   }
 
   @PostMapping("/settings/attendance")
@@ -338,10 +335,7 @@ public class AdminController {
           req.getStandardMonthlySalary(),
           req.getRequireQrForPunch(),
           req.getPermanentOfficeQr(),
-          req.getQrTokenValidityMinutes(),
-          req.getOfficeIpRestrictionEnabled(),
-          req.getAllowedOfficeCidrs(),
-          req.getTrustProxyHeaders());
+          req.getQrTokenValidityMinutes());
     return new SettingsDtos.AttendanceSettingsResponse(
         s.getDefaultInTime(),
         s.getDefaultOutTime(),
@@ -357,10 +351,7 @@ public class AdminController {
         s.getStandardMonthlySalary(),
         s.getRequireQrForPunch(),
         s.getPermanentOfficeQr(),
-        s.getQrTokenValidityMinutes(),
-        s.getOfficeIpRestrictionEnabled(),
-        s.getAllowedOfficeCidrs(),
-        s.getTrustProxyHeaders());
+        s.getQrTokenValidityMinutes());
   }
 
   private ViewDtos.EmployeeView toEmployeeView(Employee e) {

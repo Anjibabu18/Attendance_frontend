@@ -4,6 +4,15 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Attendance</title>
+    <script>
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const qrToken = params.get("qrToken");
+        if (qrToken) {
+          localStorage.setItem("scannedQrToken", qrToken.trim());
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

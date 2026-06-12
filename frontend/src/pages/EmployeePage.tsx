@@ -100,9 +100,7 @@ type AttendanceSettings = {
   requireQrForPunch: boolean;
   permanentOfficeQr: boolean;
   qrTokenValidityMinutes: number;
-  officeIpRestrictionEnabled: boolean;
-  allowedOfficeCidrs: string;
-  trustProxyHeaders: boolean;
+
 };
 type Payslip = {
   employeeId: number;
@@ -283,7 +281,7 @@ export default function EmployeePage() {
   const [punchBusy, setPunchBusy] = useState(false);
   const [placeBusy, setPlaceBusy] = useState(false);
   const [place, setPlace] = useState<PunchPlace | null>(null);
-  const [qrToken, setQrToken] = useState("");
+  const [qrToken, setQrToken] = useState(() => localStorage.getItem("scannedQrToken") || "");
   const [qrOk, setQrOk] = useState(false);
   const [qrMessage, setQrMessage] = useState<string | null>(null);
   const [qrCameraOpen, setQrCameraOpen] = useState(false);
@@ -429,7 +427,21 @@ export default function EmployeePage() {
   }
 
   async function verifyQr(token = qrToken) {
-    const normalized = token.trim();
+    let normalized = token.trim();
+    if (normalized.includes("qrToken=")) {
+      try {
+        const urlObj = new URL(normalized);
+        const tokenParam = urlObj.searchParams.get("qrToken");
+        if (tokenParam) {
+          normalized = tokenParam.trim();
+        }
+      } catch (err) {
+        const match = normalized.match(/qrToken=([^&]+)/);
+        if (match && match[1]) {
+          normalized = match[1].trim();
+        }
+      }
+    }
     setQrOk(false);
     setQrMessage(null);
     if (!normalized) {
@@ -450,6 +462,7 @@ export default function EmployeePage() {
         return false;
       }
       setQrToken(normalized);
+      localStorage.setItem("scannedQrToken", normalized);
       setQrOk(true);
       const dailyCode = res.data.dailyCode ? ` | Today code ${res.data.dailyCode}` : "";
       setQrMessage(`QR verified for ${res.data.officeName ?? "office"}${dailyCode}`);
@@ -483,14 +496,30 @@ export default function EmployeePage() {
   }
 
   function decodeQrFromCanvas(source: CanvasImageSource, width: number, height: number) {
+    if (width <= 0 || height <= 0) return null;
+    
+    // Scale down high-resolution images to max 600px to prevent performance lags and browser crashes on mobile
+    const maxDimension = 600;
+    let canvasWidth = width;
+    let canvasHeight = height;
+    if (canvasWidth > maxDimension || canvasHeight > maxDimension) {
+      if (canvasWidth > canvasHeight) {
+        canvasHeight = Math.round((canvasHeight * maxDimension) / canvasWidth);
+        canvasWidth = maxDimension;
+      } else {
+        canvasWidth = Math.round((canvasWidth * maxDimension) / canvasHeight);
+        canvasHeight = maxDimension;
+      }
+    }
+
     const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return null;
-    ctx.drawImage(source, 0, 0, width, height);
-    const image = ctx.getImageData(0, 0, width, height);
-    return jsQR(image.data, width, height, { inversionAttempts: "attemptBoth" })?.data?.trim() || null;
+    ctx.drawImage(source, 0, 0, canvasWidth, canvasHeight);
+    const image = ctx.getImageData(0, 0, canvasWidth, canvasHeight);
+    return jsQR(image.data, canvasWidth, canvasHeight, { inversionAttempts: "attemptBoth" })?.data?.trim() || null;
   }
 
   function loadQrImage(file: File) {
@@ -514,10 +543,14 @@ export default function EmployeePage() {
     try {
       let value: string | null = null;
       if ("createImageBitmap" in window) {
-        const bitmap = await createImageBitmap(file);
-        value = await detectQrWithBarcodeDetector(bitmap);
-        if (!value) value = decodeQrFromCanvas(bitmap, bitmap.width, bitmap.height);
-        bitmap.close?.();
+        try {
+          const bitmap = await createImageBitmap(file);
+          value = await detectQrWithBarcodeDetector(bitmap);
+          if (!value) value = decodeQrFromCanvas(bitmap, bitmap.width, bitmap.height);
+          bitmap.close?.();
+        } catch (bitmapError) {
+          console.warn("createImageBitmap failed, trying image element fallback:", bitmapError);
+        }
       }
       if (!value) {
         const img = await loadQrImage(file);
@@ -576,7 +609,7 @@ export default function EmployeePage() {
     if (!qrScanActiveRef.current) return;
     try {
       const video = qrVideoRef.current;
-      if (video && video.readyState >= 2) {
+      if (video && video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
         let value = detector ? (await detector.detect(video))?.[0]?.rawValue?.trim() : null;
         if (!value) {
           value = decodeQrFromCanvas(video, video.videoWidth, video.videoHeight);
@@ -590,8 +623,8 @@ export default function EmployeePage() {
           return;
         }
       }
-    } catch {
-      // Keep scanning; some frames are not decodable.
+    } catch (err) {
+      console.warn("Frame decode failed (retrying):", err);
     }
     window.setTimeout(() => scanQrFromCamera(detector), 350);
   }
@@ -682,13 +715,8 @@ export default function EmployeePage() {
       });
       loadSummary(month).catch(() => {});
     } catch (e: any) {
-      const status = e?.response?.status;
       const serverMsg = e?.response?.data?.error ?? e?.message ?? "Punch failed";
-      const msg =
-        status === 403 && String(serverMsg).toLowerCase().includes("office")
-          ? "You must be connected to the office Wi-Fi/network to punch attendance."
-          : serverMsg;
-      setErr(msg);
+      setErr(serverMsg);
     } finally {
       setPunchBusy(false);
     }
@@ -852,9 +880,16 @@ export default function EmployeePage() {
 
   useEffect(() => {
     setErr(null);
-    Promise.all([loadProfile(), loadAttendance(month), loadSummary(month), loadSettings()]).catch((e) =>
-      setErr(apiMessage(e, "Failed to load employee dashboard")),
-    );
+    Promise.all([loadProfile(), loadAttendance(month), loadSummary(month), loadSettings()])
+      .then(() => {
+        const storedToken = localStorage.getItem("scannedQrToken");
+        if (storedToken) {
+          verifyQr(storedToken).catch(() => {});
+        }
+      })
+      .catch((e) =>
+        setErr(apiMessage(e, "Failed to load employee dashboard")),
+      );
     loadPayslip(month).catch(() => setPayslip(null));
     loadHolidays(month).catch(() => {});
     loadDailyPhotos(month).catch(() => {});
@@ -1367,12 +1402,7 @@ export default function EmployeePage() {
                     </Button>
                   ) : null}
                 </Box>
-                <Divider sx={{ my: 1 }} />
-                {settings?.officeIpRestrictionEnabled ? (
-                  <Alert severity="info" sx={{ borderRadius: 2 }}>
-                    Office Wi-Fi/IP restriction is active. Connect to the approved office network before punching.
-                  </Alert>
-                ) : null}
+
                 <Divider sx={{ my: 1 }} />
                 {todayEntry?.inTime ? (
                   <Box
@@ -1448,20 +1478,39 @@ export default function EmployeePage() {
                       ) : null}
                     </Box>
                     {qrCameraOpen ? (
-                      <Box sx={{ display: "grid", gap: 1, p: 1, border: "1px solid #dbeafe", borderRadius: 1, bgcolor: "#eff6ff" }}>
-                        <Box
-                          component="video"
-                          ref={qrVideoRef}
-                          muted
-                          playsInline
-                          sx={{ width: "100%", maxHeight: 260, objectFit: "cover", borderRadius: 1, bgcolor: "#111827" }}
-                        />
-                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto" }, gap: 1, alignItems: "center" }}>
-                          <Typography sx={{ fontSize: 12, color: "text.secondary" }}>
-                            Point camera at the office QR. After scan, QR and location are verified.
+                      <Box sx={{ display: "grid", gap: 1.5, p: 1.5, border: "1px solid #dbeafe", borderRadius: 2, bgcolor: "#f0f7ff" }}>
+                        <Box sx={{ position: "relative", borderRadius: 1.5, overflow: "hidden", border: "2px solid #2563eb", bgcolor: "#111827", boxShadow: "0 4px 12px rgba(37,99,235,0.25)" }}>
+                          <Box
+                            component="video"
+                            ref={qrVideoRef}
+                            muted
+                            playsInline
+                            sx={{ width: "100%", maxHeight: 280, display: "block", objectFit: "cover" }}
+                          />
+                          {/* Pulsing Scan Line Overlay */}
+                          <Box
+                            sx={{
+                              position: "absolute",
+                              left: 0,
+                              right: 0,
+                              height: "3px",
+                              background: "linear-gradient(to right, transparent, #3b82f6, transparent)",
+                              boxShadow: "0 0 10px #3b82f6, 0 0 4px #2563eb",
+                              animation: "scanIndicator 2.5s linear infinite",
+                              "@keyframes scanIndicator": {
+                                "0%": { top: "0%" },
+                                "50%": { top: "100%" },
+                                "100%": { top: "0%" }
+                              }
+                            }}
+                          />
+                        </Box>
+                        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr auto" }, gap: 1.5, alignItems: "center" }}>
+                          <Typography sx={{ fontSize: 12, color: "text.secondary", fontWeight: 550 }}>
+                            Point your camera at the office QR. Once recognized, location and QR verification will complete automatically.
                           </Typography>
-                          <Button size="small" variant="outlined" onClick={stopQrCamera}>
-                            Stop
+                          <Button size="small" variant="outlined" color="error" onClick={stopQrCamera} sx={{ borderRadius: 1.5, fontWeight: 900 }}>
+                            Stop Camera
                           </Button>
                         </Box>
                       </Box>
@@ -2012,7 +2061,7 @@ export default function EmployeePage() {
             ref={selfieVideoRef}
             muted
             playsInline
-            sx={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 1, bgcolor: "#111827" }}
+            sx={{ width: "100%", aspectRatio: "4 / 3", objectFit: "cover", borderRadius: 1, bgcolor: "#111827", transform: "scaleX(-1)" }}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>

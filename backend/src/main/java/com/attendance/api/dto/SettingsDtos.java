@@ -20,10 +20,6 @@ public class SettingsDtos {
     private Boolean requireQrForPunch;
     private Boolean permanentOfficeQr;
     private Integer qrTokenValidityMinutes;
-    private Boolean officeIpRestrictionEnabled;
-    private String allowedOfficeCidrs;
-    private Boolean trustProxyHeaders;
-
     public AttendanceSettingsResponse(
         LocalTime defaultInTime,
         LocalTime defaultOutTime,
@@ -39,10 +35,7 @@ public class SettingsDtos {
         Double standardMonthlySalary,
         Boolean requireQrForPunch,
         Boolean permanentOfficeQr,
-        Integer qrTokenValidityMinutes,
-        Boolean officeIpRestrictionEnabled,
-        String allowedOfficeCidrs,
-        Boolean trustProxyHeaders) {
+        Integer qrTokenValidityMinutes) {
       this.defaultInTime = defaultInTime;
       this.defaultOutTime = defaultOutTime;
       this.weekendDays = weekendDays;
@@ -58,9 +51,6 @@ public class SettingsDtos {
       this.requireQrForPunch = requireQrForPunch;
       this.permanentOfficeQr = permanentOfficeQr;
       this.qrTokenValidityMinutes = qrTokenValidityMinutes;
-      this.officeIpRestrictionEnabled = officeIpRestrictionEnabled;
-      this.allowedOfficeCidrs = allowedOfficeCidrs;
-      this.trustProxyHeaders = trustProxyHeaders;
     }
 
     public LocalTime getDefaultInTime() {
@@ -101,9 +91,7 @@ public class SettingsDtos {
     public Boolean getRequireQrForPunch() { return requireQrForPunch; }
     public Boolean getPermanentOfficeQr() { return permanentOfficeQr; }
     public Integer getQrTokenValidityMinutes() { return qrTokenValidityMinutes; }
-    public Boolean getOfficeIpRestrictionEnabled() { return officeIpRestrictionEnabled; }
-    public String getAllowedOfficeCidrs() { return allowedOfficeCidrs; }
-    public Boolean getTrustProxyHeaders() { return trustProxyHeaders; }
+
   }
 
   public static class UpdateAttendanceSettingsRequest {
@@ -122,9 +110,7 @@ public class SettingsDtos {
     @NotNull private Boolean requireQrForPunch;
     @NotNull private Boolean permanentOfficeQr;
     @NotNull private Integer qrTokenValidityMinutes;
-    @NotNull private Boolean officeIpRestrictionEnabled;
-    private String allowedOfficeCidrs;
-    @NotNull private Boolean trustProxyHeaders;
+
 
     public LocalTime getDefaultInTime() {
       return defaultInTime;
@@ -203,11 +189,6 @@ public class SettingsDtos {
     public void setPermanentOfficeQr(Boolean permanentOfficeQr) { this.permanentOfficeQr = permanentOfficeQr; }
     public Integer getQrTokenValidityMinutes() { return qrTokenValidityMinutes; }
     public void setQrTokenValidityMinutes(Integer qrTokenValidityMinutes) { this.qrTokenValidityMinutes = qrTokenValidityMinutes; }
-    public Boolean getOfficeIpRestrictionEnabled() { return officeIpRestrictionEnabled; }
-    public void setOfficeIpRestrictionEnabled(Boolean officeIpRestrictionEnabled) { this.officeIpRestrictionEnabled = officeIpRestrictionEnabled; }
-    public String getAllowedOfficeCidrs() { return allowedOfficeCidrs; }
-    public void setAllowedOfficeCidrs(String allowedOfficeCidrs) { this.allowedOfficeCidrs = allowedOfficeCidrs; }
-    public Boolean getTrustProxyHeaders() { return trustProxyHeaders; }
-    public void setTrustProxyHeaders(Boolean trustProxyHeaders) { this.trustProxyHeaders = trustProxyHeaders; }
+
   }
 }

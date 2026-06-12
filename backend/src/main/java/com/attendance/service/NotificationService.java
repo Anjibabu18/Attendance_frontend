@@ -24,6 +24,13 @@ public class NotificationService {
   }
 
   @Transactional
+  public void markAllRead(String username) {
+    List<AppNotification> unread = notificationRepository.findAllByUser_UsernameAndReadFlagFalse(username);
+    unread.forEach(n -> n.setReadFlag(true));
+    notificationRepository.saveAll(unread);
+  }
+
+  @Transactional
   public void notify(AppUser user, String title, String message) {
     if (user == null) return;
     AppNotification n = new AppNotification();

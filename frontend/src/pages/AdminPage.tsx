@@ -66,9 +66,6 @@ type AttendanceSettings = {
   requireQrForPunch: boolean;
   permanentOfficeQr: boolean;
   qrTokenValidityMinutes: number;
-  officeIpRestrictionEnabled: boolean;
-  allowedOfficeCidrs: string;
-  trustProxyHeaders: boolean;
 };
 type Holiday = { id: number; date: string; name: string };
 type CompanyProfile = { groupPhotoUrl?: string | null };
@@ -113,9 +110,6 @@ export default function AdminPage() {
   const [requireQrForPunch, setRequireQrForPunch] = useState(false);
   const [permanentOfficeQr, setPermanentOfficeQr] = useState(false);
   const [qrTokenValidityMinutes, setQrTokenValidityMinutes] = useState(10080);
-  const [officeIpRestrictionEnabled, setOfficeIpRestrictionEnabled] = useState(false);
-  const [allowedOfficeCidrs, setAllowedOfficeCidrs] = useState("");
-  const [trustProxyHeaders, setTrustProxyHeaders] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
 
@@ -377,9 +371,6 @@ export default function AdminPage() {
     setRequireQrForPunch(Boolean(res.data.requireQrForPunch));
     setPermanentOfficeQr(Boolean(res.data.permanentOfficeQr));
     setQrTokenValidityMinutes(res.data.qrTokenValidityMinutes ?? 10080);
-    setOfficeIpRestrictionEnabled(Boolean(res.data.officeIpRestrictionEnabled));
-    setAllowedOfficeCidrs(res.data.allowedOfficeCidrs ?? "");
-    setTrustProxyHeaders(Boolean(res.data.trustProxyHeaders));
     const wd = (res.data.weekendDays ?? "SUNDAY")
       .split(",")
       .map((s) => s.trim().toUpperCase())
@@ -686,9 +677,6 @@ export default function AdminPage() {
         requireQrForPunch,
         permanentOfficeQr,
         qrTokenValidityMinutes,
-        officeIpRestrictionEnabled,
-        allowedOfficeCidrs,
-        trustProxyHeaders,
       });
       setAttendanceSettings(res.data);
       setOk("Attendance defaults saved");
@@ -1284,25 +1272,6 @@ export default function AdminPage() {
                     disabled={permanentOfficeQr}
                   />
                 </Box>
-                <Divider />
-                <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, alignItems: "center" }}>
-                  <FormControlLabel
-                    control={<Switch checked={officeIpRestrictionEnabled} onChange={(e) => setOfficeIpRestrictionEnabled(e.target.checked)} />}
-                    label="Office Wi-Fi/IP only"
-                  />
-                  <FormControlLabel
-                    control={<Switch checked={trustProxyHeaders} onChange={(e) => setTrustProxyHeaders(e.target.checked)} />}
-                    label="Trust proxy headers"
-                  />
-                </Box>
-                <TextField
-                  label="Allowed office IP/CIDR ranges"
-                  value={allowedOfficeCidrs}
-                  onChange={(e) => setAllowedOfficeCidrs(e.target.value)}
-                  placeholder="192.168.1.0/24,127.0.0.1/32,::1/128"
-                  disabled={!officeIpRestrictionEnabled}
-                  helperText="Local testing on localhost needs 127.0.0.1/32 and ::1/128. Real office use /24 for Wi-Fi or /32 for one public IP."
-                />
                 <Autocomplete
                   multiple
                   options={["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]}
@@ -1321,8 +1290,7 @@ export default function AdminPage() {
                       Full: {attendanceSettings.fullDayMinutes}m, Half: {attendanceSettings.halfDayMinutes}m | Late grace:{" "}
                       {attendanceSettings.lateGraceMinutes}m, OT after: {attendanceSettings.overtimeAfterMinutes}m | QR:{" "}
                       {attendanceSettings.requireQrForPunch ? "Required" : "Optional"} | Token:{" "}
-                      {attendanceSettings.permanentOfficeQr ? "Permanent" : `${attendanceSettings.qrTokenValidityMinutes}m`} | Network:{" "}
-                      {attendanceSettings.officeIpRestrictionEnabled ? "Office only" : "Any network"}
+                      {attendanceSettings.permanentOfficeQr ? "Permanent" : `${attendanceSettings.qrTokenValidityMinutes}m`}
                     </Typography>
                   ) : null}
                 </Box>
