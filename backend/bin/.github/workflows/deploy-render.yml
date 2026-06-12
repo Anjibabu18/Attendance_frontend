@@ -26,10 +26,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set lowercase repository owner
-        run: |
-          echo "REPO_OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
-
       - name: Build and push backend image
         uses: docker/build-push-action@v6
         with:
@@ -38,8 +34,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/${{ env.REPO_OWNER }}/attendance-backend:latest
-            ghcr.io/${{ env.REPO_OWNER }}/attendance-backend:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/attendance-backend:latest
+            ghcr.io/${{ github.repository_owner }}/attendance-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
