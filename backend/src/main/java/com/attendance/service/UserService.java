@@ -337,7 +337,7 @@ public class UserService {
       if (shiftId != null) employee.setShift(resolveShift(shiftId));
       if (status != null) {
         employee.setStatus(status);
-        employee.setExitDate(status == EmployeeStatus.RESIGNED ? LocalDate.now() : null);
+        employee.setExitDate(status == EmployeeStatus.RESIGNED ? AttendanceClock.today() : null);
         employee.getUser().setEnabled(status != EmployeeStatus.INACTIVE && status != EmployeeStatus.RESIGNED);
       }
       if (newPassword != null && !newPassword.isBlank()) {
@@ -354,11 +354,11 @@ public class UserService {
 
   private LocalDate defaultJoinDate() {
     String raw = appConfig.getAttendance().getDefaultJoinDate();
-    if (raw == null || raw.isBlank()) return LocalDate.now();
+    if (raw == null || raw.isBlank()) return AttendanceClock.today();
     try {
       return LocalDate.parse(raw.trim());
     } catch (Exception ignored) {
-      return LocalDate.now();
+      return AttendanceClock.today();
     }
   }
 

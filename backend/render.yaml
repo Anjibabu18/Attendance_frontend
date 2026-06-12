@@ -9,6 +9,8 @@ services:
     envVars:
       - key: PORT
         value: 8081
+      - key: TZ
+        value: Asia/Kolkata
       - key: DB_URL
         sync: false
       - key: DB_USER

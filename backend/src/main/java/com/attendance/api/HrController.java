@@ -19,6 +19,7 @@ import com.attendance.service.CompOffService;
 import com.attendance.service.PayrollService;
 import com.attendance.api.dto.ProductionDtos;
 import com.attendance.service.ApiException;
+import com.attendance.service.AttendanceClock;
 import com.attendance.service.AttendanceExportService;
 import com.attendance.service.AttendanceService;
 import jakarta.validation.Valid;
@@ -98,7 +99,7 @@ public class HrController {
 
   @GetMapping("/employees/{id}/leave-balances")
   public List<Map<String, Object>> leaveBalances(@PathVariable("id") Long id, @RequestParam(value = "year", required = false) Integer year) {
-    return productionFeatureService.balanceViews(id, year == null ? java.time.LocalDate.now().getYear() : year);
+    return productionFeatureService.balanceViews(id, year == null ? AttendanceClock.today().getYear() : year);
   }
 
   @PostMapping("/leave-balances")

@@ -41,7 +41,7 @@ public class BulkEmployeeImportService {
         String password = p[3].trim();
         if (empNo.isBlank() || name.isBlank() || username.isBlank() || password.isBlank()) continue;
         Long roleId = p.length > 4 && !p[4].trim().isBlank() ? Long.valueOf(p[4].trim()) : defaultRoleId;
-        userService.createEmployee(empNo, name, username, password, roleId, null, null, null, LocalDate.now());
+        userService.createEmployee(empNo, name, username, password, roleId, null, null, null, AttendanceClock.today());
         created++;
       }
       return created;

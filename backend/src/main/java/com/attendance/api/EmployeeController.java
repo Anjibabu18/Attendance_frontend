@@ -14,6 +14,7 @@ import com.attendance.repo.EmployeeRepository;
 import com.attendance.repo.ShiftRosterAssignmentRepository;
 import com.attendance.repo.UserRepository;
 import com.attendance.service.ApiException;
+import com.attendance.service.AttendanceClock;
 import com.attendance.service.AttendanceExportService;
 import com.attendance.service.AttendanceBreakService;
 import com.attendance.service.AttendanceService;
@@ -110,7 +111,7 @@ public class EmployeeController {
     var d = emp.getDepartment() == null ? null : new ViewDtos.DepartmentView(emp.getDepartment().getId(), emp.getDepartment().getName());
     var effectiveShift =
         shiftRosterAssignmentRepository
-            .findByEmployee_IdAndDate(emp.getId(), LocalDate.now())
+            .findByEmployee_IdAndDate(emp.getId(), AttendanceClock.today())
             .map(com.attendance.domain.ShiftRosterAssignment::getShift)
             .orElse(emp.getShift());
     var s = effectiveShift == null ? null : new ViewDtos.ShiftView(effectiveShift.getId(), effectiveShift.getName(), effectiveShift.getInTime(), effectiveShift.getOutTime(), effectiveShift.isFlexible());
@@ -243,7 +244,7 @@ public class EmployeeController {
   @GetMapping("/leave-balances")
   public java.util.List<java.util.Map<String, Object>> leaveBalances(@RequestParam(value = "year", required = false) Integer year) {
     var emp = currentEmployee();
-    return productionFeatureService.balanceViews(emp.getId(), year == null ? java.time.LocalDate.now().getYear() : year);
+    return productionFeatureService.balanceViews(emp.getId(), year == null ? AttendanceClock.today().getYear() : year);
   }
 
   @PostMapping("/leave-requests")

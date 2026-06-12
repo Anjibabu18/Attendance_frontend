@@ -194,13 +194,13 @@ public class ProductionFeatureService {
   }
 
   private Instant dailyQrExpiresAt() {
-    ZoneId zone = ZoneId.systemDefault();
+    ZoneId zone = AttendanceClock.ZONE;
     return LocalDate.now(zone).plusDays(1).atStartOfDay(zone).toInstant();
   }
 
   private String dailyQrCode(String token) {
     try {
-      String raw = token + "|" + LocalDate.now(ZoneId.systemDefault());
+      String raw = token + "|" + AttendanceClock.today();
       byte[] hash = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));
       StringBuilder sb = new StringBuilder();
       for (int i = 0; i < 4; i++) {

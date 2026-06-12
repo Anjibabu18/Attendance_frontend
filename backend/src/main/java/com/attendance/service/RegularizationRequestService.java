@@ -52,8 +52,9 @@ public class RegularizationRequestService {
   @Transactional
   public RegularizationRequest create(Employee employee, LocalDate date, LocalTime inTime, LocalTime outTime, String reason) {
     if (date == null) throw new ApiException(HttpStatus.BAD_REQUEST, "Date is required");
-    if (date.isAfter(LocalDate.now())) throw new ApiException(HttpStatus.BAD_REQUEST, "Future date correction is not allowed");
-    if (ChronoUnit.DAYS.between(date, LocalDate.now()) > MAX_PAST_DAYS) {
+    LocalDate today = AttendanceClock.today();
+    if (date.isAfter(today)) throw new ApiException(HttpStatus.BAD_REQUEST, "Future date correction is not allowed");
+    if (ChronoUnit.DAYS.between(date, today) > MAX_PAST_DAYS) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Correction allowed only for last " + MAX_PAST_DAYS + " days");
     }
     if (inTime == null && outTime == null) throw new ApiException(HttpStatus.BAD_REQUEST, "In time or out time is required");

@@ -63,7 +63,7 @@ public class AuditLogService {
 
   private static boolean matchesDate(Instant createdAt, LocalDate fromDate, LocalDate toDate) {
     if (createdAt == null) return false;
-    LocalDate date = createdAt.atZone(java.time.ZoneId.systemDefault()).toLocalDate();
+    LocalDate date = createdAt.atZone(AttendanceClock.ZONE).toLocalDate();
     if (fromDate != null && date.isBefore(fromDate)) return false;
     if (toDate != null && date.isAfter(toDate)) return false;
     return true;
