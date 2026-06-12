@@ -196,17 +196,28 @@ export default function Layout(props: { title: string; children: React.ReactNode
     <Box
       sx={{
         display: "grid",
-        gap: 1,
-        p: 1.25,
-        border: "1px solid rgba(148,163,184,0.24)",
-        borderRadius: 2,
-        bgcolor: "rgba(255,255,255,0.84)",
-        backdropFilter: "blur(12px)",
-        boxShadow: "0 14px 34px rgba(15,23,42,0.08)",
+        gap: 0.75,
+        p: 1.5,
+        border: "1px solid rgba(226,232,240,0.7)",
+        borderRadius: 3,
+        bgcolor: "rgba(255,255,255,0.90)",
+        backdropFilter: "blur(16px)",
+        boxShadow: "0 8px 32px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04)",
       }}
     >
-      <Typography sx={{ px: 1, pt: 0.4, fontSize: 11, fontWeight: 950, letterSpacing: 0.6, color: "text.secondary", textTransform: "uppercase" }}>
-        Workspace
+      {/* Brand */}
+      <Box sx={{ px: 1, pt: 0.5, pb: 1.25, display: "flex", alignItems: "center", gap: 1.25 }}>
+        <Box sx={{ width: 32, height: 32, borderRadius: 2, background: "linear-gradient(135deg, #4f46e5, #2563eb)", display: "grid", placeItems: "center", boxShadow: "0 4px 12px rgba(79,70,229,0.3)" }}>
+          <ShieldOutlinedIcon sx={{ fontSize: 17, color: "#fff" }} />
+        </Box>
+        <Box>
+          <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: "#0f172a", lineHeight: 1.1 }}>Attendance</Typography>
+          <Typography sx={{ fontSize: 10, color: "text.secondary", fontWeight: 500 }}>Management Portal</Typography>
+        </Box>
+      </Box>
+
+      <Typography sx={{ px: 1, fontSize: 10, fontWeight: 800, letterSpacing: "0.07em", color: "text.secondary", textTransform: "uppercase", opacity: 0.6 }}>
+        Navigation
       </Typography>
       {navItems.map((item) => {
         const active = location.pathname === item.path;
@@ -214,23 +225,31 @@ export default function Layout(props: { title: string; children: React.ReactNode
           <Button
             key={item.path}
             startIcon={item.icon}
-            variant={active ? "contained" : "text"}
             onClick={() => {
               setMobileNavOpen(false);
               nav(item.path);
             }}
             sx={{
               justifyContent: "flex-start",
-              minHeight: 42,
-              borderRadius: 1.3,
-              px: 1.35,
-              color: active ? "white" : "text.primary",
-              bgcolor: active ? "primary.main" : "transparent",
-              transition: "transform .18s cubic-bezier(.2,.8,.2,1), background-color .18s ease, box-shadow .18s ease",
-              boxShadow: active ? "0 10px 22px rgba(37,99,235,0.22)" : "none",
+              minHeight: 44,
+              borderRadius: 2.5,
+              px: 1.5,
+              color: active ? "#fff" : "#334155",
+              background: active
+                ? "linear-gradient(135deg, #4f46e5 0%, #2563eb 100%)"
+                : "transparent",
+              boxShadow: active ? "0 8px 20px rgba(79,70,229,0.28)" : "none",
+              fontWeight: active ? 800 : 600,
+              fontSize: 13.5,
+              transition: "all 0.2s cubic-bezier(0.2,0.8,0.2,1)",
+              "& .MuiButton-startIcon": { color: active ? "rgba(255,255,255,0.85)" : "#64748b" },
               "&:hover": {
-                transform: "translateX(2px)",
-                bgcolor: active ? "primary.main" : "rgba(37,99,235,0.07)",
+                transform: "translateX(4px)",
+                background: active
+                  ? "linear-gradient(135deg, #6366f1 0%, #3b82f6 100%)"
+                  : "rgba(79,70,229,0.06)",
+                color: active ? "#fff" : "#4f46e5",
+                "& .MuiButton-startIcon": { color: active ? "rgba(255,255,255,0.9)" : "#4f46e5" },
               },
             }}
           >
@@ -238,13 +257,29 @@ export default function Layout(props: { title: string; children: React.ReactNode
           </Button>
         );
       })}
-      <Divider sx={{ my: 0.4 }} />
-      <Button startIcon={<LockIcon fontSize="small" />} onClick={() => setPasswordOpen(true)} sx={{ justifyContent: "flex-start", minHeight: 40, borderRadius: 1.2 }}>
-        Password
-      </Button>
-      <Button startIcon={<NotificationsIcon fontSize="small" />} onClick={() => setNotificationsOpen(true)} sx={{ justifyContent: "flex-start", minHeight: 40, borderRadius: 1.2 }}>
-        Notifications
-      </Button>
+
+      <Divider sx={{ my: 0.5 }} />
+      <Typography sx={{ px: 1, fontSize: 10, fontWeight: 800, letterSpacing: "0.07em", color: "text.secondary", textTransform: "uppercase", opacity: 0.6 }}>
+        Account
+      </Typography>
+
+      {[
+        { icon: <LockIcon fontSize="small" />, label: "Change Password", onClick: () => setPasswordOpen(true) },
+        { icon: <NotificationsIcon fontSize="small" />, label: "Notifications", onClick: () => setNotificationsOpen(true), badge: unread },
+      ].map((item) => (
+        <Button
+          key={item.label}
+          startIcon={item.icon}
+          onClick={item.onClick}
+          sx={{ justifyContent: "flex-start", minHeight: 42, borderRadius: 2.5, px: 1.5, color: "#334155", fontWeight: 600, fontSize: 13.5, "&:hover": { bgcolor: "rgba(99,102,241,0.06)", color: "#4f46e5", transform: "translateX(4px)" }, transition: "all 0.2s ease" }}
+        >
+          {item.label}
+          {item.badge ? (
+            <Box sx={{ ml: "auto", width: 18, height: 18, borderRadius: "50%", bgcolor: "#dc2626", color: "#fff", fontSize: 10, fontWeight: 900, display: "grid", placeItems: "center" }}>{item.badge}</Box>
+          ) : null}
+        </Button>
+      ))}
+
       <Button
         startIcon={<LogoutIcon fontSize="small" />}
         onClick={() => {
@@ -253,9 +288,9 @@ export default function Layout(props: { title: string; children: React.ReactNode
           clearAuth();
           nav("/login");
         }}
-        sx={{ justifyContent: "flex-start", minHeight: 40, borderRadius: 1.2 }}
+        sx={{ justifyContent: "flex-start", minHeight: 42, borderRadius: 2.5, px: 1.5, color: "#dc2626", fontWeight: 700, fontSize: 13.5, "&:hover": { bgcolor: "rgba(220,38,38,0.06)", transform: "translateX(4px)" }, transition: "all 0.2s ease" }}
       >
-        Logout
+        Sign Out
       </Button>
     </Box>
   );
@@ -266,11 +301,12 @@ export default function Layout(props: { title: string; children: React.ReactNode
         position="sticky"
         elevation={0}
         sx={{
-          background: "rgba(255,255,255,0.88)",
-          backdropFilter: "blur(18px)",
+          background: "rgba(255,255,255,0.85)",
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
           color: "text.primary",
-          borderBottom: "1px solid rgba(203,213,225,0.9)",
-          boxShadow: "0 10px 30px rgba(15,23,42,0.075)",
+          borderBottom: "1px solid rgba(226,232,240,0.7)",
+          boxShadow: "0 4px 24px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04)",
         }}
       >
         {booting ? <LinearProgress sx={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2 }} /> : null}
@@ -348,14 +384,20 @@ export default function Layout(props: { title: string; children: React.ReactNode
           </Tooltip>
           <Chip
             size="small"
-            label={`Active ${activeTimeText}`}
+            label={`⏱ ${activeTimeText}`}
             sx={{
               display: { xs: "none", lg: "inline-flex" },
               height: 34,
+              px: 0.5,
               bgcolor: chipBg,
               color: chipColor,
               border: chipBorder,
-              fontWeight: 950,
+              fontWeight: 900,
+              fontVariantNumeric: "tabular-nums",
+              fontFamily: '"Inter", monospace',
+              fontSize: 13,
+              boxShadow: `0 2px 10px ${chipColor}22`,
+              letterSpacing: "0.02em",
             }}
           />
           <Tooltip title="Notifications">
@@ -389,13 +431,14 @@ export default function Layout(props: { title: string; children: React.ReactNode
         </Toolbar>
       </AppBar>
 
-      <Container maxWidth="xl" sx={{ px: { xs: 1.25, sm: 2, md: 3 }, py: { xs: 1.5, md: 3.25 }, position: "relative" }}>
-        <Box sx={{ position: "absolute", inset: "0 24px auto 24px", height: 1, background: "linear-gradient(90deg, transparent, rgba(37,99,235,0.20), rgba(15,118,110,0.16), transparent)" }} />
-        <Box sx={{ display: "grid", gap: { xs: 2.25, md: 3 }, gridTemplateColumns: { xs: "1fr", md: "240px minmax(0,1fr)" }, alignItems: "start" }}>
-          <Box sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 96 }}>
+      <Container maxWidth="xl" sx={{ px: { xs: 1.25, sm: 2, md: 3 }, py: { xs: 1.5, md: 3 }, position: "relative" }}>
+        {/* Subtle top gradient separator */}
+        <Box sx={{ position: "absolute", inset: "0 24px auto 24px", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.25), rgba(15,118,110,0.18), transparent)", pointerEvents: "none" }} />
+        <Box sx={{ display: "grid", gap: { xs: 2, md: 2.5 }, gridTemplateColumns: { xs: "1fr", md: "260px minmax(0,1fr)" }, alignItems: "start" }}>
+          <Box sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 88 }}>
             {sidebar}
           </Box>
-          <Box sx={{ display: "grid", gap: { xs: 2.25, md: 3 }, minWidth: 0, animation: "attendancePageIn .32s cubic-bezier(.2,.8,.2,1) both" }}>{props.children}</Box>
+          <Box sx={{ display: "grid", gap: { xs: 2, md: 2.5 }, minWidth: 0, animation: "attendancePageIn 0.4s cubic-bezier(0.2,0.8,0.2,1) both" }}>{props.children}</Box>
         </Box>
       </Container>
 
@@ -453,20 +496,28 @@ export default function Layout(props: { title: string; children: React.ReactNode
         <DialogTitle sx={{ fontWeight: 950, pb: 1 }}>Notifications</DialogTitle>
         <DialogContent sx={{ display: "grid", gap: 1.25, pt: 1 }}>
           {notifications.length ? (
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 1, alignItems: "center", p: 1.25, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#f8fafc" }}>
-              <Typography sx={{ fontWeight: 950 }}>Inbox summary</Typography>
-              <Chip size="small" label={`${notifications.length} total`} color="info" />
+            <Box sx={{ p: 1.5, borderRadius: 2.5, background: "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(37,99,235,0.04))", border: "1px solid rgba(99,102,241,0.12)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
+              <Typography sx={{ fontWeight: 800, fontSize: 14 }}>📬 Inbox</Typography>
+              <Chip size="small" label={`${notifications.length} total`} sx={{ bgcolor: "rgba(99,102,241,0.12)", color: "#4f46e5", fontWeight: 700 }} />
             </Box>
           ) : null}
-          {notifications.map((n) => (
-            <Box key={n.id} sx={{ p: 1.5, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: n.read ? "#f9fafb" : "#eff6ff" }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center" }}>
-                <Typography sx={{ fontWeight: 950 }}>{n.title}</Typography>
-                {!n.read ? <Chip size="small" label="New" color="primary" /> : null}
+          {notifications.map((n, i) => (
+            <Box
+              key={n.id}
+              sx={{
+                p: 2, border: `1px solid ${n.read ? "rgba(226,232,240,0.8)" : "rgba(37,99,235,0.2)"}`,
+                borderRadius: 2.5, bgcolor: n.read ? "#fafbfc" : "rgba(37,99,235,0.04)",
+                animation: `slideUp 0.35s cubic-bezier(0.2,0.8,0.2,1) ${i * 0.05}s both`,
+                transition: "all 0.2s ease",
+                "&:hover": { transform: "translateX(3px)", boxShadow: "0 4px 14px rgba(15,23,42,0.08)" },
+              }}
+            >
+              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb: 0.5 }}>
+                <Typography sx={{ fontWeight: 800, fontSize: 14 }}>{n.title}</Typography>
+                {!n.read ? <Chip size="small" label="New" sx={{ bgcolor: "rgba(37,99,235,0.1)", color: "#2563eb", fontWeight: 800 }} /> : null}
               </Box>
-              <Typography sx={{ color: "text.secondary", fontSize: 13 }}>{n.message}</Typography>
-              <Divider sx={{ my: 1 }} />
-              <Typography sx={{ color: "text.secondary", fontSize: 12 }}>{new Date(n.createdAt).toLocaleString()}</Typography>
+              <Typography sx={{ color: "text.secondary", fontSize: 13, lineHeight: 1.5 }}>{n.message}</Typography>
+              <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 11.5, fontWeight: 500 }}>{new Date(n.createdAt).toLocaleString()}</Typography>
             </Box>
           ))}
           {!notifications.length ? <Typography sx={{ color: "text.secondary", fontSize: 13 }}>No notifications yet.</Typography> : null}

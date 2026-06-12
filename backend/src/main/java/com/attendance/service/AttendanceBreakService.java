@@ -23,12 +23,12 @@ public class AttendanceBreakService {
   }
 
   public List<AttendanceBreak> today(Employee employee) {
-    return attendanceBreakRepository.findAllByEmployee_IdAndDateOrderByBreakStartDesc(employee.getId(), LocalDate.now());
+    return attendanceBreakRepository.findAllByEmployee_IdAndDateOrderByBreakStartDesc(employee.getId(), AttendanceClock.today());
   }
 
   @Transactional
   public AttendanceBreak start(Employee employee) {
-    LocalDate today = LocalDate.now();
+    LocalDate today = AttendanceClock.today();
     attendanceBreakRepository.findTopByEmployee_IdAndDateAndBreakEndIsNullOrderByBreakStartDesc(employee.getId(), today)
         .ifPresent(b -> { throw new ApiException(HttpStatus.CONFLICT, "Break already running"); });
     AttendanceBreak b = new AttendanceBreak();
@@ -42,7 +42,7 @@ public class AttendanceBreakService {
 
   @Transactional
   public AttendanceBreak end(Employee employee) {
-    AttendanceBreak b = attendanceBreakRepository.findTopByEmployee_IdAndDateAndBreakEndIsNullOrderByBreakStartDesc(employee.getId(), LocalDate.now())
+    AttendanceBreak b = attendanceBreakRepository.findTopByEmployee_IdAndDateAndBreakEndIsNullOrderByBreakStartDesc(employee.getId(), AttendanceClock.today())
         .orElseThrow(() -> new ApiException(HttpStatus.CONFLICT, "No running break"));
     b.setBreakEnd(Instant.now());
     AttendanceBreak saved = attendanceBreakRepository.save(b);

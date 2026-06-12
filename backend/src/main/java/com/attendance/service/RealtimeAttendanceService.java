@@ -40,7 +40,8 @@ public class RealtimeAttendanceService {
   }
 
   public Map<String, Object> board() {
-    LocalDate today = LocalDate.now();
+    LocalDate today = AttendanceClock.today();
+    LocalTime now = AttendanceClock.now();
     List<Employee> employees = employeeRepository.findAll();
     Map<Long, AttendanceEntry> attendance =
         attendanceRepository.findAllByDateBetween(today, today).stream()
@@ -79,12 +80,12 @@ public class RealtimeAttendanceService {
         status = "CHECKED_IN";
         checkedIn++;
       } else {
-        status = LocalTime.now().isAfter(lateAfter) ? "LATE_ALERT" : "NOT_ARRIVED";
+        status = now.isAfter(lateAfter) ? "LATE_ALERT" : "NOT_ARRIVED";
         absent++;
         if ("LATE_ALERT".equals(status)) late++;
       }
       rows.add(row(e, a, status));
-      if (hasIn && !hasOut && LocalTime.now().isAfter(defaultOut.plusMinutes(60))) {
+      if (hasIn && !hasOut && now.isAfter(defaultOut.plusMinutes(60))) {
         correctionAlerts.add(alert(e, "MISSING_CHECKOUT", "Checked in but checkout is still missing"));
       }
       if (a != null && a.getWorkedMinutes() != null && a.getWorkedMinutes() > 0 && a.getWorkedMinutes() < settingsService.get().getHalfDayMinutes()) {

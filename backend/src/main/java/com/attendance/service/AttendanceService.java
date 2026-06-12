@@ -45,7 +45,7 @@ public class AttendanceService {
 
   @Transactional
   public void autoCheckoutIncompleteEntries(Long employeeId) {
-    LocalDate today = LocalDate.now();
+    LocalDate today = AttendanceClock.today();
     List<AttendanceEntry> unclosed = attendanceRepository
         .findAllByEmployee_IdAndInTimeIsNotNullAndOutTimeIsNullAndDateBefore(employeeId, today);
     for (AttendanceEntry entry : unclosed) {
@@ -72,7 +72,7 @@ public class AttendanceService {
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
 
     LocalDate startDate = effectiveStartDate(employee);
-    LocalDate today = LocalDate.now();
+    LocalDate today = AttendanceClock.today();
     if (date.isBefore(startDate)) {
       throw new ApiException(
           HttpStatus.BAD_REQUEST, "Attendance cannot be marked before " + startDate);
@@ -158,7 +158,7 @@ public class AttendanceService {
             .findById(employeeId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Employee not found"));
 
-    LocalDate today = LocalDate.now();
+    LocalDate today = AttendanceClock.today();
     LocalDate monthStart = month.atDay(1);
     LocalDate monthEnd = month.atEndOfMonth();
     LocalDate toDate = min(today, monthEnd);
@@ -234,11 +234,11 @@ public class AttendanceService {
 
   private LocalDate parseDefaultJoinDate() {
     String raw = appConfig.getAttendance().getDefaultJoinDate();
-    if (raw == null || raw.isBlank()) return LocalDate.now();
+    if (raw == null || raw.isBlank()) return AttendanceClock.today();
     try {
       return LocalDate.parse(raw.trim());
     } catch (Exception ignored) {
-      return LocalDate.now();
+      return AttendanceClock.today();
     }
   }
 

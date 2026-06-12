@@ -7,6 +7,7 @@ import com.attendance.repo.AttendanceRepository;
 import com.attendance.repo.EmployeeRepository;
 import com.attendance.repo.UserRepository;
 import com.attendance.service.ApiException;
+import com.attendance.service.AttendanceClock;
 import com.attendance.service.AttendancePunchService;
 import com.attendance.service.AttendanceService;
 import com.attendance.service.ProductionFeatureService;
@@ -54,7 +55,7 @@ public class EmployeePunchController {
   public AttendanceDtos.AttendanceResponse today() {
     var emp = currentEmployee();
     attendanceService.autoCheckoutIncompleteEntries(emp.getId());
-    var e = attendanceRepository.findByEmployee_IdAndDate(emp.getId(), LocalDate.now()).orElse(null);
+    var e = attendanceRepository.findByEmployee_IdAndDate(emp.getId(), AttendanceClock.today()).orElse(null);
     if (e == null) return null;
     return toResponse(e);
   }
@@ -163,11 +164,11 @@ public class EmployeePunchController {
     if (e.getWorkedMinutes() != null || e.getInTime() == null) {
       return e.getWorkedMinutes();
     }
-    if (e.getOutTime() == null && !LocalDate.now().equals(e.getDate())) {
+    if (e.getOutTime() == null && !AttendanceClock.today().equals(e.getDate())) {
       return null;
     }
 
-    LocalTime end = e.getOutTime() != null ? e.getOutTime() : LocalTime.now();
+    LocalTime end = e.getOutTime() != null ? e.getOutTime() : AttendanceClock.now();
     long minutes = Duration.between(e.getInTime(), end).toMinutes();
     if (minutes < 0) minutes += 24L * 60L;
     return (int) Math.max(0, minutes);
@@ -175,7 +176,7 @@ public class EmployeePunchController {
 
   private boolean hasTodayCheckIn(Long employeeId) {
     return attendanceRepository
-        .findByEmployee_IdAndDate(employeeId, LocalDate.now())
+        .findByEmployee_IdAndDate(employeeId, AttendanceClock.today())
         .map(e -> e.getInTime() != null)
         .orElse(false);
   }

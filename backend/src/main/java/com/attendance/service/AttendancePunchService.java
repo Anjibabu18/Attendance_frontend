@@ -7,8 +7,6 @@ import com.attendance.repo.AttendanceRepository;
 import com.attendance.repo.PunchAttemptRepository;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -54,7 +52,7 @@ public class AttendancePunchService {
     validatePunchInput(latitude, longitude, photo);
     assertWithinAssignedOffice(employee, latitude, longitude);
 
-    LocalDate today = LocalDate.now();
+    LocalDate today = AttendanceClock.today();
     var existing = attendanceRepository.findByEmployee_IdAndDate(employee.getId(), today).orElse(null);
     if (existing != null && existing.getInTime() != null) {
       throw new ApiException(
@@ -62,7 +60,7 @@ public class AttendancePunchService {
           "Already checked in today at " + existing.getInTime().truncatedTo(ChronoUnit.MINUTES));
     }
 
-    LocalTime inTime = LocalTime.now().truncatedTo(ChronoUnit.MINUTES);
+    var inTime = AttendanceClock.nowMinute();
     AttendanceEntry entry =
         attendanceService.upsert(employee.getId(), today, inTime, null, null, false);
 
@@ -86,7 +84,7 @@ public class AttendancePunchService {
     validatePunchInput(latitude, longitude, photo);
     assertWithinAssignedOffice(employee, latitude, longitude);
 
-    LocalDate today = LocalDate.now();
+    LocalDate today = AttendanceClock.today();
     AttendanceEntry existing =
         attendanceRepository
             .findByEmployee_IdAndDate(employee.getId(), today)
@@ -101,7 +99,7 @@ public class AttendancePunchService {
           "Already checked out today at " + existing.getOutTime().truncatedTo(ChronoUnit.MINUTES));
     }
 
-    LocalTime outTime = LocalTime.now().truncatedTo(ChronoUnit.MINUTES);
+    var outTime = AttendanceClock.nowMinute();
     AttendanceEntry entry =
         attendanceService.upsert(employee.getId(), today, existing.getInTime(), outTime, null, false);
 

@@ -1,30 +1,43 @@
 import {
   Alert,
-  Avatar,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
-  Container,
   IconButton,
   InputAdornment,
   TextField,
   Typography,
 } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import LoginIcon from "@mui/icons-material/Login";
-import LockIcon from "@mui/icons-material/Lock";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import SecurityIcon from "@mui/icons-material/Security";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import QrCodeIcon from "@mui/icons-material/QrCode";
+import FaceRetouchingNaturalIcon from "@mui/icons-material/FaceRetouchingNatural";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import DevicesIcon from "@mui/icons-material/Devices";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, clearLastAuthError, getLastAuthError } from "../api/client";
 import { useToast } from "../components/Toast";
 import { Role, setAuth } from "../auth/auth";
 
-type LoginResponse = { token: string; refreshToken?: string | null; role: Role; employeeId?: number | null; name?: string | null };
+type LoginResponse = {
+  token: string;
+  refreshToken?: string | null;
+  role: Role;
+  employeeId?: number | null;
+  name?: string | null;
+};
+
+const FEATURES = [
+  { icon: <QrCodeIcon sx={{ fontSize: 18 }} />, label: "Office QR Verification", color: "#6366f1" },
+  { icon: <FaceRetouchingNaturalIcon sx={{ fontSize: 18 }} />, label: "Face Recognition", color: "#0f766e" },
+  { icon: <LocationOnIcon sx={{ fontSize: 18 }} />, label: "GPS Location Check", color: "#2563eb" },
+  { icon: <DevicesIcon sx={{ fontSize: 18 }} />, label: "Device Approval", color: "#d97706" },
+];
 
 export default function LoginPage() {
   const { toastError } = useToast();
@@ -34,39 +47,24 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (error) {
-      toastError(error);
-      setError(null);
-    }
+    if (error) { toastError(error); setError(null); }
   }, [error, toastError]);
+
   const [lastAuthError] = useState(() => {
     const raw = getLastAuthError();
     if (!raw) return null;
-    try {
-      return JSON.parse(raw) as {
-        at?: string;
-        status?: number;
-        method?: string;
-        url?: string;
-        baseURL?: string;
-        message?: string;
-      };
-    } catch {
-      return { message: raw };
-    }
+    try { return JSON.parse(raw) as { message?: string }; }
+    catch { return { message: raw }; }
   });
+
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [focused, setFocused] = useState<"user" | "pass" | null>(null);
 
   const canSubmit = useMemo(
     () => username.trim().length > 0 && password.length > 0 && !loading,
     [loading, password, username],
   );
-
-  function getErrorMessage(err: unknown) {
-    const anyErr = err as any;
-    return anyErr?.response?.data?.error ?? anyErr?.message ?? "Login failed";
-  }
 
   function nextPathForRole(role: Role) {
     if (role === "ROLE_ADMIN") return "/admin";
@@ -79,249 +77,308 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     clearLastAuthError();
-
     const trimmedUsername = username.trim();
-    if (!trimmedUsername || !password) {
-      setError("Enter your username and password.");
-      return;
-    }
-
+    if (!trimmedUsername || !password) { setError("Enter your username and password."); return; }
     setLoading(true);
     try {
       const res = await api.post<LoginResponse>("/api/auth/login", { username: trimmedUsername, password });
       const token = res.data.token;
-      if (!token || token.split(".").length < 3) {
-        setError("Login succeeded but backend did not return a valid JWT token.");
-        return;
-      }
+      if (!token || token.split(".").length < 3) { setError("Login succeeded but backend did not return a valid JWT token."); return; }
       setAuth({ token, refreshToken: res.data.refreshToken, role: res.data.role, name: res.data.name ?? undefined, loggedInAt: new Date().toISOString() });
       nav(nextPathForRole(res.data.role), { replace: true });
     } catch (err: unknown) {
-      setError(getErrorMessage(err));
+      const anyErr = err as any;
+      setError(anyErr?.response?.data?.error ?? anyErr?.message ?? "Login failed");
     } finally {
       setLoading(false);
     }
   }
 
-  return (
-    <Box
-      sx={{
-        minHeight: "100svh",
-        bgcolor: "#edf4f7",
-        display: "grid",
-        alignItems: "center",
-        py: { xs: 1.5, md: 3 },
-      }}
-    >
-      <Container maxWidth="lg">
-        <Box sx={{ mb: 1.5, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Avatar sx={{ width: 42, height: 42, bgcolor: "#0f172a", fontWeight: 900 }}>A</Avatar>
-            <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 20, lineHeight: 1.1 }}>Attendance</Typography>
-              <Typography sx={{ color: "text.secondary", fontSize: 13 }}>Secure attendance portal</Typography>
-            </Box>
-          </Box>
-          <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => nav("/")} sx={{ color: "text.primary" }}>
-            Home
-          </Button>
-        </Box>
+  const styles = `
+    @keyframes loginFloat  { 0%,100%{transform:translateY(0) rotate(0deg)} 33%{transform:translateY(-12px) rotate(1deg)} 66%{transform:translateY(-6px) rotate(-1deg)} }
+    @keyframes loginScan   { 0%,100%{top:6%;opacity:0.5} 50%{top:84%;opacity:1} }
+    @keyframes loginOrb1   { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(30px,-20px) scale(1.1)} }
+    @keyframes loginOrb2   { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-20px,30px) scale(0.9)} }
+    @keyframes loginOrb3   { 0%,100%{transform:translate(0,0) scale(1)} 33%{transform:translate(20px,20px) scale(1.05)} 66%{transform:translate(-10px,-10px) scale(0.95)} }
+    @keyframes loginFadeIn { from{opacity:0;transform:translateY(24px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes loginSlideL { from{opacity:0;transform:translateX(-40px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes loginSlideR { from{opacity:0;transform:translateX(40px)} to{opacity:1;transform:translateX(0)} }
+    @keyframes featurePop  { from{opacity:0;transform:translateX(-20px) scale(0.9)} to{opacity:1;transform:translateX(0) scale(1)} }
+    @keyframes ringPing    { 0%{transform:scale(1);opacity:0.8} 100%{transform:scale(2.2);opacity:0} }
+    @keyframes checkPop   { 0%{transform:scale(0) rotate(-45deg);opacity:0} 60%{transform:scale(1.2) rotate(5deg)} 100%{transform:scale(1) rotate(0);opacity:1} }
+  `;
 
-        <Card
-          elevation={0}
+  return (
+    <Box sx={{ minHeight: "100svh", display: "flex", alignItems: "center", justifyContent: "center", p: { xs: 1.5, md: 3 }, position: "relative", overflow: "hidden" }}>
+      <style>{styles}</style>
+
+      {/* ── ANIMATED BACKGROUND BLOBS ── */}
+      <Box sx={{ position: "fixed", inset: 0, pointerEvents: "none", overflow: "hidden", zIndex: 0 }}>
+        <Box sx={{ position: "absolute", top: "-15%", left: "-10%", width: { xs: 350, md: 550 }, height: { xs: 350, md: 550 }, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)", animation: "loginOrb1 8s ease-in-out infinite" }} />
+        <Box sx={{ position: "absolute", bottom: "-20%", right: "-10%", width: { xs: 300, md: 500 }, height: { xs: 300, md: 500 }, borderRadius: "50%", background: "radial-gradient(circle, rgba(15,118,110,0.16) 0%, transparent 70%)", animation: "loginOrb2 10s ease-in-out infinite" }} />
+        <Box sx={{ position: "absolute", top: "30%", right: "20%", width: { xs: 200, md: 300 }, height: { xs: 200, md: 300 }, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.10) 0%, transparent 70%)", animation: "loginOrb3 12s ease-in-out infinite" }} />
+        {/* grid dots */}
+        <Box sx={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(99,102,241,0.12) 1px, transparent 1px)", backgroundSize: "32px 32px", opacity: 0.6 }} />
+      </Box>
+
+      {/* ── CARD ── */}
+      <Box
+        sx={{
+          position: "relative", zIndex: 1,
+          width: "100%", maxWidth: { xs: "100%", md: 960 },
+          display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+          borderRadius: { xs: 4, md: 5 },
+          overflow: "hidden",
+          boxShadow: "0 40px 120px rgba(15,23,42,0.20), 0 8px 32px rgba(15,23,42,0.08)",
+          border: "1px solid rgba(255,255,255,0.6)",
+          animation: "loginFadeIn 0.6s cubic-bezier(0.2,0.8,0.2,1) both",
+        }}
+      >
+        {/* ── LEFT PANEL ── */}
+        <Box
           sx={{
-            border: "1px solid #dfe3ea",
-            borderRadius: 1.5,
-            overflow: "hidden",
-            boxShadow: "0 24px 70px rgba(15,23,42,0.14)",
-            bgcolor: "#ffffff",
+            position: "relative", overflow: "hidden",
+            background: "linear-gradient(155deg, #0f172a 0%, #1e1b4b 40%, #14532d 100%)",
+            p: { xs: 3, md: 4 },
+            display: "flex", flexDirection: "column", justifyContent: "space-between",
+            minHeight: { xs: "auto", md: 600 },
+            animation: "loginSlideL 0.7s cubic-bezier(0.2,0.8,0.2,1) both",
           }}
         >
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "420px 1fr" }, minHeight: { xs: "auto", md: 560 } }}>
-            <Box
-              sx={{
-                background: "linear-gradient(160deg, #0f172a 0%, #12343b 55%, #0f766e 130%)",
-                color: "white",
-                p: { xs: 2.5, md: 3 },
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                gap: 3,
-                position: "relative",
-                overflow: "hidden",
-              }}
-            >
-              <Box sx={{ position: "relative", zIndex: 1 }}>
-                <Chip
-                  icon={<SecurityIcon />}
-                  label="Verified access"
-                  size="small"
-                  sx={{
-                    bgcolor: "rgba(255,255,255,0.10)",
-                    color: "white",
-                    borderRadius: 1,
-                    fontWeight: 800,
-                    "& .MuiChip-icon": { color: "white" },
-                  }}
-                />
-                <Typography sx={{ mt: 2.5, fontWeight: 950, fontSize: { xs: 30, md: 38 }, lineHeight: 1.04 }}>
-                  Check in with confidence.
-                </Typography>
-                <Typography sx={{ mt: 1.25, color: "rgba(255,255,255,0.74)", lineHeight: 1.6, fontSize: 14 }}>
-                  One clean portal for office QR, device approval, face verification, and attendance review.
-                </Typography>
-                <Box sx={{ mt: 3, position: "relative", height: 260, border: "1px solid rgba(255,255,255,0.12)", borderRadius: 1.5, bgcolor: "rgba(255,255,255,0.07)", overflow: "hidden" }}>
-                  <Box sx={{ position: "absolute", inset: 18, border: "1px solid rgba(255,255,255,0.14)", borderRadius: 1.5 }} />
-                  <Box
-                    sx={{
-                      position: "absolute",
-                      left: 32,
-                      right: 32,
-                      top: 32,
-                      height: 3,
-                      bgcolor: "#67e8f9",
-                      boxShadow: "0 0 28px rgba(103,232,249,0.9)",
-                      animation: "attendanceScan 3.2s ease-in-out infinite",
-                    }}
-                  />
-                  <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-                    <Box
-                      sx={{
-                        width: 128,
-                        height: 128,
-                        borderRadius: "50%",
-                        border: "1px solid rgba(255,255,255,0.18)",
-                        display: "grid",
-                        placeItems: "center",
-                        bgcolor: "rgba(15,23,42,0.32)",
-                        animation: "attendanceFloat 5s ease-in-out infinite",
-                      }}
-                    >
-                      <LockIcon sx={{ fontSize: 48, color: "#a7f3d0" }} />
-                    </Box>
+          {/* Decorative blobs inside card */}
+          <Box sx={{ position: "absolute", top: -80, right: -80, width: 250, height: 250, borderRadius: "50%", background: "radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <Box sx={{ position: "absolute", bottom: -60, left: -60, width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(15,118,110,0.25) 0%, transparent 70%)", pointerEvents: "none" }} />
+          <Box sx={{ position: "absolute", inset: 0, backgroundImage: "radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px)", backgroundSize: "24px 24px", pointerEvents: "none" }} />
+
+          {/* Logo */}
+          <Box sx={{ position: "relative", zIndex: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 4 }}>
+              <Box sx={{ width: 42, height: 42, borderRadius: 2.5, background: "linear-gradient(135deg, #6366f1, #2563eb)", display: "grid", placeItems: "center", boxShadow: "0 8px 20px rgba(99,102,241,0.4)" }}>
+                <SecurityIcon sx={{ fontSize: 22, color: "#fff" }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 900, fontSize: 18, color: "#fff", lineHeight: 1.1 }}>Attendance</Typography>
+                <Typography sx={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 500 }}>Secure Portal</Typography>
+              </Box>
+            </Box>
+
+            <Chip
+              icon={<CheckCircleIcon sx={{ fontSize: 14, color: "#6ee7b7 !important" }} />}
+              label="Enterprise-grade security"
+              size="small"
+              sx={{ bgcolor: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.85)", fontWeight: 700, border: "1px solid rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", mb: 2 }}
+            />
+
+            <Typography sx={{ fontWeight: 900, fontSize: { xs: 28, md: 36 }, lineHeight: 1.1, color: "#fff", mb: 1.5 }}>
+              Check in with{" "}
+              <Box component="span" sx={{ background: "linear-gradient(90deg, #818cf8, #34d399)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" }}>
+                confidence.
+              </Box>
+            </Typography>
+            <Typography sx={{ color: "rgba(255,255,255,0.60)", lineHeight: 1.65, fontSize: 14, mb: 3 }}>
+              One unified platform for QR attendance, device approval, face recognition, and real-time analytics.
+            </Typography>
+
+            {/* Animated scanner box */}
+            <Box sx={{ position: "relative", height: 200, border: "1px solid rgba(255,255,255,0.10)", borderRadius: 3, bgcolor: "rgba(255,255,255,0.04)", overflow: "hidden", mb: 3 }}>
+              <Box sx={{ position: "absolute", inset: 14, border: "1px solid rgba(255,255,255,0.08)", borderRadius: 2 }} />
+              {/* Corners */}
+              {[["0%","0%","bottom","right"],["0%","auto","bottom","left"],["auto","0%","top","right"],["auto","auto","top","left"]].map(([t,l,b,r], i) => (
+                <Box key={i} sx={{ position:"absolute", top:t==="auto"?undefined:14, left:l==="auto"?undefined:14, bottom:b==="top"?undefined:14, right:r==="left"?undefined:14, width:20, height:20, borderTop:`2px solid ${i<2?"rgba(99,102,241,0.8)":"transparent"}`, borderLeft:`2px solid ${i%2===0?"rgba(99,102,241,0.8)":"transparent"}`, borderBottom:`2px solid ${i>=2?"rgba(15,118,110,0.8)":"transparent"}`, borderRight:`2px solid ${i%2===1?"rgba(15,118,110,0.8)":"transparent"}` }} />
+              ))}
+              {/* Scan line */}
+              <Box sx={{ position: "absolute", left: 22, right: 22, height: 2, background: "linear-gradient(90deg, transparent, #67e8f9, transparent)", boxShadow: "0 0 16px rgba(103,232,249,0.8), 0 0 32px rgba(103,232,249,0.4)", animation: "loginScan 2.8s ease-in-out infinite" }} />
+              {/* Center face icon */}
+              <Box sx={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+                <Box sx={{ position: "relative" }}>
+                  <Box sx={{ width: 80, height: 80, borderRadius: "50%", border: "1.5px solid rgba(255,255,255,0.15)", bgcolor: "rgba(99,102,241,0.15)", display: "grid", placeItems: "center", animation: "loginFloat 5s ease-in-out infinite", backdropFilter: "blur(8px)" }}>
+                    <FaceRetouchingNaturalIcon sx={{ fontSize: 38, color: "rgba(255,255,255,0.8)" }} />
                   </Box>
-                  <Box sx={{ position: "absolute", left: 18, right: 18, bottom: 18, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 1 }}>
-                    {[
-                      ["QR", "valid"],
-                      ["Face", "match"],
-                      ["GPS", "inside"],
-                    ].map(([value, label]) => (
-                      <Box key={value} sx={{ p: 1, borderRadius: 1, bgcolor: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.10)" }}>
-                        <Typography sx={{ fontWeight: 950, fontSize: 16 }}>{value}</Typography>
-                        <Typography sx={{ color: "rgba(255,255,255,0.62)", fontSize: 11 }}>{label}</Typography>
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
-                <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
-                  {[
-                    ["Admin", "rules"],
-                    ["Employee", "punch"],
-                  ].map(([value, label]) => (
-                    <Box
-                      key={value}
-                      sx={{
-                        p: 1.2,
-                        borderRadius: 1,
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        bgcolor: "rgba(255,255,255,0.07)",
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 950, fontSize: 17, lineHeight: 1 }}>{value}</Typography>
-                      <Typography sx={{ mt: 0.5, color: "rgba(255,255,255,0.62)", fontSize: 12 }}>{label}</Typography>
-                    </Box>
-                  ))}
+                  <Box sx={{ position: "absolute", inset: -8, borderRadius: "50%", border: "1px solid rgba(99,102,241,0.3)", animation: "ringPing 2s cubic-bezier(0,0,0.2,1) infinite" }} />
                 </Box>
               </Box>
             </Box>
 
-            <CardContent sx={{ p: { xs: 2.5, md: 4 }, display: "grid", alignContent: "center" }}>
-              <Box sx={{ maxWidth: 520, width: "100%", mx: "auto" }}>
-                <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 2 }}>
-                  <Box>
-                    <Typography sx={{ fontWeight: 950, fontSize: 32, lineHeight: 1.1 }}>Sign in</Typography>
-                    <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 14 }}>
-                      Use your company username and password.
-                    </Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 1,
-                      display: "grid",
-                      placeItems: "center",
-                      bgcolor: "#eff6ff",
-                      color: "primary.main",
-                    }}
-                  >
-                    <LockIcon />
-                  </Box>
+            {/* Feature pills */}
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+              {FEATURES.map((f, i) => (
+                <Box
+                  key={f.label}
+                  sx={{
+                    display: "flex", alignItems: "center", gap: 1, p: "10px 14px",
+                    borderRadius: 2.5, bgcolor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)",
+                    backdropFilter: "blur(8px)",
+                    animation: `featurePop 0.5s cubic-bezier(0.2,0.8,0.2,1) ${0.1 + i * 0.08}s both`,
+                    transition: "background-color 0.2s ease",
+                    "&:hover": { bgcolor: "rgba(255,255,255,0.10)" },
+                  }}
+                >
+                  <Box sx={{ color: f.color, flexShrink: 0, filter: `drop-shadow(0 2px 8px ${f.color}88)` }}>{f.icon}</Box>
+                  <Typography sx={{ color: "rgba(255,255,255,0.75)", fontSize: 11.5, fontWeight: 600, lineHeight: 1.3 }}>{f.label}</Typography>
                 </Box>
+              ))}
+            </Box>
+          </Box>
 
-                <Box component="form" onSubmit={onSubmit} sx={{ mt: 2.5, display: "grid", gap: 1.8 }}>
-                  {error ? <Alert severity="error">{error}</Alert> : null}
-                  {!error && lastAuthError ? (
-                    <Alert severity="info" sx={{ alignItems: "center" }}>
-                      Your previous session expired. Please sign in again.
-                    </Alert>
-                  ) : null}
+          {/* Bottom copyright */}
+          <Typography sx={{ position: "relative", zIndex: 1, mt: 3, color: "rgba(255,255,255,0.3)", fontSize: 11, fontWeight: 500 }}>
+            © 2025 Attendance System · All rights reserved
+          </Typography>
+        </Box>
 
-                  <TextField
-                    label="Username"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      if (error) setError(null);
-                    }}
-                    autoFocus
-                    required
-                    disabled={loading}
-                    fullWidth
-                  />
-                  <TextField
-                    label="Password"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (error) setError(null);
-                    }}
-                    required
-                    disabled={loading}
-                    fullWidth
-                    InputProps={{
-                      endAdornment: (
-                        <InputAdornment position="end">
-                          <IconButton
-                            aria-label={showPassword ? "Hide password" : "Show password"}
-                            edge="end"
-                            onClick={() => setShowPassword((s) => !s)}
-                          >
-                            {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    size="large"
-                    startIcon={<LoginIcon />}
-                    disabled={!canSubmit}
-                    fullWidth
-                    sx={{ mt: 0.5, height: 48, fontWeight: 900 }}
-                  >
-                    {loading ? "Signing in..." : "Sign in to portal"}
-                  </Button>
+        {/* ── RIGHT PANEL ── */}
+        <Box
+          sx={{
+            background: "rgba(255,255,255,0.96)",
+            backdropFilter: "blur(24px)",
+            p: { xs: 3, md: 5 },
+            display: "flex", alignItems: "center", justifyContent: "center",
+            animation: "loginSlideR 0.7s cubic-bezier(0.2,0.8,0.2,1) both",
+          }}
+        >
+          <Box sx={{ width: "100%", maxWidth: 400 }}>
+            {/* Header */}
+            <Box sx={{ mb: 4 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 0.5 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: { xs: 28, md: 34 }, color: "#0f172a", lineHeight: 1.1 }}>
+                  Welcome back
+                </Typography>
+                <Box
+                  sx={{
+                    width: 48, height: 48, borderRadius: 3,
+                    background: "linear-gradient(135deg, #eff6ff, #e0e7ff)",
+                    display: "grid", placeItems: "center", color: "#2563eb",
+                    boxShadow: "0 4px 14px rgba(37,99,235,0.12)",
+                  }}
+                >
+                  <LockOutlinedIcon sx={{ fontSize: 22 }} />
                 </Box>
               </Box>
-            </CardContent>
+              <Typography sx={{ color: "text.secondary", fontSize: 14, fontWeight: 500 }}>
+                Sign in with your company credentials to continue.
+              </Typography>
+            </Box>
+
+            {/* Alerts */}
+            {lastAuthError && (
+              <Alert severity="info" sx={{ mb: 2.5, borderRadius: 2.5, fontSize: 13 }}>
+                Your previous session expired. Please sign in again.
+              </Alert>
+            )}
+
+            {/* Form */}
+            <Box component="form" onSubmit={onSubmit} sx={{ display: "grid", gap: 2 }}>
+              {/* Username */}
+              <Box sx={{ position: "relative" }}>
+                <TextField
+                  label="Username"
+                  value={username}
+                  onChange={(e) => { setUsername(e.target.value); if (error) setError(null); }}
+                  onFocus={() => setFocused("user")}
+                  onBlur={() => setFocused(null)}
+                  autoFocus required disabled={loading} fullWidth
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                      fontSize: 15,
+                      transition: "all 0.25s ease",
+                      ...(focused === "user" ? { boxShadow: "0 0 0 4px rgba(37,99,235,0.08)" } : {}),
+                    },
+                  }}
+                />
+              </Box>
+
+              {/* Password */}
+              <Box sx={{ position: "relative" }}>
+                <TextField
+                  label="Password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => { setPassword(e.target.value); if (error) setError(null); }}
+                  onFocus={() => setFocused("pass")}
+                  onBlur={() => setFocused(null)}
+                  required disabled={loading} fullWidth
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 3,
+                      fontSize: 15,
+                      transition: "all 0.25s ease",
+                      ...(focused === "pass" ? { boxShadow: "0 0 0 4px rgba(37,99,235,0.08)" } : {}),
+                    },
+                  }}
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          edge="end"
+                          onClick={() => setShowPassword((s) => !s)}
+                          sx={{ color: "text.secondary", "&:hover": { bgcolor: "rgba(37,99,235,0.06)" } }}
+                        >
+                          {showPassword ? <VisibilityOffIcon sx={{ fontSize: 20 }} /> : <VisibilityIcon sx={{ fontSize: 20 }} />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Box>
+
+              {/* Submit button */}
+              <Button
+                type="submit"
+                variant="contained"
+                size="large"
+                startIcon={loading ? undefined : <LoginIcon />}
+                disabled={!canSubmit}
+                fullWidth
+                sx={{
+                  mt: 0.5,
+                  height: 52,
+                  fontWeight: 800,
+                  fontSize: 15,
+                  borderRadius: 3,
+                  background: canSubmit
+                    ? "linear-gradient(135deg, #4f46e5 0%, #2563eb 50%, #0891b2 100%)"
+                    : undefined,
+                  backgroundSize: "200% 200%",
+                  animation: canSubmit ? "gradientRotate 4s ease infinite" : "none",
+                  boxShadow: canSubmit ? "0 8px 28px rgba(37,99,235,0.35)" : "none",
+                  letterSpacing: "0.02em",
+                  transition: "all 0.25s ease",
+                  "&:hover": {
+                    boxShadow: "0 12px 36px rgba(37,99,235,0.45)",
+                    transform: "translateY(-2px)",
+                  },
+                }}
+              >
+                {loading ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                    <Box sx={{ width: 18, height: 18, border: "2.5px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                    Signing in...
+                  </Box>
+                ) : "Sign in to portal"}
+              </Button>
+            </Box>
+
+            {/* Security badges */}
+            <Box sx={{ mt: 4, pt: 3, borderTop: "1px solid rgba(226,232,240,0.7)" }}>
+              <Typography sx={{ fontSize: 11.5, color: "text.secondary", fontWeight: 600, textAlign: "center", mb: 1.5, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                Protected by
+              </Typography>
+              <Box sx={{ display: "flex", justifyContent: "center", gap: 1.5, flexWrap: "wrap" }}>
+                {["JWT Auth", "HTTPS", "Face ID", "Device Lock"].map((label) => (
+                  <Chip
+                    key={label}
+                    label={label}
+                    size="small"
+                    icon={<CheckCircleIcon sx={{ fontSize: "14px !important", color: "#16a34a !important" }} />}
+                    sx={{ bgcolor: "rgba(22,163,74,0.06)", color: "#15803d", border: "1px solid rgba(22,163,74,0.18)", fontWeight: 700, fontSize: 11, height: 26, "& .MuiChip-label": { pl: 0.5 } }}
+                  />
+                ))}
+              </Box>
+            </Box>
           </Box>
-        </Card>
-      </Container>
+        </Box>
+      </Box>
     </Box>
   );
 }
