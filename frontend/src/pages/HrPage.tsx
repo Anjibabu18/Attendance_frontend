@@ -38,8 +38,10 @@ type Attendance = {
   earlyLeaveMinutes?: number | null;
   overtimeMinutes?: number | null;
   leaveReason?: string | null;
+  checkInPhotoUrl?: string | null;
   checkInFaceScore?: number | null;
   checkInFaceVerified?: boolean | null;
+  checkOutPhotoUrl?: string | null;
   checkOutFaceScore?: number | null;
   checkOutFaceVerified?: boolean | null;
   status: "PRESENT" | "HALF_DAY" | "LEAVE";
@@ -1374,26 +1376,63 @@ export default function HrPage() {
                         <Typography sx={{ opacity: 0.75, fontSize: 12 }}>
                           Late {e.lateMinutes ?? 0}m | Early {e.earlyLeaveMinutes ?? 0}m | OT {e.overtimeMinutes ?? 0}m
                         </Typography>
-                        {e.checkInFaceScore != null || e.checkOutFaceScore != null ? (
-                          <Typography sx={{ opacity: 0.75, fontSize: 12 }}>
-                            Face:{" "}
-                            {e.checkInFaceScore != null ? (
-                              <span style={{ color: e.checkInFaceVerified ? "#16a34a" : "#dc2626" }}>
-                                IN {Math.round(e.checkInFaceScore * 100)}%
-                              </span>
-                            ) : (
-                              "--"
-                            )}{" "}
-                            /{" "}
-                            {e.checkOutFaceScore != null ? (
-                              <span style={{ color: e.checkOutFaceVerified ? "#16a34a" : "#dc2626" }}>
-                                OUT {Math.round(e.checkOutFaceScore * 100)}%
-                              </span>
-                            ) : (
-                              "--"
-                            )}
-                          </Typography>
-                        ) : null}
+                        <Box sx={{ display: "flex", gap: 1.25, alignItems: "center" }}>
+                          {e.checkInPhotoUrl || e.checkInFaceScore != null ? (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: "1px solid #e2e8f0", borderRadius: 2, p: 0.5, bgcolor: "rgba(248,250,252,0.8)" }}>
+                              {e.checkInPhotoUrl ? (
+                                <Avatar
+                                  src={e.checkInPhotoUrl}
+                                  variant="rounded"
+                                  sx={{
+                                    width: 32,
+                                    height: 32,
+                                    cursor: "pointer",
+                                    border: "1px solid #cbd5e1",
+                                    transition: "transform 0.15s ease",
+                                    "&:hover": { transform: "scale(1.15)", zIndex: 1 },
+                                  }}
+                                  onClick={() => window.open(e.checkInPhotoUrl!, "_blank")}
+                                />
+                              ) : (
+                                <Avatar variant="rounded" sx={{ width: 32, height: 32, fontSize: 10, bgcolor: "#cbd5e1", color: "#475569" }}>IN</Avatar>
+                              )}
+                              <Box sx={{ pr: 0.5 }}>
+                                <Typography sx={{ fontSize: 8, fontWeight: 950, color: "#64748b", lineHeight: 1 }}>IN SELFIE</Typography>
+                                <Typography sx={{ fontSize: 10, fontWeight: 950, color: e.checkInFaceVerified ? "#16a34a" : e.checkInFaceScore != null ? "#dc2626" : "#64748b", lineHeight: 1.2 }}>
+                                  {e.checkInFaceScore != null ? `${Math.round(e.checkInFaceScore * 100)}%` : "N/A"}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          ) : null}
+
+                          {e.checkOutPhotoUrl || e.checkOutFaceScore != null ? (
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, border: "1px solid #e2e8f0", borderRadius: 2, p: 0.5, bgcolor: "rgba(248,250,252,0.8)" }}>
+                              {e.checkOutPhotoUrl ? (
+                                <Avatar
+                                  src={e.checkOutPhotoUrl}
+                                  variant="rounded"
+                                  sx={{
+                                    width: 32,
+                                    height: 32,
+                                    cursor: "pointer",
+                                    border: "1px solid #cbd5e1",
+                                    transition: "transform 0.15s ease",
+                                    "&:hover": { transform: "scale(1.15)", zIndex: 1 },
+                                  }}
+                                  onClick={() => window.open(e.checkOutPhotoUrl!, "_blank")}
+                                />
+                              ) : (
+                                <Avatar variant="rounded" sx={{ width: 32, height: 32, fontSize: 10, bgcolor: "#cbd5e1", color: "#475569" }}>OUT</Avatar>
+                              )}
+                              <Box sx={{ pr: 0.5 }}>
+                                <Typography sx={{ fontSize: 8, fontWeight: 950, color: "#64748b", lineHeight: 1 }}>OUT SELFIE</Typography>
+                                <Typography sx={{ fontSize: 10, fontWeight: 950, color: e.checkOutFaceVerified ? "#16a34a" : e.checkOutFaceScore != null ? "#dc2626" : "#64748b", lineHeight: 1.2 }}>
+                                  {e.checkOutFaceScore != null ? `${Math.round(e.checkOutFaceScore * 100)}%` : "N/A"}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          ) : null}
+                        </Box>
                         {e.status === "LEAVE" ? (
                           <Typography sx={{ opacity: 0.75, fontSize: 12, marginLeft: "auto" }}>
                             Reason: <b>{e.leaveReason?.trim() || "--"}</b>
