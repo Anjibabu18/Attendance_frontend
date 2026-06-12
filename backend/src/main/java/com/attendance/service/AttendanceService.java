@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AttendanceService {
+  private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AttendanceService.class);
+
   private final AttendanceRepository attendanceRepository;
   private final EmployeeRepository employeeRepository;
   private final AppConfig appConfig;
@@ -39,6 +41,21 @@ public class AttendanceService {
     this.appConfig = appConfig;
     this.holidayRepository = holidayRepository;
     this.attendanceSettingsService = attendanceSettingsService;
+  }
+
+  @Transactional
+  public void autoCheckoutIncompleteEntries(Long employeeId) {
+    LocalDate today = LocalDate.now();
+    List<AttendanceEntry> unclosed = attendanceRepository
+        .findAllByEmployee_IdAndInTimeIsNotNullAndOutTimeIsNullAndDateBefore(employeeId, today);
+    for (AttendanceEntry entry : unclosed) {
+      try {
+        log.info("Auto-checking out incomplete entry for employee {} on date {} at 23:59", employeeId, entry.getDate());
+        upsert(employeeId, entry.getDate(), entry.getInTime(), LocalTime.of(23, 59), null, true);
+      } catch (Exception ex) {
+        log.error("Failed to auto checkout entry for employee {} on date {}", employeeId, entry.getDate(), ex);
+      }
+    }
   }
 
   @Transactional
@@ -119,7 +136,9 @@ public class AttendanceService {
     return attendanceRepository.save(entry);
   }
 
+  @Transactional
   public List<AttendanceEntry> listForMonth(Long employeeId, YearMonth month) {
+    autoCheckoutIncompleteEntries(employeeId);
     Employee employee =
         employeeRepository
             .findById(employeeId)
@@ -130,7 +149,9 @@ public class AttendanceService {
     return attendanceRepository.findAllByEmployee_IdAndDateBetween(employeeId, from, to);
   }
 
+  @Transactional
   public MonthSummary monthSummary(Long employeeId, YearMonth month) {
+    autoCheckoutIncompleteEntries(employeeId);
     Employee employee =
         employeeRepository
             .findById(employeeId)

@@ -1362,6 +1362,11 @@ export default function HrPage() {
                         <Typography sx={{ fontWeight: 900, width: 110 }}>{e.date}</Typography>
                         <Typography sx={{ opacity: 0.85, width: 170 }}>
                           {e.inTime ?? "--"} {"->"} {e.outTime ?? "--"}
+                          {e.inTime && e.outTime && e.outTime.startsWith("23:59") && e.checkOutFaceVerified == null && (
+                            <span style={{ color: "#b45309", fontSize: 10, fontWeight: 900, display: "block" }}>
+                              (Auto-Checkout)
+                            </span>
+                          )}
                         </Typography>
                         <Typography sx={{ opacity: 0.85 }}>
                           {hh}h {mm}m

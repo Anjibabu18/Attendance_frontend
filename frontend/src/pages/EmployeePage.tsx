@@ -19,6 +19,9 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import PhotoCameraIcon from "@mui/icons-material/PhotoCamera";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import FlashOnIcon from "@mui/icons-material/FlashOn";
+import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import dayjs from "dayjs";
 import jsQR from "jsqr";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -1037,15 +1040,30 @@ export default function EmployeePage() {
     const extraSeconds = Math.max(0, workedSeconds - targetSeconds);
     const remainingSeconds = Math.max(0, targetSeconds - workedSeconds);
 
+    const hours = Math.floor(workedSeconds / 3600);
+    const minutes = Math.floor((workedSeconds % 3600) / 60);
+    const seconds = workedSeconds % 60;
+
+    const hh = String(hours).padStart(2, "0");
+    const mm = String(minutes).padStart(2, "0");
+    const ss = String(seconds).padStart(2, "0");
+
     if (checkedOutAt) {
       return {
         label: "Shift completed",
         value: formatDurationSeconds(workedSeconds),
+        hours: hh,
+        minutes: mm,
+        seconds: ss,
         helper:
           extraSeconds > 0
             ? `Regular ${formatDurationSeconds(targetSeconds)} | Extra ${formatDurationSeconds(extraSeconds)}`
             : `Checked in ${todayEntry?.inTime ?? "--"} -> checked out ${todayEntry?.outTime ?? "--"}`,
         accent: "#16a34a",
+        state: "COMPLETED",
+        badgeText: "🎉 Shift Completed",
+        bg: "linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)",
+        glow: "0 14px 44px rgba(22,163,74,0.08)",
       };
     }
 
@@ -1053,16 +1071,30 @@ export default function EmployeePage() {
       return {
         label: "Working time",
         value: formatDurationSeconds(workedSeconds),
+        hours: hh,
+        minutes: mm,
+        seconds: ss,
         helper: `${formatDurationSeconds(remainingSeconds)} left for ${Math.round(requiredMinutes / 60)}h target | Extra 00:00:00`,
         accent: "#2563eb",
+        state: "PROGRESS",
+        badgeText: "⚡ Shift In Progress",
+        bg: "linear-gradient(135deg, #ffffff 0%, #f0f5ff 100%)",
+        glow: "0 14px 44px rgba(37,99,235,0.08)",
       };
     }
 
     return {
       label: "Overtime running",
       value: formatDurationSeconds(workedSeconds),
+      hours: hh,
+      minutes: mm,
+      seconds: ss,
       helper: `Regular ${formatDurationSeconds(targetSeconds)} completed at ${workTargetAt.format("hh:mm A")} | Extra ${formatDurationSeconds(extraSeconds)}`,
       accent: "#b45309",
+      state: "OVERTIME",
+      badgeText: "🔥 Overtime Active",
+      bg: "linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)",
+      glow: "0 14px 44px rgba(217,119,6,0.08)",
     };
   }, [
     clockNow,
@@ -1125,67 +1157,163 @@ export default function EmployeePage() {
           <Box
             sx={{
               display: "grid",
-              gap: { xs: 1.5, md: 2 },
-              gridTemplateColumns: { xs: "1fr", lg: "minmax(0,1fr) 220px" },
-              alignItems: "stretch",
-              p: { xs: 1.5, md: 2.25 },
+              gap: { xs: 2, md: 2.5 },
+              gridTemplateColumns: { xs: "1fr", lg: "minmax(0,1fr) auto" },
+              alignItems: "center",
+              p: { xs: 2, sm: 2.5, md: 3 },
               border: `1px solid ${punchCountdown.accent}33`,
-              borderRadius: 1,
-              bgcolor: "#fff",
-              boxShadow: `0 14px 34px ${punchCountdown.accent}16`,
+              borderRadius: 3,
+              background: punchCountdown.bg,
+              boxShadow: punchCountdown.glow,
+              transition: "all 0.3s ease-in-out",
             }}
           >
-            <Box sx={{ minWidth: 0, display: "grid", gap: 1.5 }}>
+            <style>{`
+              @keyframes livePulse {
+                0% { transform: scale(0.85); opacity: 0.5; }
+                50% { transform: scale(1.2); opacity: 1; }
+                100% { transform: scale(0.85); opacity: 0.5; }
+              }
+            `}</style>
+            <Box sx={{ minWidth: 0, display: "grid", gap: 2.5 }}>
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1.5, flexWrap: "wrap" }}>
                 <Box>
-                  <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>
+                  <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     {punchCountdown.label}
                   </Typography>
-                  <Typography sx={{ mt: 0.5, color: punchCountdown.accent, fontSize: { xs: 38, md: 52 }, lineHeight: 1, fontWeight: 950, fontVariantNumeric: "tabular-nums" }}>
-                    {punchCountdown.value}
-                  </Typography>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap", mt: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      {/* Hours Segment */}
+                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <Box sx={{ px: 1.5, py: 0.75, borderRadius: 2, bgcolor: `${punchCountdown.accent}0d`, border: `1px solid ${punchCountdown.accent}24`, minWidth: { xs: 48, sm: 58 }, textAlign: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.02)" }}>
+                          <Typography sx={{ color: punchCountdown.accent, fontSize: { xs: 24, sm: 30, md: 36 }, fontWeight: 950, fontFamily: "monospace", fontVariantNumeric: "tabular-nums", lineHeight: 1.15 }}>
+                            {punchCountdown.hours}
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: 9, fontWeight: 900, color: "text.secondary", mt: 0.4, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                          Hours
+                        </Typography>
+                      </Box>
+
+                      <Typography sx={{ fontSize: { xs: 20, sm: 26 }, fontWeight: 900, color: `${punchCountdown.accent}80`, mb: 2, fontVariantNumeric: "tabular-nums" }}>
+                        :
+                      </Typography>
+
+                      {/* Minutes Segment */}
+                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <Box sx={{ px: 1.5, py: 0.75, borderRadius: 2, bgcolor: `${punchCountdown.accent}0d`, border: `1px solid ${punchCountdown.accent}24`, minWidth: { xs: 48, sm: 58 }, textAlign: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.02)" }}>
+                          <Typography sx={{ color: punchCountdown.accent, fontSize: { xs: 24, sm: 30, md: 36 }, fontWeight: 950, fontFamily: "monospace", fontVariantNumeric: "tabular-nums", lineHeight: 1.15 }}>
+                            {punchCountdown.minutes}
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: 9, fontWeight: 900, color: "text.secondary", mt: 0.4, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                          Minutes
+                        </Typography>
+                      </Box>
+
+                      <Typography sx={{ fontSize: { xs: 20, sm: 26 }, fontWeight: 900, color: `${punchCountdown.accent}80`, mb: 2, fontVariantNumeric: "tabular-nums" }}>
+                        :
+                      </Typography>
+
+                      {/* Seconds Segment */}
+                      <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                        <Box sx={{ px: 1.5, py: 0.75, borderRadius: 2, bgcolor: `${punchCountdown.accent}0d`, border: `1px solid ${punchCountdown.accent}24`, minWidth: { xs: 48, sm: 58 }, textAlign: "center", boxShadow: "inset 0 1px 3px rgba(0,0,0,0.02)" }}>
+                          <Typography sx={{ color: punchCountdown.accent, fontSize: { xs: 24, sm: 30, md: 36 }, fontWeight: 950, fontFamily: "monospace", fontVariantNumeric: "tabular-nums", lineHeight: 1.15 }}>
+                            {punchCountdown.seconds}
+                          </Typography>
+                        </Box>
+                        <Typography sx={{ fontSize: 9, fontWeight: 900, color: "text.secondary", mt: 0.4, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                          Seconds
+                        </Typography>
+                      </Box>
+                    </Box>
+
+                    {!todayEntry?.outTime && (
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, px: 1.25, py: 0.5, borderRadius: 100, bgcolor: `${punchCountdown.accent}12`, border: `1px solid ${punchCountdown.accent}24`, height: 26, alignSelf: "center", mt: -2 }}>
+                        <Box
+                          sx={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            bgcolor: punchCountdown.accent,
+                            animation: "livePulse 1.8s infinite ease-in-out"
+                          }}
+                        />
+                        <Typography sx={{ fontSize: 10, fontWeight: 950, color: punchCountdown.accent, textTransform: "uppercase", letterSpacing: "0.05em", lineHeight: 1 }}>
+                          LIVE
+                        </Typography>
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
                 <Chip
-                  label={todayEntry?.outTime ? "Completed" : afterCheckinCount?.isOvertime ? "Extra time" : "Live"}
-                  color={todayEntry?.outTime ? "success" : afterCheckinCount?.isOvertime ? "warning" : "primary"}
-                  sx={{ borderRadius: 1, fontWeight: 950 }}
+                  label={punchCountdown.badgeText}
+                  sx={{
+                    borderRadius: 2,
+                    fontWeight: 950,
+                    fontSize: 12,
+                    height: 32,
+                    px: 0.5,
+                    color: "#ffffff",
+                    bgcolor: punchCountdown.accent,
+                    boxShadow: `0 4px 12px ${punchCountdown.accent}33`,
+                    border: "none",
+                    "& .MuiChip-label": { px: 1.5 }
+                  }}
                 />
               </Box>
-              <Typography sx={{ color: "text.secondary", fontSize: 13, lineHeight: 1.45 }}>
+
+              <Typography sx={{ color: "text.secondary", fontSize: 13.5, lineHeight: 1.5 }}>
                 {punchCountdown.helper}
               </Typography>
+
               {afterCheckinCount ? (
-                <Box sx={{ display: "grid", gap: 1 }}>
+                <Box sx={{ display: "grid", gap: 1.5 }}>
                   <LinearProgress
                     variant="determinate"
                     value={afterCheckinCount.progress}
-                    color={afterCheckinCount.isOvertime ? "warning" : "primary"}
-                    sx={{ height: 8, borderRadius: 1, bgcolor: "rgba(15,23,42,0.08)" }}
+                    color={todayEntry?.outTime ? "success" : afterCheckinCount.isOvertime ? "warning" : "primary"}
+                    sx={{
+                      height: 10,
+                      borderRadius: 2,
+                      bgcolor: "rgba(15,23,42,0.06)",
+                      "& .MuiLinearProgress-bar": { borderRadius: 2 }
+                    }}
                   />
-                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4,1fr)" }, gap: 1 }}>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4,1fr)" }, gap: 1.5 }}>
                     {[
-                      { label: "Worked", value: afterCheckinCount.all, color: "#2563eb", bg: "rgba(37,99,235,0.06)", highlight: true },
-                      { label: "Regular", value: afterCheckinCount.regular, color: "#16a34a", bg: "rgba(22,163,74,0.06)" },
-                      { label: "Extra", value: afterCheckinCount.extra, color: "#b45309", bg: "rgba(180,83,9,0.07)", highlight: afterCheckinCount.isOvertime },
-                      { label: "Left", value: afterCheckinCount.remaining, color: "#475569", bg: "rgba(71,85,105,0.06)" },
+                      { label: "Worked", value: afterCheckinCount.all, color: "#2563eb", bg: "rgba(37,99,235,0.05)", icon: <AccessTimeIcon sx={{ fontSize: 15 }} />, highlight: true },
+                      { label: "Regular Target", value: afterCheckinCount.regular, color: "#16a34a", bg: "rgba(22,163,74,0.05)", icon: <VerifiedUserIcon sx={{ fontSize: 15 }} /> },
+                      { label: "Overtime Completed", value: afterCheckinCount.extra, color: "#b45309", bg: "rgba(180,83,9,0.05)", icon: <FlashOnIcon sx={{ fontSize: 15 }} />, highlight: afterCheckinCount.isOvertime },
+                      { label: "Time Remaining", value: afterCheckinCount.remaining, color: "#475569", bg: "rgba(71,85,105,0.05)", icon: <HourglassEmptyIcon sx={{ fontSize: 15 }} /> },
                     ].map((stat, i) => (
                       <Box
                         key={i}
                         sx={{
-                          p: 1.25,
-                          borderRadius: 1,
+                          p: 1.5,
+                          borderRadius: 2,
                           bgcolor: stat.bg,
-                          border: `1px solid ${stat.color}18`,
-                          textAlign: "center",
+                          border: `1px solid ${stat.color}15`,
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "space-between",
+                          minHeight: 74,
+                          transition: "transform 0.2s ease",
+                          "&:hover": {
+                            transform: "translateY(-2px)"
+                          }
                         }}
                       >
-                        <Typography sx={{ fontSize: 9.5, fontWeight: 900, textTransform: "uppercase", color: "text.secondary", mb: 0.5 }}>
-                          {stat.label}
-                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary", mb: 0.5 }}>
+                          {stat.icon}
+                          <Typography sx={{ fontSize: 9.5, fontWeight: 900, textTransform: "uppercase", letterSpacing: "0.03em" }}>
+                            {stat.label}
+                          </Typography>
+                        </Box>
                         <Typography
                           sx={{
                             fontWeight: 950,
-                            fontSize: 13,
+                            fontSize: 14.5,
                             lineHeight: 1.15,
                             fontVariantNumeric: "tabular-nums",
                             color: stat.highlight ? stat.color : "text.primary"
@@ -1202,9 +1330,20 @@ export default function EmployeePage() {
             {!todayEntry?.outTime ? (
               <Button
                 variant="contained"
-                color={afterCheckinCount?.isOvertime ? "warning" : "primary"}
                 onClick={() => scrollToSection("employee-punch")}
-                sx={{ minHeight: { xs: 48, lg: "100%" }, fontWeight: 950, borderRadius: 1 }}
+                sx={{
+                  minHeight: { xs: 48, lg: 120 },
+                  width: { xs: "100%", lg: 160 },
+                  fontWeight: 950,
+                  borderRadius: 2.5,
+                  bgcolor: punchCountdown.accent,
+                  color: "#ffffff",
+                  boxShadow: `0 8px 24px ${punchCountdown.accent}40`,
+                  "&:hover": {
+                    bgcolor: punchCountdown.accent,
+                    boxShadow: `0 12px 28px ${punchCountdown.accent}55`,
+                  }
+                }}
               >
                 Go to checkout
               </Button>
@@ -1565,13 +1704,13 @@ export default function EmployeePage() {
                 ) : null}
 
                 {afterCheckinCount ? (
-                  <Box sx={{ mt: 1.5, p: 1.5, border: "1px solid rgba(15,23,42,0.08)", borderRadius: 1, bgcolor: "#fff", display: "grid", gap: 1.25 }}>
+                  <Box sx={{ mt: 1.5, p: 2, border: `1px solid ${punchCountdown?.accent}24`, borderRadius: 3, background: punchCountdown?.bg || "#fff", display: "grid", gap: 1.5, boxShadow: punchCountdown?.glow || "none" }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.5, alignItems: "flex-start", flexWrap: "wrap" }}>
                       <Box>
-                        <Typography sx={{ fontSize: 11, fontWeight: 950, textTransform: "uppercase", color: "text.secondary" }}>
+                        <Typography sx={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "text.secondary" }}>
                           Active shift
                         </Typography>
-                        <Typography sx={{ mt: 0.25, fontWeight: 950, fontSize: { xs: 30, sm: 34 }, lineHeight: 1, color: afterCheckinCount.isOvertime ? "#b45309" : "primary.main", fontVariantNumeric: "tabular-nums" }}>
+                        <Typography sx={{ mt: 0.25, fontWeight: 950, fontSize: { xs: 28, sm: 32 }, lineHeight: 1, color: punchCountdown?.accent || "primary.main", fontFamily: "monospace", fontVariantNumeric: "tabular-nums" }}>
                           {formatDurationSeconds(afterCheckinCount.seconds)}
                         </Typography>
                       </Box>
@@ -1579,20 +1718,40 @@ export default function EmployeePage() {
                         <Typography sx={{ fontSize: 11, fontWeight: 900, textTransform: "uppercase", color: "text.secondary" }}>
                           Check-in time
                         </Typography>
-                        <Typography sx={{ fontWeight: 950 }}>{todayEntry?.inTime ?? "--"}</Typography>
+                        <Typography sx={{ fontWeight: 950, color: "text.primary" }}>{todayEntry?.inTime ?? "--"}</Typography>
                       </Box>
                     </Box>
-                    <LinearProgress variant="determinate" value={afterCheckinCount.progress} color={afterCheckinCount.isOvertime ? "warning" : "primary"} sx={{ height: 8, borderRadius: 1, bgcolor: "rgba(15,23,42,0.08)" }} />
+                    <LinearProgress
+                      variant="determinate"
+                      value={afterCheckinCount.progress}
+                      color={todayEntry?.outTime ? "success" : afterCheckinCount.isOvertime ? "warning" : "primary"}
+                      sx={{ height: 8, borderRadius: 2, bgcolor: "rgba(15,23,42,0.06)", "& .MuiLinearProgress-bar": { borderRadius: 2 } }}
+                    />
                     <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", sm: "repeat(4,1fr)" }, gap: 1 }}>
                       {[
-                        ["Worked", afterCheckinCount.all, "#2563eb"],
-                        ["Regular", afterCheckinCount.regular, "#16a34a"],
-                        ["Extra", afterCheckinCount.extra, "#b45309"],
-                        ["Left", afterCheckinCount.remaining, "#475569"],
-                      ].map(([label, value, color]) => (
-                        <Box key={label} sx={{ p: 1, borderRadius: 1, bgcolor: `${color}0d`, border: `1px solid ${color}1f`, minHeight: 62 }}>
-                          <Typography sx={{ fontSize: 10, fontWeight: 900, textTransform: "uppercase", color: "text.secondary" }}>{label}</Typography>
-                          <Typography sx={{ mt: 0.4, fontSize: 13, fontWeight: 950, color, fontVariantNumeric: "tabular-nums" }}>{value}</Typography>
+                        { label: "Worked", value: afterCheckinCount.all, color: "#2563eb", icon: <AccessTimeIcon sx={{ fontSize: 13 }} /> },
+                        { label: "Regular", value: afterCheckinCount.regular, color: "#16a34a", icon: <VerifiedUserIcon sx={{ fontSize: 13 }} /> },
+                        { label: "Extra", value: afterCheckinCount.extra, color: "#b45309", icon: <FlashOnIcon sx={{ fontSize: 13 }} /> },
+                        { label: "Left", value: afterCheckinCount.remaining, color: "#475569", icon: <HourglassEmptyIcon sx={{ fontSize: 13 }} /> },
+                      ].map((stat) => (
+                        <Box
+                          key={stat.label}
+                          sx={{
+                            p: 1.25,
+                            borderRadius: 2,
+                            bgcolor: `${stat.color}0d`,
+                            border: `1px solid ${stat.color}1a`,
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            minHeight: 62
+                          }}
+                        >
+                          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, color: "text.secondary" }}>
+                            {stat.icon}
+                            <Typography sx={{ fontSize: 9, fontWeight: 900, textTransform: "uppercase" }}>{stat.label}</Typography>
+                          </Box>
+                          <Typography sx={{ mt: 0.4, fontSize: 12.5, fontWeight: 950, color: stat.color, fontVariantNumeric: "tabular-nums" }}>{stat.value}</Typography>
                         </Box>
                       ))}
                     </Box>
@@ -1896,6 +2055,14 @@ export default function EmployeePage() {
                   <b>
                     {selectedEntry?.inTime ?? "--"} {"->"} {selectedEntry?.outTime ?? "--"}
                   </b>
+                  {selectedEntry && selectedEntry.inTime && selectedEntry.outTime && selectedEntry.outTime.startsWith("23:59") && !selectedEntry.checkOutPhotoUrl && (
+                    <Chip
+                      size="small"
+                      label="Auto-Checkout (Forgot Logout)"
+                      color="warning"
+                      sx={{ ml: 1, borderRadius: 1, fontWeight: 900, fontSize: 10, height: 20 }}
+                    />
+                  )}
                 </Typography>
                 {selectedEntry ? (
                   <Typography sx={{ opacity: 0.9 }}>

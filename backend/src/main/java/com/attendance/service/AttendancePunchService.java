@@ -50,6 +50,7 @@ public class AttendancePunchService {
 
   @Transactional
   public AttendanceEntry checkIn(Employee employee, double latitude, double longitude, MultipartFile photo) {
+    attendanceService.autoCheckoutIncompleteEntries(employee.getId());
     validatePunchInput(latitude, longitude, photo);
     assertWithinAssignedOffice(employee, latitude, longitude);
 
@@ -81,6 +82,7 @@ public class AttendancePunchService {
 
   @Transactional
   public AttendanceEntry checkOut(Employee employee, double latitude, double longitude, MultipartFile photo) {
+    attendanceService.autoCheckoutIncompleteEntries(employee.getId());
     validatePunchInput(latitude, longitude, photo);
     assertWithinAssignedOffice(employee, latitude, longitude);
 

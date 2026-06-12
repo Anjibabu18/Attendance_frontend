@@ -8,6 +8,7 @@ import com.attendance.repo.EmployeeRepository;
 import com.attendance.repo.UserRepository;
 import com.attendance.service.ApiException;
 import com.attendance.service.AttendancePunchService;
+import com.attendance.service.AttendanceService;
 import com.attendance.service.ProductionFeatureService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
@@ -32,23 +33,27 @@ public class EmployeePunchController {
   private final AttendanceRepository attendanceRepository;
   private final AttendancePunchService attendancePunchService;
   private final ProductionFeatureService productionFeatureService;
+  private final AttendanceService attendanceService;
 
   public EmployeePunchController(
       UserRepository userRepository,
       EmployeeRepository employeeRepository,
       AttendanceRepository attendanceRepository,
       AttendancePunchService attendancePunchService,
-      ProductionFeatureService productionFeatureService) {
+      ProductionFeatureService productionFeatureService,
+      AttendanceService attendanceService) {
     this.userRepository = userRepository;
     this.employeeRepository = employeeRepository;
     this.attendanceRepository = attendanceRepository;
     this.attendancePunchService = attendancePunchService;
     this.productionFeatureService = productionFeatureService;
+    this.attendanceService = attendanceService;
   }
 
   @GetMapping("/today")
   public AttendanceDtos.AttendanceResponse today() {
     var emp = currentEmployee();
+    attendanceService.autoCheckoutIncompleteEntries(emp.getId());
     var e = attendanceRepository.findByEmployee_IdAndDate(emp.getId(), LocalDate.now()).orElse(null);
     if (e == null) return null;
     return toResponse(e);
