@@ -623,7 +623,15 @@ export default function EmployeePage() {
     @keyframes _cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     @keyframes _scanLine{0%,100%{top:5%;opacity:.6}50%{top:88%;opacity:1}}
     .emp-hero{animation:_heroIn .55s cubic-bezier(.2,.8,.2,1) both}
-    .emp-section{animation:_cardIn .45s cubic-bezier(.2,.8,.2,1) both}
+    .emp-section{
+      animation:_cardIn .45s cubic-bezier(.2,.8,.2,1) both;
+      scroll-margin-top: 155px;
+    }
+    @media (max-width: 600px) {
+      .emp-section {
+        scroll-margin-top: 130px;
+      }
+    }
     .emp-stat:nth-child(1){animation:_cardIn .4s .04s both}
     .emp-stat:nth-child(2){animation:_cardIn .4s .08s both}
     .emp-stat:nth-child(3){animation:_cardIn .4s .12s both}
@@ -1025,15 +1033,24 @@ export default function EmployeePage() {
 
           {/* Today punch times */}
           {todayEntry?.inTime && (
-            <Box sx={{ mb: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: { xs: 1, sm: 1.5 } }}>
+            <Box sx={{ mb: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: { xs: 1, sm: 1.5 }, alignItems: "stretch" }}>
               {[
                 { label: "Check-in", time: todayEntry.inTime, photo: todayEntry.checkInPhotoUrl, color: "#15803d", bg: "rgba(22,163,74,0.05)", border: "rgba(22,163,74,0.2)" },
                 { label: "Check-out", time: todayEntry.outTime, photo: todayEntry.checkOutPhotoUrl, color: todayEntry.outTime ? "#475569" : "#d97706", bg: todayEntry.outTime ? "rgba(71,85,105,0.05)" : "rgba(217,119,6,0.05)", border: todayEntry.outTime ? "rgba(71,85,105,0.2)" : "rgba(217,119,6,0.2)" },
               ].map(p => (
-                <Box key={p.label} sx={{ p: { xs: 1.25, sm: 1.75 }, borderRadius: 2.5, bgcolor: p.bg, border: `1px solid ${p.border}`, textAlign: "center" }}>
+                <Box key={p.label} sx={{ display: "flex", flexDirection: "column", height: "100%", p: { xs: 1.25, sm: 1.75 }, borderRadius: 2.5, bgcolor: p.bg, border: `1px solid ${p.border}`, textAlign: "center" }}>
                   <Typography sx={{ fontSize: { xs: 9, sm: 10.5 }, fontWeight: 800, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>{p.label}</Typography>
-                  <Typography sx={{ fontSize: { xs: 18, sm: 22 }, fontWeight: 900, color: p.color, fontVariantNumeric: "tabular-nums" }}>{p.time ?? "--:--"}</Typography>
-                  {p.photo && <Box component="img" src={p.photo} alt={p.label} sx={{ mt: 1, width: "100%", height: { xs: 64, sm: 80 }, objectFit: "cover", borderRadius: 1.5 }} />}
+                  <Typography sx={{ fontSize: { xs: 18, sm: 22 }, fontWeight: 900, color: p.color, fontVariantNumeric: "tabular-nums", mb: 0.5 }}>{p.time ?? "--:--"}</Typography>
+                  <Box sx={{ mt: "auto", width: "100%" }}>
+                    {p.photo ? (
+                      <Box component="img" src={p.photo} alt={p.label} sx={{ width: "100%", height: { xs: 64, sm: 80 }, objectFit: "cover", borderRadius: 1.5, display: "block" }} />
+                    ) : (
+                      <Box sx={{ width: "100%", height: { xs: 64, sm: 80 }, borderRadius: 1.5, border: `1px dashed ${p.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", bgcolor: `${p.color}03` }}>
+                        <PhotoCameraIcon sx={{ fontSize: { xs: 18, sm: 22 }, color: p.color, opacity: 0.35, mb: 0.5 }} />
+                        <Typography sx={{ fontSize: { xs: 9, sm: 10 }, fontWeight: 700, color: p.color, opacity: 0.5 }}>Pending</Typography>
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
               ))}
             </Box>
