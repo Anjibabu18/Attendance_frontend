@@ -57,8 +57,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            ghcr.io/${{ env.REPO_OWNER }}/attendance-backend:latest
-            ghcr.io/${{ env.REPO_OWNER }}/attendance-backend:${{ github.sha }}
+            ghcr.io/${{ env.REPO_OWNER }}/attendance-backend-service:latest
+            ghcr.io/${{ env.REPO_OWNER }}/attendance-backend-service:${{ github.sha }}
 
       - name: Build and push to Docker Hub
         if: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
@@ -71,8 +71,8 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            docker.io/${{ env.DOCKERHUB_USERNAME }}/attendance-backend:latest
-            docker.io/${{ env.DOCKERHUB_USERNAME }}/attendance-backend:${{ github.sha }}
+            docker.io/${{ env.DOCKERHUB_USERNAME }}/attendance-backend-service:latest
+            docker.io/${{ env.DOCKERHUB_USERNAME }}/attendance-backend-service:${{ github.sha }}
 
       - name: Trigger Render deploy
         if: ${{ env.RENDER_DEPLOY_HOOK_URL != '' }}
