@@ -90,6 +90,9 @@ public class AttendanceEntry {
   @Column(nullable = false, length = 10)
   private AttendanceStatus status;
 
+  @Column(name = "timezone_corrected", nullable = false, columnDefinition = "boolean default false")
+  private boolean timezoneCorrected = false;
+
   public Long getId() {
     return id;
   }
@@ -256,5 +259,13 @@ public class AttendanceEntry {
 
   public void setStatus(AttendanceStatus status) {
     this.status = status;
+  }
+
+  public boolean isTimezoneCorrected() {
+    return timezoneCorrected;
+  }
+
+  public void setTimezoneCorrected(boolean timezoneCorrected) {
+    this.timezoneCorrected = timezoneCorrected;
   }
 }

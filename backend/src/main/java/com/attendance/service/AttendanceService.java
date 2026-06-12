@@ -89,6 +89,7 @@ public class AttendanceService {
     entry.setDate(date);
     entry.setInTime(inTime);
     entry.setOutTime(outTime);
+    entry.setTimezoneCorrected(true);
 
     Integer minutes = computeWorkedMinutes(inTime, outTime);
     entry.setWorkedMinutes(minutes);
@@ -284,6 +285,37 @@ public class AttendanceService {
 
   private static int safeGrace(Integer value) {
     return value == null ? 0 : Math.max(0, value);
+  }
+
+  @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+  @Transactional
+  public void migrateTimezones() {
+    List<AttendanceEntry> uncorrected = attendanceRepository.findAllByTimezoneCorrectedFalse();
+    if (uncorrected.isEmpty()) {
+      return;
+    }
+    log.info("Found {} attendance entries requiring timezone correction (UTC -> IST)", uncorrected.size());
+    for (AttendanceEntry entry : uncorrected) {
+      if (entry.getInTime() != null) {
+        entry.setInTime(entry.getInTime().plusHours(5).plusMinutes(30));
+      }
+      if (entry.getOutTime() != null) {
+        entry.setOutTime(entry.getOutTime().plusHours(5).plusMinutes(30));
+      }
+      // Recompute worked minutes and overtime
+      if (entry.getInTime() != null) {
+        Integer minutes = computeWorkedMinutes(entry.getInTime(), entry.getOutTime());
+        entry.setWorkedMinutes(minutes);
+        var settings = attendanceSettingsService.get();
+        entry.setLateMinutes(computeLateMinutes(entry.getInTime(), settings.getDefaultInTime(), settings.getLateGraceMinutes()));
+        entry.setEarlyLeaveMinutes(
+            computeEarlyLeaveMinutes(entry.getOutTime(), settings.getDefaultOutTime(), settings.getEarlyLeaveGraceMinutes()));
+        entry.setOvertimeMinutes(computeOvertimeMinutes(minutes, settings.getOvertimeAfterMinutes()));
+      }
+      entry.setTimezoneCorrected(true);
+    }
+    attendanceRepository.saveAll(uncorrected);
+    log.info("Timezone correction migration completed successfully.");
   }
 
   public record MonthSummary(
