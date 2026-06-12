@@ -1477,7 +1477,7 @@ export default function EmployeePage() {
                   {placeBusy ? "Checking..." : "Verify place"}
                 </Button>
                 <Button
-                  variant="contained"
+                  variant={!todayEntry?.inTime ? "contained" : "outlined"}
                   onClick={() => openSelfieCamera("checkin")}
                   disabled={punchBusy || selfieBusy || !!todayEntry?.inTime || (qrRequired() && !qrOk) || !deviceStatus?.approved}
                   sx={{ minHeight: 54, fontWeight: 900 }}
@@ -1487,7 +1487,7 @@ export default function EmployeePage() {
                 </Button>
 
                 <Button
-                  variant="outlined"
+                  variant={todayEntry?.inTime && !todayEntry?.outTime ? "contained" : "outlined"}
                   onClick={() => openSelfieCamera("checkout")}
                   disabled={punchBusy || selfieBusy || !todayEntry?.inTime || !!todayEntry?.outTime || (qrRequired() && !qrOk) || !deviceStatus?.approved}
                   sx={{ minHeight: 54, fontWeight: 900 }}
