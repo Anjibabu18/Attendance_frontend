@@ -11,6 +11,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
+import java.util.List;
+import java.util.Map;
 
 @Component
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true", matchIfMissing = true)
@@ -25,16 +28,19 @@ public class DataSeeder implements CommandLineRunner {
   private final PasswordEncoder passwordEncoder;
   private final PasswordPolicy passwordPolicy;
   private final AppConfig appConfig;
+  private final JdbcTemplate jdbcTemplate;
 
   public DataSeeder(
       UserRepository userRepository,
       PasswordEncoder passwordEncoder,
       PasswordPolicy passwordPolicy,
-      AppConfig appConfig) {
+      AppConfig appConfig,
+      JdbcTemplate jdbcTemplate) {
     this.userRepository = userRepository;
     this.passwordEncoder = passwordEncoder;
     this.passwordPolicy = passwordPolicy;
     this.appConfig = appConfig;
+    this.jdbcTemplate = jdbcTemplate;
   }
 
   @Override
@@ -86,6 +92,35 @@ public class DataSeeder implements CommandLineRunner {
       hr.setRole(Role.ROLE_HR);
       userRepository.save(hr);
       log.info("Seeded local dev HR user '{}'", DEV_HR_USERNAME);
+    }
+
+    // Custom attendance seeder block for today's entries
+    try {
+      log.info("Executing custom startup attendance update query for today's entries (9:30 AM)...");
+      
+      // Update existing entries for today (2026-06-12) to have in_time = 09:30:00
+      int updated = jdbcTemplate.update(
+          "UPDATE attendance_entries SET in_time = '09:30:00', status = 'PRESENT' WHERE entry_date = '2026-06-12'"
+      );
+      log.info("Updated {} existing attendance entries to 09:30:00 for 2026-06-12", updated);
+
+      // Insert missing attendance entries for all employees for 2026-06-12
+      List<Long> employeeIds = jdbcTemplate.queryForList("SELECT id FROM employees", Long.class);
+      for (Long empId : employeeIds) {
+        List<Map<String, Object>> existing = jdbcTemplate.queryForList(
+            "SELECT id FROM attendance_entries WHERE employee_id = ? AND entry_date = '2026-06-12'", empId
+        );
+        if (existing.isEmpty()) {
+          jdbcTemplate.update(
+              "INSERT INTO attendance_entries (employee_id, entry_date, in_time, status, timezone_corrected) " +
+              "VALUES (?, '2026-06-12', '09:30:00', 'PRESENT', 1)",
+              empId
+          );
+          log.info("Inserted missing 09:30:00 attendance entry for employee ID {} on 2026-06-12", empId);
+        }
+      }
+    } catch (Exception e) {
+      log.error("Failed to execute custom startup attendance update query", e);
     }
   }
 
