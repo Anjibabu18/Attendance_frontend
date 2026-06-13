@@ -290,17 +290,28 @@ public class AttendanceService {
   @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
   @Transactional
   public void migrateTimezones() {
-    List<AttendanceEntry> uncorrected = attendanceRepository.findAllByTimezoneCorrectedFalse();
-    if (!uncorrected.isEmpty()) {
-      log.info("Found {} attendance entries requiring timezone correction (UTC -> IST)", uncorrected.size());
-      for (AttendanceEntry entry : uncorrected) {
+    // Check if we need to revert the incorrect double-conversion.
+    // If today's entry (2026-06-13) has an inTime after 12:00 PM (e.g. 15:16:00), it was double-corrected.
+    List<AttendanceEntry> todayEntries = attendanceRepository.findAllByDateBetween(LocalDate.of(2026, 6, 13), LocalDate.of(2026, 6, 13));
+    boolean needsReversion = false;
+    for (AttendanceEntry entry : todayEntries) {
+      if (entry.getInTime() != null && entry.getInTime().isAfter(LocalTime.of(12, 0))) {
+        needsReversion = true;
+        break;
+      }
+    }
+
+    if (needsReversion) {
+      log.info("Detected double timezone correction. Reverting all entries in database by subtracting 5.5 hours to align with container JRE timezone.");
+      List<AttendanceEntry> allEntries = attendanceRepository.findAll();
+      for (AttendanceEntry entry : allEntries) {
         if (entry.getInTime() != null) {
-          entry.setInTime(entry.getInTime().plusHours(5).plusMinutes(30));
+          entry.setInTime(entry.getInTime().minusHours(5).minusMinutes(30));
         }
         if (entry.getOutTime() != null) {
-          entry.setOutTime(entry.getOutTime().plusHours(5).plusMinutes(30));
+          entry.setOutTime(entry.getOutTime().minusHours(5).minusMinutes(30));
         }
-        // Recompute worked minutes and overtime
+        // Recompute worked minutes and stats based on the correct LocalTime
         if (entry.getInTime() != null) {
           Integer minutes = computeWorkedMinutes(entry.getInTime(), entry.getOutTime());
           entry.setWorkedMinutes(minutes);
@@ -310,36 +321,10 @@ public class AttendanceService {
               computeEarlyLeaveMinutes(entry.getOutTime(), settings.getDefaultOutTime(), settings.getEarlyLeaveGraceMinutes()));
           entry.setOvertimeMinutes(computeOvertimeMinutes(minutes, settings.getOvertimeAfterMinutes()));
         }
-        entry.setTimezoneCorrected(true);
+        entry.setTimezoneCorrected(false);
       }
-      attendanceRepository.saveAll(uncorrected);
-      log.info("Timezone correction migration completed successfully.");
-    }
-
-    // One-off check for any entries on or after 2026-06-12 that were saved with timezoneCorrected=true but are actually in UTC
-    List<AttendanceEntry> recentEntries = attendanceRepository.findAllByDateBetween(LocalDate.of(2026, 6, 12), LocalDate.of(2026, 6, 15));
-    boolean modifiedAny = false;
-    for (AttendanceEntry entry : recentEntries) {
-      if (entry.getInTime() != null && entry.getInTime().isBefore(LocalTime.of(5, 30))) {
-        log.info("Correcting UTC check-in time for employee {} on date {}: {} -> {}", 
-            entry.getEmployee().getId(), entry.getDate(), entry.getInTime(), entry.getInTime().plusHours(5).plusMinutes(30));
-        entry.setInTime(entry.getInTime().plusHours(5).plusMinutes(30));
-        if (entry.getOutTime() != null && entry.getOutTime().isBefore(LocalTime.of(5, 30))) {
-          entry.setOutTime(entry.getOutTime().plusHours(5).plusMinutes(30));
-        }
-        Integer minutes = computeWorkedMinutes(entry.getInTime(), entry.getOutTime());
-        entry.setWorkedMinutes(minutes);
-        var settings = attendanceSettingsService.get();
-        entry.setLateMinutes(computeLateMinutes(entry.getInTime(), settings.getDefaultInTime(), settings.getLateGraceMinutes()));
-        entry.setEarlyLeaveMinutes(
-            computeEarlyLeaveMinutes(entry.getOutTime(), settings.getDefaultOutTime(), settings.getEarlyLeaveGraceMinutes()));
-        entry.setOvertimeMinutes(computeOvertimeMinutes(minutes, settings.getOvertimeAfterMinutes()));
-        attendanceRepository.save(entry);
-        modifiedAny = true;
-      }
-    }
-    if (modifiedAny) {
-      log.info("Recent UTC entries correction completed successfully.");
+      attendanceRepository.saveAll(allEntries);
+      log.info("Reversion of timezone correction completed successfully.");
     }
   }
 
