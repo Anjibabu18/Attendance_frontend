@@ -15,5 +15,5 @@ COPY --from=build /app/target/*.jar /app/app.jar
 ENV PORT=8081
 EXPOSE 8081
 
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Kolkata", "-jar", "/app/app.jar"]
 
