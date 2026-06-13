@@ -326,6 +326,32 @@ public class AttendanceService {
       attendanceRepository.saveAll(allEntries);
       log.info("Reversion of timezone correction completed successfully.");
     }
+
+    // Adjust today's entries that were incorrectly subtracted (meaning they are now before 05:30 AM)
+    List<AttendanceEntry> entriesToFix = attendanceRepository.findAllByDateBetween(LocalDate.of(2026, 6, 13), LocalDate.of(2026, 6, 13));
+    boolean modifiedAny = false;
+    for (AttendanceEntry entry : entriesToFix) {
+      if (entry.getInTime() != null && entry.getInTime().isBefore(LocalTime.of(5, 30))) {
+        log.info("Restoring incorrectly subtracted check-in time for employee {} on date {}: {} -> {}", 
+            entry.getEmployee().getId(), entry.getDate(), entry.getInTime(), entry.getInTime().plusHours(5).plusMinutes(30));
+        entry.setInTime(entry.getInTime().plusHours(5).plusMinutes(30));
+        if (entry.getOutTime() != null && entry.getOutTime().isBefore(LocalTime.of(5, 30))) {
+          entry.setOutTime(entry.getOutTime().plusHours(5).plusMinutes(30));
+        }
+        Integer minutes = computeWorkedMinutes(entry.getInTime(), entry.getOutTime());
+        entry.setWorkedMinutes(minutes);
+        var settings = attendanceSettingsService.get();
+        entry.setLateMinutes(computeLateMinutes(entry.getInTime(), settings.getDefaultInTime(), settings.getLateGraceMinutes()));
+        entry.setEarlyLeaveMinutes(
+            computeEarlyLeaveMinutes(entry.getOutTime(), settings.getDefaultOutTime(), settings.getEarlyLeaveGraceMinutes()));
+        entry.setOvertimeMinutes(computeOvertimeMinutes(minutes, settings.getOvertimeAfterMinutes()));
+        attendanceRepository.save(entry);
+        modifiedAny = true;
+      }
+    }
+    if (modifiedAny) {
+      log.info("Incorrectly subtracted entries fixed successfully.");
+    }
   }
 
   public record MonthSummary(
