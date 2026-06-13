@@ -199,14 +199,6 @@ export default function HrPage() {
   const [bulkStatusToMark, setBulkStatusToMark] = useState<"PRESENT" | "ABSENT">("PRESENT");
 
   useEffect(() => {
-    if (selectedEntry) {
-      setStatusToMark(selectedEntry.status === "PRESENT" || selectedEntry.status === "HALF_DAY" ? "PRESENT" : "ABSENT");
-    } else {
-      setStatusToMark("PRESENT");
-    }
-  }, [selectedEntry]);
-
-  useEffect(() => {
     if (err) {
       toastError(err);
       setErr(null);
@@ -646,6 +638,14 @@ export default function HrPage() {
       .filter((item) => inboxFilter === "ALL" || item.kind === inboxFilter)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   }, [inboxFilter, pendingCompOffRequests, pendingDeviceRequests, pendingLeaveRequests, pendingRegularizationRequests, pendingWorkRequests]);
+
+  useEffect(() => {
+    if (selectedEntry) {
+      setStatusToMark(selectedEntry.status === "PRESENT" || selectedEntry.status === "HALF_DAY" ? "PRESENT" : "ABSENT");
+    } else {
+      setStatusToMark("PRESENT");
+    }
+  }, [selectedEntry]);
 
   useEffect(() => {
     if (!settings) return;

@@ -237,7 +237,7 @@ public class AppConfig {
 
   public static class Security {
     private int loginMaxAttempts = 5;
-    private int loginLockMinutes = 15;
+    private int loginLockMinutes = 5;
     private int passwordMinLength = 10;
     private boolean passwordRequireMixedCase = true;
     private boolean passwordRequireDigit = true;
