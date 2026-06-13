@@ -5,204 +5,167 @@ import {
   Chip,
   Container,
   Divider,
-  LinearProgress,
   Typography,
 } from "@mui/material";
+import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
-import AnalyticsIcon from "@mui/icons-material/Analytics";
 import BadgeIcon from "@mui/icons-material/Badge";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import LoginIcon from "@mui/icons-material/Login";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import ManageSearchIcon from "@mui/icons-material/ManageSearch";
-import SecurityIcon from "@mui/icons-material/Security";
+import PlaceIcon from "@mui/icons-material/Place";
+import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import { useNavigate } from "react-router-dom";
 
-const modules = [
-  { label: "Admin", value: "Rules, offices, roles", icon: <AdminPanelSettingsIcon fontSize="small" /> },
-  { label: "HR", value: "Attendance review", icon: <ManageSearchIcon fontSize="small" /> },
-  { label: "Employee", value: "Self service", icon: <BadgeIcon fontSize="small" /> },
-  { label: "Security", value: "JWT + lockout", icon: <SecurityIcon fontSize="small" /> },
+const roleLinks = [
+  { label: "Admin", helper: "Company setup", icon: <AdminPanelSettingsIcon /> },
+  { label: "HR", helper: "Approvals and reports", icon: <ManageSearchIcon /> },
+  { label: "Employee", helper: "Punch and requests", icon: <BadgeIcon /> },
 ];
 
-const rows = [
-  ["Office geofence", "Location-wise assignment with GPS radius", "Active"],
-  ["Attendance analytics", "Late, early-leave, overtime, P/HD/L", "Live"],
-  ["Leave workflow", "Employee request and HR approval", "Ready"],
-  ["Daily media", "Selfie punch and group photo evidence", "Ready"],
+const summary = [
+  { label: "Attendance", value: "Live", helper: "Daily punch status", icon: <AccessTimeIcon /> },
+  { label: "Office GPS", value: "Active", helper: "Location validation", icon: <PlaceIcon /> },
+  { label: "Leave", value: "Ready", helper: "HR approval flow", icon: <CalendarMonthIcon /> },
+  { label: "Security", value: "Protected", helper: "JWT sign in", icon: <VerifiedUserIcon /> },
 ];
 
 export default function HomePage() {
   const nav = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[var(--app-bg)]">
-      <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/90 backdrop-blur">
+    <Box sx={{ minHeight: "100vh", bgcolor: "#eef3f8" }}>
+      <Box component="header" sx={{ borderBottom: "1px solid #dbe3ee", bgcolor: "rgba(255,255,255,0.94)" }}>
         <Container maxWidth="xl">
-          <div className="flex h-[72px] items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-3">
-              <Avatar sx={{ width: 44, height: 44, bgcolor: "#111827", fontWeight: 900, boxShadow: "0 10px 22px rgba(15,23,42,0.16)" }}>A</Avatar>
-              <div className="min-w-0 leading-tight">
-                <div className="truncate text-lg font-extrabold text-slate-950">Attendance</div>
-                <div className="truncate text-xs font-semibold text-slate-500">Production Management System</div>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button variant="text" onClick={() => nav("/login")} sx={{ color: "#111827" }}>
-                Login
-              </Button>
-              <Button variant="contained" startIcon={<LoginIcon />} onClick={() => nav("/login")}>
+          <Box sx={{ height: 76, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, minWidth: 0 }}>
+              <Avatar sx={{ width: 48, height: 48, bgcolor: "#1d4ed8", fontWeight: 900 }}>A</Avatar>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 950, fontSize: { xs: 18, sm: 22 }, lineHeight: 1.1, color: "#0f172a" }}>
+                  Anushabazaar Technologies
+                </Typography>
+                <Typography sx={{ color: "#64748b", fontSize: 13, fontWeight: 700 }}>
+                  Attendance Management Dashboard
+                </Typography>
+              </Box>
+            </Box>
+            <Button variant="contained" startIcon={<LoginIcon />} onClick={() => nav("/login")}>
+              Login
+            </Button>
+          </Box>
+        </Container>
+      </Box>
+
+      <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 } }}>
+        <Box sx={{ display: "grid", gap: 3, gridTemplateColumns: { xs: "1fr", lg: "1.35fr 0.65fr" } }}>
+          <Box
+            sx={{
+              border: "1px solid #dbe3ee",
+              borderRadius: 2,
+              bgcolor: "#fff",
+              p: { xs: 3, md: 5 },
+              boxShadow: "0 18px 45px rgba(15,23,42,0.08)",
+            }}
+          >
+            <Chip label="Company portal" color="primary" sx={{ borderRadius: 1.5, fontWeight: 900 }} />
+            <Typography
+              component="h1"
+              sx={{
+                mt: 2,
+                maxWidth: 760,
+                fontSize: { xs: 34, md: 52 },
+                lineHeight: 1.08,
+                fontWeight: 950,
+                letterSpacing: 0,
+                color: "#0f172a",
+              }}
+            >
+              Simple attendance dashboard for daily operations.
+            </Typography>
+            <Typography sx={{ mt: 2, maxWidth: 720, color: "#475569", fontSize: { xs: 15, md: 17 }, lineHeight: 1.7 }}>
+              Manage employee punch, HR requests, office location checks, leave approvals, reports, and payroll summary from one secured portal.
+            </Typography>
+
+            <Box sx={{ mt: 4, display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", sm: "repeat(2, 1fr)", xl: "repeat(4, 1fr)" } }}>
+              {summary.map((item) => (
+                <Box
+                  key={item.label}
+                  sx={{
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 1.5,
+                    p: 2,
+                    bgcolor: "#f8fafc",
+                    minHeight: 132,
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Box sx={{ color: "#2563eb" }}>{item.icon}</Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 950, fontSize: 22, color: "#0f172a" }}>{item.value}</Typography>
+                    <Typography sx={{ fontWeight: 850, color: "#334155", fontSize: 13 }}>{item.label}</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: 12, mt: 0.25 }}>{item.helper}</Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+
+            <Box sx={{ mt: 4, display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+              <Button size="large" variant="contained" startIcon={<LoginIcon />} onClick={() => nav("/login")}>
                 Open portal
               </Button>
-            </div>
-          </div>
-        </Container>
-      </header>
-
-      <main>
-        <Container maxWidth="xl" sx={{ py: { xs: 3, md: 5 } }}>
-          <div className="grid gap-5 lg:grid-cols-[360px_1fr]">
-            <aside className="rounded-lg border border-slate-200 bg-white/95 p-5 shadow-[0_12px_32px_rgba(15,23,42,0.07)]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <Typography sx={{ fontWeight: 900, fontSize: 18 }}>Workspace</Typography>
-                  <Typography sx={{ color: "text.secondary", fontSize: 13 }}>
-                    Company attendance operations
-                  </Typography>
-                </div>
-                <Chip size="small" label="PROD" sx={{ fontWeight: 900, borderRadius: 1.5 }} />
-              </div>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Box sx={{ display: "grid", gap: 1 }}>
-                {modules.map((m) => (
-                  <Box
-                    key={m.label}
-                    sx={{
-                      display: "grid",
-                      gridTemplateColumns: "32px 1fr",
-                      gap: 1.25,
-                      alignItems: "center",
-                      p: 1.25,
-                      borderRadius: 1,
-                      border: "1px solid #e5e7eb",
-                      bgcolor: "#f8fafc",
-                    }}
-                  >
-                    <Box sx={{ color: "primary.main", display: "grid", placeItems: "center" }}>{m.icon}</Box>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography sx={{ fontWeight: 850, fontSize: 13 }}>{m.label}</Typography>
-                      <Typography sx={{ color: "text.secondary", fontSize: 12 }}>{m.value}</Typography>
-                    </Box>
-                  </Box>
-                ))}
-              </Box>
-
-              <Button fullWidth variant="contained" startIcon={<LoginIcon />} sx={{ mt: 2 }} onClick={() => nav("/login")}>
-                Continue to login
+              <Button size="large" variant="outlined" startIcon={<VerifiedUserIcon />} onClick={() => nav("/login")}>
+                Secure sign in
               </Button>
-            </aside>
+            </Box>
+          </Box>
 
-            <section className="overflow-hidden rounded-lg border border-slate-200 bg-white/95 shadow-[0_16px_44px_rgba(15,23,42,0.08)]">
-              <div className="grid gap-0 xl:grid-cols-[1fr_420px]">
-                <div className="p-6 md:p-10">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Chip
-                      icon={<LocationOnIcon />}
-                      label="Location-wise punch"
-                      size="small"
-                      sx={{ borderRadius: 1.5, fontWeight: 800 }}
-                    />
-                    <Chip
-                      icon={<AnalyticsIcon />}
-                      label="Advanced analytics"
-                      size="small"
-                      sx={{ borderRadius: 1.5, fontWeight: 800 }}
-                    />
-                    <Chip
-                      icon={<CalendarMonthIcon />}
-                      label="Monthly reporting"
-                      size="small"
-                      sx={{ borderRadius: 1.5, fontWeight: 800 }}
-                    />
-                  </div>
+          <Box
+            sx={{
+              border: "1px solid #dbe3ee",
+              borderRadius: 2,
+              bgcolor: "#fff",
+              p: 3,
+              boxShadow: "0 18px 45px rgba(15,23,42,0.06)",
+            }}
+          >
+            <Typography sx={{ fontWeight: 950, fontSize: 20, color: "#0f172a" }}>Portal Access</Typography>
+            <Typography sx={{ mt: 0.5, color: "#64748b", fontSize: 13 }}>
+              Select your role after login.
+            </Typography>
+            <Divider sx={{ my: 2 }} />
 
-                  <Typography
-                    component="h1"
-                    sx={{
-                      mt: 3,
-                      maxWidth: 760,
-                      fontWeight: 900,
-                      fontSize: { xs: 34, md: 52 },
-                      lineHeight: 1.08,
-                      letterSpacing: 0,
-                    }}
-                  >
-                    Attendance control for offices, HR teams, and employees.
-                  </Typography>
-                  <Typography sx={{ mt: 2, maxWidth: 760, color: "text.secondary", fontSize: 16, lineHeight: 1.75 }}>
-                    A secure operational dashboard for employee punch, office geofencing, HR attendance review,
-                    leave approvals, overtime, late marks, holidays, and evidence photos.
-                  </Typography>
+            <Box sx={{ display: "grid", gap: 1.25 }}>
+              {roleLinks.map((role) => (
+                <Box
+                  key={role.label}
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "42px 1fr",
+                    gap: 1.25,
+                    alignItems: "center",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: 1.5,
+                    p: 1.5,
+                    bgcolor: "#f8fafc",
+                  }}
+                >
+                  <Box sx={{ color: "#2563eb", display: "grid", placeItems: "center" }}>{role.icon}</Box>
+                  <Box>
+                    <Typography sx={{ fontWeight: 900, color: "#0f172a" }}>{role.label}</Typography>
+                    <Typography sx={{ color: "#64748b", fontSize: 13 }}>{role.helper}</Typography>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
 
-                  <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                    {[
-                      ["P / HD / L", "Daily status"],
-                      ["GPS", "Office validation"],
-                      ["OT", "Overtime tracking"],
-                    ].map(([value, label]) => (
-                      <div key={label} className="rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-sm">
-                        <div className="text-2xl font-extrabold text-slate-950">{value}</div>
-                        <div className="mt-1 text-sm font-medium text-slate-500">{label}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Button size="large" variant="contained" startIcon={<LoginIcon />} onClick={() => nav("/login")}>
-                      Open portal
-                    </Button>
-                    <Button size="large" variant="outlined" startIcon={<SecurityIcon />} onClick={() => nav("/login")}>
-                      Secure sign in
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-200 bg-slate-50/80 p-5 xl:border-l xl:border-t-0">
-                  <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <Typography sx={{ fontWeight: 900 }}>System Snapshot</Typography>
-                        <Typography sx={{ color: "text.secondary", fontSize: 13 }}>Current platform coverage</Typography>
-                      </div>
-                      <Chip size="small" label="ONLINE" color="success" sx={{ borderRadius: 1.5, fontWeight: 900 }} />
-                    </div>
-                    <Box sx={{ mt: 2, display: "grid", gap: 1.25 }}>
-                      {rows.map(([name, desc, state], idx) => (
-                        <Box key={name}>
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-extrabold text-slate-900">{name}</div>
-                              <div className="truncate text-xs text-slate-500">{desc}</div>
-                            </div>
-                            <Chip size="small" label={state} sx={{ borderRadius: 1.5, fontWeight: 800 }} />
-                          </div>
-                          <LinearProgress
-                            variant="determinate"
-                            value={[95, 88, 82, 78][idx]}
-                            sx={{ mt: 1, height: 6, borderRadius: 1, bgcolor: "#e5e7eb" }}
-                          />
-                        </Box>
-                      ))}
-                    </Box>
-                  </div>
-                </div>
-              </div>
-            </section>
-          </div>
-        </Container>
-      </main>
-    </div>
+            <Button fullWidth size="large" variant="contained" startIcon={<LoginIcon />} sx={{ mt: 3 }} onClick={() => nav("/login")}>
+              Continue to login
+            </Button>
+          </Box>
+        </Box>
+      </Container>
+    </Box>
   );
 }

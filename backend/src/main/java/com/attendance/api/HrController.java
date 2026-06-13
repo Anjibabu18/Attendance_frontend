@@ -276,6 +276,13 @@ public class HrController {
     return toLeaveResponse(leaveRequestService.approveCancellation(id, username, req == null ? null : req.getRemarks()));
   }
 
+  @PostMapping("/leave-requests/{id}/reject-cancellation")
+  public LeaveDtos.LeaveRequestResponse rejectLeaveCancellation(
+      @PathVariable("id") Long id, @RequestBody(required = false) LeaveDtos.DecideLeaveRequest req) {
+    String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    return toLeaveResponse(leaveRequestService.rejectCancellation(id, username, req == null ? null : req.getRemarks()));
+  }
+
   @GetMapping("/comp-off-requests/pending")
   @Transactional(readOnly = true)
   public List<CompOffDtos.CompOffResponse> pendingCompOffRequests() {

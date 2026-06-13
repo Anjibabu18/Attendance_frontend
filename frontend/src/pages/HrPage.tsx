@@ -374,6 +374,15 @@ export default function HrPage() {
     await refreshAfterDecision();
   }
 
+  async function rejectLeaveCancellation(id: number) {
+    setErr(null);
+    setOk(null);
+    await api.post(`/api/hr/leave-requests/${id}/reject-cancellation`, { remarks: leaveRemarks[id]?.trim() || null });
+    setLeaveRemarks((prev) => ({ ...prev, [id]: "" }));
+    setOk("Leave cancellation rejected");
+    await refreshAfterDecision();
+  }
+
   async function approveDeviceRequest(id: number) {
     setErr(null);
     setOk(null);
@@ -901,9 +910,14 @@ export default function HrPage() {
                           onChange={(e) => setLeaveRemarks((prev) => ({ ...prev, [r.id]: e.target.value }))}
                         />
                         {r.status === "CANCELLATION_REQUESTED" ? (
-                          <Button color="warning" variant="contained" onClick={() => approveLeaveCancellation(r.id).catch((e) => setErr(e?.response?.data?.error ?? "Cancellation failed"))}>
-                            Approve cancellation
-                          </Button>
+                          <>
+                            <Button color="warning" variant="contained" onClick={() => approveLeaveCancellation(r.id).catch((e) => setErr(e?.response?.data?.error ?? "Cancellation failed"))}>
+                              Approve cancellation
+                            </Button>
+                            <Button color="error" variant="outlined" onClick={() => rejectLeaveCancellation(r.id).catch((e) => setErr(e?.response?.data?.error ?? "Reject cancellation failed"))}>
+                              Reject cancellation
+                            </Button>
+                          </>
                         ) : (
                           <>
                             <Button color="success" variant="contained" onClick={() => approveLeaveRequest(r.id).catch((e) => setErr(e?.response?.data?.error ?? "Approve failed"))}>
@@ -1536,9 +1550,14 @@ export default function HrPage() {
                 <Box sx={{ display: "grid", gap: 1 }}>
                   <TextField size="small" label="Remarks" value={leaveRemarks[selectedInboxItem.id] ?? ""} onChange={(e) => setLeaveRemarks((prev) => ({ ...prev, [selectedInboxItem.id]: e.target.value }))} />
                   {selectedInboxItem.raw.status === "CANCELLATION_REQUESTED" ? (
-                    <Button variant="contained" color="warning" onClick={() => approveLeaveCancellation(selectedInboxItem.id).then(() => setSelectedInboxItem(null)).catch((e) => setErr(e?.response?.data?.error ?? "Cancellation failed"))}>
-                      Approve cancellation
-                    </Button>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Button variant="contained" color="warning" onClick={() => approveLeaveCancellation(selectedInboxItem.id).then(() => setSelectedInboxItem(null)).catch((e) => setErr(e?.response?.data?.error ?? "Cancellation failed"))}>
+                        Approve cancellation
+                      </Button>
+                      <Button variant="outlined" color="error" onClick={() => rejectLeaveCancellation(selectedInboxItem.id).then(() => setSelectedInboxItem(null)).catch((e) => setErr(e?.response?.data?.error ?? "Reject cancellation failed"))}>
+                        Reject cancellation
+                      </Button>
+                    </Box>
                   ) : (
                     <Box sx={{ display: "flex", gap: 1 }}>
                       <Button variant="contained" color="success" onClick={() => approveLeaveRequest(selectedInboxItem.id).then(() => setSelectedInboxItem(null)).catch((e) => setErr(e?.response?.data?.error ?? "Approve failed"))}>Approve</Button>

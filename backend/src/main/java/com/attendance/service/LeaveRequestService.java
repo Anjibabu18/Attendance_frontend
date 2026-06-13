@@ -253,7 +253,47 @@ public class LeaveRequestService {
     lr.setHrRemarks(normalizeRemarks(remarks));
     // Keep attendance rows for audit; HR can manually adjust if needed.
     notificationService.notify(lr.getEmployee().getUser(), "Leave cancellation approved", lr.getFromDate() + " -> " + lr.getToDate());
-    return leaveRequestRepository.save(lr);
+    LeaveRequest saved = leaveRequestRepository.save(lr);
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        "Leave cancellation approved: " + saved.getFromDate() + " -> " + saved.getToDate(),
+        "Your leave cancellation request has been APPROVED.\n"
+            + "Dates: "
+            + saved.getFromDate()
+            + " -> "
+            + saved.getToDate()
+            + (saved.getHrRemarks() != null ? ("\nHR remarks: " + saved.getHrRemarks()) : "")
+            + "\n");
+    return saved;
+  }
+
+  @Transactional
+  public LeaveRequest rejectCancellation(Long leaveRequestId, String hrUsername, String remarks) {
+    LeaveRequest lr =
+        leaveRequestRepository
+            .findById(leaveRequestId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Leave request not found"));
+    if (lr.getStatus() != LeaveRequestStatus.CANCELLATION_REQUESTED) {
+      throw new ApiException(HttpStatus.CONFLICT, "Cancellation is not pending");
+    }
+    AppUser hr = userRepository.findByUsername(hrUsername).orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid token"));
+    lr.setStatus(LeaveRequestStatus.APPROVED);
+    lr.setDecidedAt(Instant.now());
+    lr.setDecidedBy(hr);
+    lr.setHrRemarks(normalizeRemarks(remarks));
+    notificationService.notify(lr.getEmployee().getUser(), "Leave cancellation rejected", lr.getFromDate() + " -> " + lr.getToDate());
+    LeaveRequest saved = leaveRequestRepository.save(lr);
+    mailService.notifyUser(
+        saved.getEmployee().getUser().getUsername(),
+        "Leave cancellation rejected: " + saved.getFromDate() + " -> " + saved.getToDate(),
+        "Your leave cancellation request has been REJECTED.\n"
+            + "Dates: "
+            + saved.getFromDate()
+            + " -> "
+            + saved.getToDate()
+            + (saved.getHrRemarks() != null ? ("\nHR remarks: " + saved.getHrRemarks()) : "")
+            + "\n");
+    return saved;
   }
 
   @Transactional

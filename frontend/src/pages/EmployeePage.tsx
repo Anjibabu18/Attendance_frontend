@@ -130,14 +130,20 @@ function downloadBlob(blob: Blob, filename: string) {
 function GlassCard({ children, sx = {}, accentColor, animate = true }: { children: React.ReactNode; sx?: any; accentColor?: string; animate?: boolean }) {
   return (
     <Box sx={{
-      background: "rgba(255,255,255,0.98)",
-      border: "1px solid rgba(226,232,240,0.8)",
+      background: "rgba(255, 255, 255, 0.82)",
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      border: "1px solid rgba(226, 232, 240, 0.7)",
       borderRadius: { xs: 3, sm: 3.5 },
-      boxShadow: "0 4px 24px rgba(15,23,42,0.07), 0 1px 3px rgba(15,23,42,0.04)",
+      boxShadow: "0 4px 24px rgba(15,23,42,0.06), 0 1px 3px rgba(15,23,42,0.03)",
       overflow: "hidden", position: "relative",
-      transition: "box-shadow 0.25s ease, transform 0.25s cubic-bezier(0.2,0.8,0.2,1)",
+      transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
       animation: animate ? "slideUp 0.45s cubic-bezier(0.2,0.8,0.2,1) both" : undefined,
-      "&:hover": { boxShadow: "0 12px 40px rgba(15,23,42,0.10), 0 2px 8px rgba(99,102,241,0.08)" },
+      "&:hover": {
+        transform: "translateY(-4px)",
+        border: "1px solid rgba(99, 102, 241, 0.3)",
+        boxShadow: "0 20px 40px rgba(15,23,42,0.12), 0 2px 10px rgba(99,102,241,0.06)"
+      },
       ...(accentColor ? {
         "&::before": { content: '""', position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: accentColor, borderRadius: "3.5px 0 0 3.5px", zIndex: 0 }
       } : {}),
@@ -607,9 +613,9 @@ export default function EmployeePage() {
     const H = String(Math.floor(workedSec / 3600)).padStart(2, "0");
     const M = String(Math.floor((workedSec % 3600) / 60)).padStart(2, "0");
     const S = String(workedSec % 60).padStart(2, "0");
-    if (checkedOutAt) return { label: "Shift completed", H, M, S, value: formatDurationSeconds(workedSec), helper: `Regular ${formatDurationSeconds(targetSec)} · Extra ${formatDurationSeconds(extraSec)}`, accent: "#16a34a", state: "COMPLETED", badge: "🎉 Done", bg: "linear-gradient(135deg,#f0fdf4,#dcfce7)", glow: "0 14px 48px rgba(22,163,74,0.18)", progress: 100 };
-    if (extraSec === 0) return { label: "Working", H, M, S, value: formatDurationSeconds(workedSec), helper: `${formatDurationSeconds(remSec)} left for ${Math.round(reqMin / 60)}h target`, accent: "#4f46e5", state: "PROGRESS", badge: "⚡ Active", bg: "linear-gradient(135deg,#eef2ff,#dbeafe)", glow: "0 14px 48px rgba(79,70,229,0.15)", progress: Math.min(100, Math.round((workedSec / targetSec) * 100)) };
-    return { label: "Overtime", H, M, S, value: formatDurationSeconds(workedSec), helper: `Regular done · Extra ${formatDurationSeconds(extraSec)}`, accent: "#d97706", state: "OVERTIME", badge: "🔥 OT", bg: "linear-gradient(135deg,#fffbeb,#fef3c7)", glow: "0 14px 48px rgba(217,119,6,0.18)", progress: 100 };
+    if (checkedOutAt) return { label: "Shift completed", H, M, S, value: formatDurationSeconds(workedSec), helper: `Regular ${formatDurationSeconds(targetSec)} · Extra ${formatDurationSeconds(extraSec)}`, accent: "#16a34a", state: "COMPLETED", badge: "🎉 Done", bg: "linear-gradient(135deg, rgba(240, 253, 244, 0.65), rgba(220, 252, 231, 0.65))", glow: "0 14px 48px rgba(22,163,74,0.18)", progress: 100 };
+    if (extraSec === 0) return { label: "Working", H, M, S, value: formatDurationSeconds(workedSec), helper: `${formatDurationSeconds(remSec)} left for ${Math.round(reqMin / 60)}h target`, accent: "#4f46e5", state: "PROGRESS", badge: "⚡ Active", bg: "linear-gradient(135deg, rgba(238, 242, 255, 0.65), rgba(219, 234, 254, 0.65))", glow: "0 14px 48px rgba(79,70,229,0.15)", progress: Math.min(100, Math.round((workedSec / targetSec) * 100)) };
+    return { label: "Overtime", H, M, S, value: formatDurationSeconds(workedSec), helper: `Regular done · Extra ${formatDurationSeconds(extraSec)}`, accent: "#d97706", state: "OVERTIME", badge: "🔥 OT", bg: "linear-gradient(135deg, rgba(255, 251, 235, 0.65), rgba(254, 243, 199, 0.65))", glow: "0 14px 48px rgba(217,119,6,0.18)", progress: 100 };
   }, [clockNow, settings?.fullDayMinutes, todayEntry?.date, todayEntry?.inTime, todayEntry?.outTime]);
 
   const punchButtonState = !todayEntry?.inTime ? "checkin" : !todayEntry?.outTime ? "checkout" : "done";
@@ -626,6 +632,7 @@ export default function EmployeePage() {
     @keyframes _heroIn{from{opacity:0;transform:translateY(20px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
     @keyframes _cardIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
     @keyframes _scanLine{0%,100%{top:5%;opacity:.6}50%{top:88%;opacity:1}}
+    @keyframes _tickIn{0%{transform:translateY(-10px);opacity:0;filter:blur(1.5px)}100%{transform:translateY(0);opacity:1;filter:blur(0)}}
     .emp-hero{animation:_heroIn .55s cubic-bezier(.2,.8,.2,1) both}
     .emp-section{
       animation:_cardIn .45s cubic-bezier(.2,.8,.2,1) both;
@@ -719,10 +726,17 @@ export default function EmployeePage() {
           className="emp-section"
           sx={{
             background: punchCountdown.bg,
-            border: `1.5px solid ${punchCountdown.accent}28`,
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            border: `1px solid ${punchCountdown.accent}35`,
             borderRadius: { xs: 2.5, sm: 3 },
             p: { xs: 2, sm: 2.5, md: 3 },
             boxShadow: punchCountdown.glow,
+            transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
+            "&:hover": {
+              transform: "translateY(-3px)",
+              boxShadow: punchCountdown.glow ? punchCountdown.glow.replace("0.15", "0.22").replace("0.18", "0.25") : "none",
+            }
           }}
         >
           {/* Header row */}
@@ -757,19 +771,32 @@ export default function EmployeePage() {
                     px: { xs: 1.25, sm: 1.75, md: 2.25 },
                     py: { xs: 0.75, sm: 1, md: 1.25 },
                     borderRadius: { xs: 2, sm: 2.5 },
-                    bgcolor: `${punchCountdown.accent}10`,
-                    border: `1.5px solid ${punchCountdown.accent}25`,
+                    bgcolor: "rgba(255, 255, 255, 0.5)",
+                    backdropFilter: "blur(4px)",
+                    border: `1.5px solid ${punchCountdown.accent}30`,
                     minWidth: { xs: 50, sm: 66, md: 80 },
                     textAlign: "center",
-                    boxShadow: `inset 0 2px 8px ${punchCountdown.accent}08`,
+                    boxShadow: `0 6px 16px ${punchCountdown.accent}10, inset 0 2px 8px rgba(255,255,255,0.7)`,
+                    overflow: "hidden",
+                    position: "relative",
+                    transition: "all 0.25s ease",
+                    "&:hover": {
+                      transform: "scale(1.05)",
+                      borderColor: punchCountdown.accent,
+                      boxShadow: `0 10px 24px ${punchCountdown.accent}20`,
+                    }
                   }}>
-                    <Typography sx={{
-                      color: punchCountdown.accent,
-                      fontSize: { xs: 26, sm: 36, md: 48 },
-                      fontWeight: 900, fontFamily: "'Inter', monospace",
-                      fontVariantNumeric: "tabular-nums", lineHeight: 1.1,
-                      animation: seg.l === "SEC" ? "_secBounce 1s infinite" : "none",
-                    }}>
+                    <Typography
+                      key={`${seg.l}-${seg.v}`}
+                      sx={{
+                        color: punchCountdown.accent,
+                        fontSize: { xs: 26, sm: 36, md: 48 },
+                        fontWeight: 900, fontFamily: "'Inter', monospace",
+                        fontVariantNumeric: "tabular-nums", lineHeight: 1.1,
+                        animation: "_tickIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both",
+                        display: "inline-block",
+                      }}
+                    >
                       {seg.v}
                     </Typography>
                   </Box>
@@ -1047,7 +1074,25 @@ export default function EmployeePage() {
                   <Typography sx={{ fontSize: { xs: 18, sm: 22 }, fontWeight: 900, color: p.color, fontVariantNumeric: "tabular-nums", mb: 0.5 }}>{p.time ?? "--:--"}</Typography>
                   <Box sx={{ mt: "auto", width: "100%" }}>
                     {p.photo ? (
-                      <Box component="img" src={p.photo} alt={p.label} sx={{ width: "100%", height: { xs: 130, sm: 160 }, objectFit: "cover", borderRadius: 2, display: "block", cursor: "pointer", transition: "transform 0.2s ease, box-shadow 0.2s ease", "&:hover": { transform: "scale(1.02)", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" } }} onClick={() => window.open(p.photo!, "_blank")} />
+                      <Box sx={{ width: "100%", height: { xs: 130, sm: 160 }, borderRadius: 2, overflow: "hidden", position: "relative", border: "1px solid rgba(226,232,240,0.8)", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
+                        <Box
+                          component="img"
+                          src={p.photo}
+                          alt={p.label}
+                          sx={{
+                            width: "100%",
+                            height: "100%",
+                            objectFit: "cover",
+                            display: "block",
+                            cursor: "pointer",
+                            transition: "transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)",
+                            "&:hover": {
+                              transform: "scale(1.08)",
+                            }
+                          }}
+                          onClick={() => window.open(p.photo!, "_blank")}
+                        />
+                      </Box>
                     ) : (
                       <Box sx={{ width: "100%", height: { xs: 130, sm: 160 }, borderRadius: 2, border: `1px dashed ${p.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", bgcolor: `${p.color}03` }}>
                         <PhotoCameraIcon sx={{ fontSize: { xs: 18, sm: 22 }, color: p.color, opacity: 0.35, mb: 0.5 }} />
@@ -1080,17 +1125,64 @@ export default function EmployeePage() {
           <Box sx={{ display: "grid", gap: 1.25 }}>
             {punchButtonState === "checkin" ? (
               <Button variant="contained" size="large" fullWidth onClick={() => openSelfieCamera("checkin")} disabled={punchBusy || selfieBusy || !deviceStatus?.approved} startIcon={<LoginIcon />}
-                sx={{ minHeight: { xs: 52, sm: 60 }, fontWeight: 900, fontSize: { xs: 15, sm: 17 }, borderRadius: 3, background: "linear-gradient(135deg,#1d4ed8,#2563eb)", boxShadow: "0 10px 28px rgba(37,99,235,0.35)", letterSpacing: "0.05em", transition: "all 0.25s", "&:hover": { transform: "translateY(-2px)", boxShadow: "0 16px 40px rgba(37,99,235,0.45)" }, "&:disabled": { opacity: 0.6 } }}>
+                sx={{
+                  minHeight: { xs: 52, sm: 60 },
+                  fontWeight: 900,
+                  fontSize: { xs: 15, sm: 17 },
+                  borderRadius: 3.5,
+                  background: "linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #2563eb 100%)",
+                  backgroundSize: "200% auto",
+                  boxShadow: "0 8px 24px rgba(37,99,235,0.3)",
+                  letterSpacing: "0.05em",
+                  transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
+                  "&:hover": {
+                    backgroundPosition: "right center",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 14px 32px rgba(37,99,235,0.42)",
+                  },
+                  "&:active": {
+                    transform: "translateY(-1px) scale(0.98)",
+                  },
+                  "&:disabled": { opacity: 0.6 }
+                }}>
                 {punchBusy || selfieBusy ? "Processing..." : "CHECK IN"}
               </Button>
             ) : punchButtonState === "checkout" ? (
               <Button variant="contained" size="large" fullWidth onClick={() => openSelfieCamera("checkout")} disabled={punchBusy || selfieBusy || !deviceStatus?.approved} startIcon={<LogoutIcon />}
-                sx={{ minHeight: { xs: 52, sm: 60 }, fontWeight: 900, fontSize: { xs: 15, sm: 17 }, borderRadius: 3, background: "linear-gradient(135deg,#b91c1c,#dc2626)", boxShadow: "0 10px 28px rgba(220,38,38,0.35)", letterSpacing: "0.05em", transition: "all 0.25s", "&:hover": { transform: "translateY(-2px)", boxShadow: "0 16px 40px rgba(220,38,38,0.45)" } }}>
+                sx={{
+                  minHeight: { xs: 52, sm: 60 },
+                  fontWeight: 900,
+                  fontSize: { xs: 15, sm: 17 },
+                  borderRadius: 3.5,
+                  background: "linear-gradient(135deg, #b91c1c 0%, #ef4444 50%, #dc2626 100%)",
+                  backgroundSize: "200% auto",
+                  boxShadow: "0 8px 24px rgba(220,38,38,0.3)",
+                  letterSpacing: "0.05em",
+                  transition: "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)",
+                  "&:hover": {
+                    backgroundPosition: "right center",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 14px 32px rgba(220,38,38,0.42)",
+                  },
+                  "&:active": {
+                    transform: "translateY(-1px) scale(0.98)",
+                  },
+                  "&:disabled": { opacity: 0.6 }
+                }}>
                 {punchBusy || selfieBusy ? "Processing..." : "CHECK OUT"}
               </Button>
             ) : (
               <Button variant="contained" size="large" fullWidth disabled startIcon={<CheckCircleIcon />}
-                sx={{ minHeight: { xs: 52, sm: 60 }, fontWeight: 900, fontSize: { xs: 15, sm: 17 }, borderRadius: 3, background: "linear-gradient(135deg,#15803d,#16a34a)", opacity: "0.85 !important", color: "#fff !important" }}>
+                sx={{
+                  minHeight: { xs: 52, sm: 60 },
+                  fontWeight: 900,
+                  fontSize: { xs: 15, sm: 17 },
+                  borderRadius: 3.5,
+                  background: "linear-gradient(135deg, #15803d 0%, #22c55e 100%)",
+                  boxShadow: "0 6px 18px rgba(22,163,74,0.2)",
+                  color: "#fff !important",
+                  opacity: "0.9 !important"
+                }}>
                 SHIFT COMPLETE ✓
               </Button>
             )}
@@ -1195,9 +1287,23 @@ export default function EmployeePage() {
                   { url: selectedEntry?.checkInPhotoUrl,  label: "Check-in Selfie" },
                   { url: selectedEntry?.checkOutPhotoUrl, label: "Check-out Selfie" },
                 ].map(ph => (
-                  <Box key={ph.label} sx={{ borderRadius: 2.5, overflow: "hidden", border: "1px solid rgba(15,23,42,0.08)", bgcolor: "rgba(15,23,42,0.02)", position: "relative" }}>
+                  <Box key={ph.label} sx={{ borderRadius: 2.5, overflow: "hidden", border: "1px solid rgba(15,23,42,0.08)", bgcolor: "rgba(15,23,42,0.02)", position: "relative", height: { xs: 130, sm: 160 } }}>
                     {ph.url ? (
-                      <Box component="img" src={ph.url} alt={ph.label} sx={{ width: "100%", height: { xs: 130, sm: 160 }, objectFit: "cover", display: "block", cursor: "pointer", transition: "transform 0.2s ease", "&:hover": { transform: "scale(1.03)" } }} onClick={() => window.open(ph.url!, "_blank")} />
+                      <Box
+                        component="img"
+                        src={ph.url}
+                        alt={ph.label}
+                        sx={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                          cursor: "pointer",
+                          transition: "transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1)",
+                          "&:hover": { transform: "scale(1.08)" }
+                        }}
+                        onClick={() => window.open(ph.url!, "_blank")}
+                      />
                     ) : (
                       <Box sx={{ height: { xs: 130, sm: 160 }, display: "grid", placeItems: "center" }}>
                         <Typography sx={{ fontSize: 11, color: "text.secondary", opacity: 0.6, textAlign: "center" }}>No photo</Typography>
