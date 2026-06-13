@@ -152,35 +152,43 @@ export default function Layout(props: { title: string; children: React.ReactNode
   let chipColor = "#15803d";
   let chipBorder = "1px solid #bbf7d0";
 
-  if (auth?.role === "ROLE_EMPLOYEE" && todayPunch) {
-    const parseClock = (timeStr: string | null, date?: string | null) => {
-      if (!timeStr) return null;
-      const parts = timeStr.split(":");
-      if (parts.length < 2) return null;
-      const hrs = parseInt(parts[0], 10);
-      const mins = parseInt(parts[1], 10);
-      const secs = parts[2] ? parseInt(parts[2], 10) : 0;
-      return dayjs(`${date || dayjs().format("YYYY-MM-DD")}T00:00:00`).hour(hrs).minute(mins).second(secs).millisecond(0);
-    };
+  if (auth?.role === "ROLE_EMPLOYEE") {
+    if (todayPunch) {
+      const parseClock = (timeStr: string | null, date?: string | null) => {
+        if (!timeStr) return null;
+        const parts = timeStr.split(":");
+        if (parts.length < 2) return null;
+        const hrs = parseInt(parts[0], 10);
+        const mins = parseInt(parts[1], 10);
+        const secs = parts[2] ? parseInt(parts[2], 10) : 0;
+        return dayjs(`${date || dayjs().format("YYYY-MM-DD")}T00:00:00`).hour(hrs).minute(mins).second(secs).millisecond(0);
+      };
 
-    const inTime = parseClock(todayPunch.inTime, todayPunch.date);
-    let outTime = parseClock(todayPunch.outTime, todayPunch.date);
-    if (inTime && outTime && outTime.isBefore(inTime)) {
-      outTime = outTime.add(1, "day");
-    }
+      const inTime = parseClock(todayPunch.inTime, todayPunch.date);
+      let outTime = parseClock(todayPunch.outTime, todayPunch.date);
+      if (inTime && outTime && outTime.isBefore(inTime)) {
+        outTime = outTime.add(1, "day");
+      }
 
-    if (inTime) {
-      activeLabel = "Check-in active";
-      if (outTime) {
-        activeSeconds = Math.max(0, outTime.diff(inTime, "second"));
-        chipBg = "rgba(71,85,105,0.06)";
-        chipColor = "#475569";
-        chipBorder = "1px solid rgba(71,85,105,0.24)";
+      if (inTime) {
+        activeLabel = "Check-in active";
+        if (outTime) {
+          activeSeconds = Math.max(0, outTime.diff(inTime, "second"));
+          chipBg = "rgba(71,85,105,0.06)";
+          chipColor = "#475569";
+          chipBorder = "1px solid rgba(71,85,105,0.24)";
+        } else {
+          activeSeconds = Math.max(0, dayjs(sessionNow).diff(inTime, "second"));
+        }
       } else {
-        activeSeconds = Math.max(0, dayjs(sessionNow).diff(inTime, "second"));
+        activeLabel = "Not Checked In";
+        activeSeconds = 0;
+        chipBg = "rgba(220,38,38,0.06)";
+        chipColor = "#dc2626";
+        chipBorder = "1px solid rgba(220,38,38,0.24)";
       }
     } else {
-      activeLabel = "Check-in active";
+      activeLabel = "Not Checked In";
       activeSeconds = 0;
       chipBg = "rgba(220,38,38,0.06)";
       chipColor = "#dc2626";
