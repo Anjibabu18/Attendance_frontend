@@ -291,19 +291,42 @@ public class AttendanceService {
   @Transactional
   public void migrateTimezones() {
     List<AttendanceEntry> uncorrected = attendanceRepository.findAllByTimezoneCorrectedFalse();
-    if (uncorrected.isEmpty()) {
-      return;
+    if (!uncorrected.isEmpty()) {
+      log.info("Found {} attendance entries requiring timezone correction (UTC -> IST)", uncorrected.size());
+      for (AttendanceEntry entry : uncorrected) {
+        if (entry.getInTime() != null) {
+          entry.setInTime(entry.getInTime().plusHours(5).plusMinutes(30));
+        }
+        if (entry.getOutTime() != null) {
+          entry.setOutTime(entry.getOutTime().plusHours(5).plusMinutes(30));
+        }
+        // Recompute worked minutes and overtime
+        if (entry.getInTime() != null) {
+          Integer minutes = computeWorkedMinutes(entry.getInTime(), entry.getOutTime());
+          entry.setWorkedMinutes(minutes);
+          var settings = attendanceSettingsService.get();
+          entry.setLateMinutes(computeLateMinutes(entry.getInTime(), settings.getDefaultInTime(), settings.getLateGraceMinutes()));
+          entry.setEarlyLeaveMinutes(
+              computeEarlyLeaveMinutes(entry.getOutTime(), settings.getDefaultOutTime(), settings.getEarlyLeaveGraceMinutes()));
+          entry.setOvertimeMinutes(computeOvertimeMinutes(minutes, settings.getOvertimeAfterMinutes()));
+        }
+        entry.setTimezoneCorrected(true);
+      }
+      attendanceRepository.saveAll(uncorrected);
+      log.info("Timezone correction migration completed successfully.");
     }
-    log.info("Found {} attendance entries requiring timezone correction (UTC -> IST)", uncorrected.size());
-    for (AttendanceEntry entry : uncorrected) {
-      if (entry.getInTime() != null) {
+
+    // One-off check for any entries on or after 2026-06-12 that were saved with timezoneCorrected=true but are actually in UTC
+    List<AttendanceEntry> recentEntries = attendanceRepository.findAllByDateBetween(LocalDate.of(2026, 6, 12), LocalDate.of(2026, 6, 15));
+    boolean modifiedAny = false;
+    for (AttendanceEntry entry : recentEntries) {
+      if (entry.getInTime() != null && entry.getInTime().isBefore(LocalTime.of(5, 30))) {
+        log.info("Correcting UTC check-in time for employee {} on date {}: {} -> {}", 
+            entry.getEmployee().getId(), entry.getDate(), entry.getInTime(), entry.getInTime().plusHours(5).plusMinutes(30));
         entry.setInTime(entry.getInTime().plusHours(5).plusMinutes(30));
-      }
-      if (entry.getOutTime() != null) {
-        entry.setOutTime(entry.getOutTime().plusHours(5).plusMinutes(30));
-      }
-      // Recompute worked minutes and overtime
-      if (entry.getInTime() != null) {
+        if (entry.getOutTime() != null && entry.getOutTime().isBefore(LocalTime.of(5, 30))) {
+          entry.setOutTime(entry.getOutTime().plusHours(5).plusMinutes(30));
+        }
         Integer minutes = computeWorkedMinutes(entry.getInTime(), entry.getOutTime());
         entry.setWorkedMinutes(minutes);
         var settings = attendanceSettingsService.get();
@@ -311,11 +334,13 @@ public class AttendanceService {
         entry.setEarlyLeaveMinutes(
             computeEarlyLeaveMinutes(entry.getOutTime(), settings.getDefaultOutTime(), settings.getEarlyLeaveGraceMinutes()));
         entry.setOvertimeMinutes(computeOvertimeMinutes(minutes, settings.getOvertimeAfterMinutes()));
+        attendanceRepository.save(entry);
+        modifiedAny = true;
       }
-      entry.setTimezoneCorrected(true);
     }
-    attendanceRepository.saveAll(uncorrected);
-    log.info("Timezone correction migration completed successfully.");
+    if (modifiedAny) {
+      log.info("Recent UTC entries correction completed successfully.");
+    }
   }
 
   public record MonthSummary(
