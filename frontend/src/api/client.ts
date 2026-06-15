@@ -23,7 +23,7 @@ const resolvedBaseUrl = (() => {
 
 export const api = axios.create({
   baseURL: resolvedBaseUrl,
-  timeout: 15000,
+  timeout: 60000,
 });
 
 export const apiBaseUrl = resolvedBaseUrl;
