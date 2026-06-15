@@ -26,12 +26,13 @@ public class DeviceController {
   }
 
   private static Map<String, Object> toResponse(DeviceRegistration d) {
-    return Map.of(
-        "id", d.getId(),
-        "username", d.getUser().getUsername(),
-        "deviceId", d.getDeviceId(),
-        "label", d.getLabel() == null ? "" : d.getLabel(),
-        "approved", d.isApproved(),
-        "createdAt", d.getCreatedAt());
+    Map<String, Object> res = new java.util.LinkedHashMap<>();
+    res.put("id", d.getId());
+    res.put("username", d.getUser().getUsername());
+    res.put("deviceId", d.getDeviceId());
+    res.put("label", d.getLabel() == null ? "" : d.getLabel());
+    res.put("approved", d.isApproved());
+    res.put("createdAt", d.getCreatedAt());
+    return res;
   }
 }

@@ -445,24 +445,26 @@ public class HrController {
   }
 
   private static Map<String, Object> toDeviceResponse(com.attendance.domain.DeviceRegistration d) {
-    return Map.of(
-        "id", d.getId(),
-        "username", d.getUser().getUsername(),
-        "deviceId", d.getDeviceId(),
-        "label", d.getLabel() == null ? "" : d.getLabel(),
-        "approved", d.isApproved(),
-        "createdAt", d.getCreatedAt());
+    Map<String, Object> map = new java.util.LinkedHashMap<>();
+    map.put("id", d.getId());
+    map.put("username", d.getUser().getUsername());
+    map.put("deviceId", d.getDeviceId());
+    map.put("label", d.getLabel() == null ? "" : d.getLabel());
+    map.put("approved", d.isApproved());
+    map.put("createdAt", d.getCreatedAt());
+    return map;
   }
 
   private static Map<String, Object> toExceptionResponse(com.attendance.domain.AttendanceException e) {
-    return Map.of(
-        "id", e.getId(),
-        "employeeId", e.getEmployee() == null ? null : e.getEmployee().getId(),
-        "employeeName", e.getEmployee() == null ? "--" : e.getEmployee().getName(),
-        "employeeNumber", e.getEmployee() == null ? "--" : e.getEmployee().getEmployeeNumber(),
-        "type", e.getType(),
-        "message", e.getMessage(),
-        "resolved", e.isResolved(),
-        "createdAt", e.getCreatedAt());
+    Map<String, Object> map = new java.util.LinkedHashMap<>();
+    map.put("id", e.getId());
+    map.put("employeeId", e.getEmployee() == null ? null : e.getEmployee().getId());
+    map.put("employeeName", e.getEmployee() == null ? "--" : e.getEmployee().getName());
+    map.put("employeeNumber", e.getEmployee() == null ? "--" : e.getEmployee().getEmployeeNumber());
+    map.put("type", e.getType());
+    map.put("message", e.getMessage());
+    map.put("resolved", e.isResolved());
+    map.put("createdAt", e.getCreatedAt());
+    return map;
   }
 }

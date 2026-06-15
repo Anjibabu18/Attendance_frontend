@@ -120,35 +120,38 @@ public class ProductionAdminController {
   }
 
   private static Map<String, Object> deviceResponse(DeviceRegistration d) {
-    return Map.of(
-        "id", d.getId(),
-        "username", d.getUser().getUsername(),
-        "deviceId", d.getDeviceId(),
-        "label", d.getLabel() == null ? "" : d.getLabel(),
-        "approved", d.isApproved(),
-        "createdAt", d.getCreatedAt());
+    Map<String, Object> map = new java.util.LinkedHashMap<>();
+    map.put("id", d.getId());
+    map.put("username", d.getUser().getUsername());
+    map.put("deviceId", d.getDeviceId());
+    map.put("label", d.getLabel() == null ? "" : d.getLabel());
+    map.put("approved", d.isApproved());
+    map.put("createdAt", d.getCreatedAt());
+    return map;
   }
 
   private static Map<String, Object> exceptionResponse(com.attendance.domain.AttendanceException e) {
     var employee = e.getEmployee();
-    return Map.of(
-        "id", e.getId(),
-        "employeeId", employee == null ? null : employee.getId(),
-        "employeeName", employee == null ? null : employee.getName(),
-        "employeeNumber", employee == null ? null : employee.getEmployeeNumber(),
-        "type", e.getType(),
-        "message", e.getMessage(),
-        "resolved", e.isResolved(),
-        "createdAt", e.getCreatedAt());
+    Map<String, Object> map = new java.util.LinkedHashMap<>();
+    map.put("id", e.getId());
+    map.put("employeeId", employee == null ? null : employee.getId());
+    map.put("employeeName", employee == null ? null : employee.getName());
+    map.put("employeeNumber", employee == null ? null : employee.getEmployeeNumber());
+    map.put("type", e.getType());
+    map.put("message", e.getMessage());
+    map.put("resolved", e.isResolved());
+    map.put("createdAt", e.getCreatedAt());
+    return map;
   }
 
   private static Map<String, Object> sessionResponse(com.attendance.domain.UserSessionRecord s) {
-    return Map.of(
-        "id", s.getId(),
-        "username", s.getUser().getUsername(),
-        "ipAddress", s.getIpAddress(),
-        "userAgent", s.getUserAgent(),
-        "loginAt", s.getLoginAt(),
-        "revoked", s.isRevoked());
+    Map<String, Object> map = new java.util.LinkedHashMap<>();
+    map.put("id", s.getId());
+    map.put("username", s.getUser().getUsername());
+    map.put("ipAddress", s.getIpAddress());
+    map.put("userAgent", s.getUserAgent());
+    map.put("loginAt", s.getLoginAt());
+    map.put("revoked", s.isRevoked());
+    return map;
   }
 }
