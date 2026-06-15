@@ -66,6 +66,7 @@ public class PayrollService {
     payload.put("overtimeMinutes", overtimeMinutes);
     payload.put("baseSalary", baseSalary);
     payload.put("dailyRate", round(dailyRate));
+    payload.put("earnedSalary", round(earnedSalary));
     payload.put("lateDeduction", round(lateDeduction));
     payload.put("unpaidLeaveDeduction", round(unpaidLeaveDeduction));
     payload.put("overtimePay", round(overtimePay));

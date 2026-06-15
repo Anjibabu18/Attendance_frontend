@@ -149,6 +149,7 @@ type PayrollRow = {
   overtimeMinutes: number;
   baseSalary: number;
   dailyRate: number;
+  earnedSalary: number;
   lateDeduction: number;
   unpaidLeaveDeduction: number;
   overtimePay: number;
@@ -729,14 +730,15 @@ export default function HrPage() {
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: "grid", gap: 1 }}>
             {payrollRows.slice(0, 8).map((row) => (
-              <Box key={row.employeeId} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "200px 110px 110px 110px 120px 120px" }, gap: 1, alignItems: "center", p: 1.25, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}>
+              <Box key={row.employeeId} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "190px 100px 110px 110px 110px 110px 110px" }, gap: 1, alignItems: "center", p: 1.25, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{row.employeeName}</Typography>
                   <Typography sx={{ opacity: 0.7, fontSize: 12 }}>{row.employeeNumber}</Typography>
                 </Box>
-                <Typography sx={{ fontSize: 12 }}>Payable: <b>{row.payableDays}</b></Typography>
+                <Typography sx={{ fontSize: 12 }}>Days: <b>{row.payableDays}/{row.workingDays}</b></Typography>
+                <Typography sx={{ fontSize: 12 }}>Per day: <b>Rs {row.dailyRate}</b></Typography>
+                <Typography sx={{ fontSize: 12 }}>Earned: <b>Rs {row.earnedSalary}</b></Typography>
                 <Typography sx={{ fontSize: 12 }}>Late: <b>{row.lateMinutes}m</b></Typography>
-                <Typography sx={{ fontSize: 12 }}>OT: <b>{formatDurationMinutes(row.overtimeMinutes)}</b></Typography>
                 <Typography sx={{ fontSize: 12 }}>Deductions: <b>Rs {row.totalDeductions}</b></Typography>
                 <Typography sx={{ fontSize: 12 }}>Net: <b>Rs {row.netPay}</b></Typography>
               </Box>
@@ -745,7 +747,7 @@ export default function HrPage() {
           </Box>
           {settings ? (
             <Typography sx={{ mt: 1.5, opacity: 0.7, fontSize: 12 }}>
-              Payroll rules: base salary Rs {settings.standardMonthlySalary} prorated by payable working days | late deduction Rs {settings.lateDeductionPerMinute}/min | overtime tracked as time only
+              Payroll rules: monthly salary Rs {settings.standardMonthlySalary} / working days = per-day salary | net pay = payable days x per-day salary - late deduction | overtime tracked as time only
             </Typography>
           ) : null}
         </AppCard>

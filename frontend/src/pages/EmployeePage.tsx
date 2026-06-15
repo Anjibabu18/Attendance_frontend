@@ -74,7 +74,7 @@ type Attendance = {
 };
 type MonthSummary = { month: string; fromDate: string; toDate: string; workingDays: number; presentDays: number; halfDayDays: number; leaveDays: number; totalWorkedMinutes: number };
 type AttendanceSettings = { defaultInTime: string; defaultOutTime: string; weekendDays: string; fullDayMinutes: number; halfDayMinutes: number; lateGraceMinutes: number; earlyLeaveGraceMinutes: number; overtimeAfterMinutes: number; lateDeductionPerMinute: number; overtimePayPerHour: number; unpaidLeaveDailyRate: number; standardMonthlySalary: number; requireQrForPunch: boolean; permanentOfficeQr: boolean; qrTokenValidityMinutes: number };
-type Payslip = { employeeId: number; employeeName: string; employeeNumber: string; month: string; workingDays: number; presentDays: number; halfDays: number; leaveDays: number; payableDays: number; lateMinutes: number; overtimeMinutes: number; baseSalary: number; dailyRate: number; lateDeduction: number; unpaidLeaveDeduction: number; overtimePay: number; grossPay: number; totalDeductions: number; netPay: number };
+type Payslip = { employeeId: number; employeeName: string; employeeNumber: string; month: string; workingDays: number; presentDays: number; halfDays: number; leaveDays: number; payableDays: number; lateMinutes: number; overtimeMinutes: number; baseSalary: number; dailyRate: number; earnedSalary: number; lateDeduction: number; unpaidLeaveDeduction: number; overtimePay: number; grossPay: number; totalDeductions: number; netPay: number };
 type Holiday = { id: number; date: string; name: string };
 type DailyGroupPhoto = { id: number; date: string; photoUrl: string };
 type LeaveRequest = { id: number; fromDate: string; toDate: string; reason: string; leaveType?: string | null; mailSubject?: string | null; mailMessage?: string | null; attachmentUrl?: string | null; attachmentName?: string | null; status: "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED" | "CANCELLATION_REQUESTED"; createdAt: string; decidedAt?: string | null; decidedBy?: string | null; hrRemarks?: string | null };
@@ -122,6 +122,40 @@ function downloadBlob(blob: Blob, filename: string) {
   a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+}
+async function normalizeImageUpload(file: File, prefix: string) {
+  if (!file.type.toLowerCase().startsWith("image/")) {
+    throw new Error("Please choose an image file");
+  }
+
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    if (!img.naturalWidth || !img.naturalHeight) {
+      throw new Error("Unreadable image");
+    }
+
+    const maxSide = 1600;
+    const scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const width = Math.max(1, Math.round(img.naturalWidth * scale));
+    const height = Math.max(1, Math.round(img.naturalHeight * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Cannot process image");
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(img, 0, 0, width, height);
+
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    if (!blob) throw new Error("Cannot process image");
+    return new File([blob], `${prefix}-${dayjs().format("YYYYMMDDHHmmss")}.jpg`, { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 // ─────────────────────────────────────────────────────
@@ -503,8 +537,9 @@ export default function EmployeePage() {
 
   // ── Upload profile photo ──
   async function uploadProfilePhoto(file: File) {
-    const fd = new FormData(); fd.append("file", file);
-    const res = await api.post<Profile>("/api/employee/profile/photo", fd);
+    const normalized = await normalizeImageUpload(file, "profile");
+    const fd = new FormData(); fd.append("file", normalized);
+    const res = await api.post<Profile>("/api/employee/profile/photo", fd, { headers: { "Content-Type": "multipart/form-data" } });
     setProfile(res.data); setOk("Profile photo saved as face reference");
   }
 
@@ -949,8 +984,8 @@ export default function EmployeePage() {
               {[
                 { label: "Payable Days", val: payslip.payableDays,                color: "#7c3aed" },
                 { label: "Net Pay",      val: `₹${payslip.netPay.toLocaleString()}`, color: "#16a34a" },
+                { label: "Per Day",      val: `₹${payslip.dailyRate.toLocaleString()}`, color: "#2563eb" },
                 { label: "Deduction",    val: `₹${payslip.totalDeductions.toLocaleString()}`, color: "#dc2626" },
-                { label: "Overtime",     val: formatDurationMinutes(payslip.overtimeMinutes), color: "#d97706" },
               ].map(m => (
                 <Box key={m.label} sx={{ p: { xs: 1.25, sm: 1.75 }, borderRadius: 2.5, bgcolor: `${m.color}07`, border: `1px solid ${m.color}18`, transition: "transform 0.2s", "&:hover": { transform: "translateY(-2px)" } }}>
                   <Typography sx={{ fontSize: { xs: 9, sm: 10 }, fontWeight: 800, color: "text.secondary", textTransform: "uppercase", letterSpacing: "0.05em" }}>{m.label}</Typography>
@@ -958,7 +993,9 @@ export default function EmployeePage() {
                 </Box>
               ))}
             </Box>
-            <Typography sx={{ mt: 1.5, fontSize: { xs: 11, sm: 12 }, color: "text.secondary" }}>Base ₹{payslip.baseSalary.toLocaleString()} · {payslip.payableDays}/{payslip.workingDays} payable days · Late ₹{payslip.lateDeduction.toLocaleString()} deducted</Typography>
+            <Typography sx={{ mt: 1.5, fontSize: { xs: 11, sm: 12 }, color: "text.secondary" }}>
+              Base ₹{payslip.baseSalary.toLocaleString()} / {payslip.workingDays} working days = ₹{payslip.dailyRate.toLocaleString()} per day · Earned ₹{payslip.earnedSalary.toLocaleString()} · Late ₹{payslip.lateDeduction.toLocaleString()} deducted · OT {formatDurationMinutes(payslip.overtimeMinutes)} time only
+            </Typography>
           </GlassCard>
         )}
       </div>

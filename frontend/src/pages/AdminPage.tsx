@@ -452,6 +452,22 @@ export default function AdminPage() {
     },
   ];
 
+  const payrollPreview = useMemo(() => {
+    const [yearRaw, monthRaw] = holidayMonth.split("-").map(Number);
+    const year = Number.isFinite(yearRaw) ? yearRaw : new Date().getFullYear();
+    const monthIndex = Number.isFinite(monthRaw) ? monthRaw - 1 : new Date().getMonth();
+    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+    const weekendSet = new Set(weekendDays);
+    let workingDays = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+      const weekday = new Date(year, monthIndex, day).toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
+      if (!weekendSet.has(weekday)) workingDays++;
+    }
+    const monthlySalary = Math.max(0, Number(standardMonthlySalary) || 0);
+    const perDay = workingDays > 0 ? monthlySalary / workingDays : 0;
+    return { workingDays, perDay };
+  }, [holidayMonth, standardMonthlySalary, weekendDays]);
+
   async function createCompanyRole() {
     setErr(null);
     setOk(null);
@@ -1254,6 +1270,49 @@ export default function AdminPage() {
                 <Typography sx={{ opacity: 0.72, fontSize: 12 }}>
                   Example: Full day <b>480</b> = 8h, Half day <b>240</b> = 4h. Grace values control late and early-leave analytics.
                 </Typography>
+                <Divider />
+                <Box>
+                  <Typography sx={{ fontWeight: 900, fontSize: 14 }}>Payroll calculation</Typography>
+                  <Typography sx={{ opacity: 0.72, fontSize: 12, mt: 0.25 }}>
+                    Salary is prorated automatically: monthly salary divided by working days, multiplied by payable days.
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
+                  <TextField
+                    label="Monthly salary"
+                    type="number"
+                    value={standardMonthlySalary}
+                    onChange={(e) => setStandardMonthlySalary(Math.max(0, Number(e.target.value || 0)))}
+                    inputProps={{ min: 0 }}
+                  />
+                  <TextField
+                    label="Late deduction / minute"
+                    type="number"
+                    value={lateDeductionPerMinute}
+                    onChange={(e) => setLateDeductionPerMinute(Math.max(0, Number(e.target.value || 0)))}
+                    inputProps={{ min: 0 }}
+                  />
+                  <TextField
+                    label="Overtime pay / hour"
+                    type="number"
+                    value={overtimePayPerHour}
+                    onChange={(e) => setOvertimePayPerHour(Math.max(0, Number(e.target.value || 0)))}
+                    inputProps={{ min: 0 }}
+                    helperText="Keep 0 when OT is time only"
+                  />
+                </Box>
+                <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" } }}>
+                  {[
+                    ["Working days", payrollPreview.workingDays],
+                    ["Per day salary", `Rs ${payrollPreview.perDay.toFixed(2)}`],
+                    ["Formula", `Rs ${standardMonthlySalary} / ${payrollPreview.workingDays || 0}`],
+                  ].map(([label, value]) => (
+                    <Box key={label} sx={{ p: 1.5, border: "1px solid #e2e8f0", borderRadius: 1.5, bgcolor: "#f8fafc" }}>
+                      <Typography sx={{ fontSize: 11, color: "text.secondary", fontWeight: 800, textTransform: "uppercase" }}>{label}</Typography>
+                      <Typography sx={{ mt: 0.5, fontWeight: 900, color: "#0f172a" }}>{value}</Typography>
+                    </Box>
+                  ))}
+                </Box>
                 <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, alignItems: "center" }}>
                   <FormControlLabel
                     control={<Switch checked={requireQrForPunch} onChange={(e) => setRequireQrForPunch(e.target.checked)} />}
