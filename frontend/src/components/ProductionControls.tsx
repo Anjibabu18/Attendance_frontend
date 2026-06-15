@@ -145,6 +145,13 @@ export default function ProductionControls() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qrOfficeId]);
 
+  const sortedDevices = [...devices].sort((a, b) => {
+    if (a.approved !== b.approved) return a.approved ? 1 : -1;
+    const tA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const tB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return tB - tA;
+  });
+
   return (
     <AppCard>
       {err ? (
@@ -215,8 +222,8 @@ export default function ProductionControls() {
         <Typography sx={{ color: "text.secondary", fontSize: 13, mt: 0.4 }}>
           Approve only company-owned or verified employee devices. Punch is blocked until approval is active.
         </Typography>
-        <Box sx={{ display: "grid", gap: 1, mt: 1.5 }}>
-          {devices.slice(0, 8).map((d) => (
+        <Box sx={{ display: "grid", gap: 1, mt: 1.5, maxHeight: 450, overflowY: "auto", pr: 0.5 }}>
+          {sortedDevices.map((d) => (
             <Box
               key={d.id}
               sx={{
@@ -248,7 +255,7 @@ export default function ProductionControls() {
               </Box>
             </Box>
           ))}
-          {!devices.length ? <Typography sx={{ color: "text.secondary", fontSize: 13 }}>No registered devices yet.</Typography> : null}
+          {!sortedDevices.length ? <Typography sx={{ color: "text.secondary", fontSize: 13 }}>No registered devices yet.</Typography> : null}
         </Box>
       </Box>
     </AppCard>
