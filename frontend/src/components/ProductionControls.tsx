@@ -1,9 +1,11 @@
 import { Box, Button, Divider, TextField, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { api } from "../api/client";
+import { useToast } from "../components/Toast";
 import AppCard from "./AppCard";
 
 export default function ProductionControls() {
+  const { toastSuccess, toastError } = useToast();
   const [devices, setDevices] = useState<any[]>([]);
   const [exceptions, setExceptions] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
@@ -101,35 +103,52 @@ export default function ProductionControls() {
   }
 
   async function createQr() {
-    const res = await api.post<any>("/api/admin/production/qr", { officeId: Number(qrOfficeId) });
-    setQrToken(res.data.token);
-    setQrDailyCode(res.data.dailyCode || null);
-    setQrMode(res.data.mode || null);
-    setQrExpiresAt(res.data.expiresAt || null);
-    const image = await api.get<Blob>(`/api/admin/production/qr/${encodeURIComponent(res.data.token)}.png`, { responseType: "blob" });
-    if (qrImageUrl) URL.revokeObjectURL(qrImageUrl);
-    setQrImageUrl(URL.createObjectURL(image.data));
-    // save latest token to localStorage as fallback for UI refresh/debugging
     try {
-      const key = `attendance_latest_qr_${qrOfficeId || 'global'}`;
-      localStorage.setItem(key, JSON.stringify({ token: res.data.token, dailyCode: res.data.dailyCode, mode: res.data.mode, expiresAt: res.data.expiresAt, createdAt: new Date().toISOString() }));
-    } catch {
-      // ignore storage errors
+      const res = await api.post<any>("/api/admin/production/qr", { officeId: Number(qrOfficeId) });
+      setQrToken(res.data.token);
+      setQrDailyCode(res.data.dailyCode || null);
+      setQrMode(res.data.mode || null);
+      setQrExpiresAt(res.data.expiresAt || null);
+      const image = await api.get<Blob>(`/api/admin/production/qr/${encodeURIComponent(res.data.token)}.png`, { responseType: "blob" });
+      if (qrImageUrl) URL.revokeObjectURL(qrImageUrl);
+      setQrImageUrl(URL.createObjectURL(image.data));
+      // save latest token to localStorage as fallback for UI refresh/debugging
+      try {
+        const key = `attendance_latest_qr_${qrOfficeId || 'global'}`;
+        localStorage.setItem(key, JSON.stringify({ token: res.data.token, dailyCode: res.data.dailyCode, mode: res.data.mode, expiresAt: res.data.expiresAt, createdAt: new Date().toISOString() }));
+      } catch {
+        // ignore storage errors
+      }
+      toastSuccess("Office QR generated successfully!");
+    } catch (e: any) {
+      const msg = e?.response?.data?.error ?? e?.message ?? "QR generation failed";
+      setErr(msg);
+      toastError(msg);
     }
   }
 
   async function snapshotPolicy() {
-    await api.post("/api/admin/production/policies", { versionName: policyName });
-    setPolicyName("Production policy");
+    try {
+      await api.post("/api/admin/production/policies", { versionName: policyName });
+      setPolicyName("Production policy");
+      toastSuccess("Policy snapshot created!");
+    } catch (e: any) {
+      const msg = e?.response?.data?.error ?? e?.message ?? "Policy snapshot failed";
+      setErr(msg);
+      toastError(msg);
+    }
   }
 
   async function approveDevice(id: number, approved: boolean) {
     setErr(null);
     try {
       await api.post(`/api/admin/production/devices/${id}/approval`, { approved });
+      toastSuccess(approved ? "Device approved successfully!" : "Device approval revoked.");
       await load();
     } catch (e: any) {
-      setErr(e?.response?.data?.error ?? e?.message ?? "Device approval update failed");
+      const msg = e?.response?.data?.error ?? e?.message ?? "Device approval update failed";
+      setErr(msg);
+      toastError(msg);
       throw e;
     }
   }
