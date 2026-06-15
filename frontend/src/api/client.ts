@@ -84,6 +84,9 @@ api.interceptors.response.use(
           window.location.href = "/login";
           return Promise.reject(refreshErr);
         }
+      } else {
+        clearAuth();
+        window.location.href = "/login";
       }
     }
 
