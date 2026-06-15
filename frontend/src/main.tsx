@@ -206,7 +206,11 @@ const theme = createTheme({
           backdropFilter: "blur(24px)",
           overflow: "hidden",
         },
-        backdrop: {
+      },
+    },
+    MuiBackdrop: {
+      styleOverrides: {
+        root: {
           backgroundColor: "rgba(15,23,42,0.5)",
           backdropFilter: "blur(4px)",
         },

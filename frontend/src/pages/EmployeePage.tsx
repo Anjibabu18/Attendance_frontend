@@ -83,7 +83,7 @@ type WorkRequest = { id: number; type: "WORK_FROM_HOME" | "ON_DUTY"; fromDate: s
 type CompOffRequest = { id: number; overtimeDate: string; requestedDate: string; overtimeMinutes: number; reason: string; attachmentUrl?: string | null; attachmentName?: string | null; status: "PENDING" | "APPROVED" | "REJECTED"; hrRemarks?: string | null };
 type BreakEntry = { id: number; start: string; end?: string | null };
 type PunchPlace = { officeLocation: OfficeLocation; latitude: number; longitude: number; distanceMeters: number; allowedRadiusMeters: number; insideRadius: boolean };
-type DeviceStatus = { deviceId: string; approved: boolean };
+type DeviceStatus = { deviceId: string; approved: boolean; registered?: boolean };
 
 // ─────────────────────────────────────────────────────
 // HELPERS
@@ -1022,14 +1022,14 @@ export default function EmployeePage() {
           )}
 
           {/* Device status */}
-          <Box sx={{ mb: 2, p: { xs: 1.25, sm: 1.75 }, borderRadius: 2.5, bgcolor: deviceStatus?.approved ? "rgba(22,163,74,0.05)" : "rgba(245,158,11,0.05)", border: `1px solid ${deviceStatus?.approved ? "rgba(22,163,74,0.22)" : "rgba(245,158,11,0.22)"}`, display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
+          <Box sx={{ mb: 2, p: { xs: 1.25, sm: 1.75 }, borderRadius: 2.5, bgcolor: deviceStatus?.approved ? "rgba(22,163,74,0.05)" : (deviceStatus?.registered ? "rgba(245,158,11,0.05)" : "rgba(220,38,38,0.05)"), border: `1px solid ${deviceStatus?.approved ? "rgba(22,163,74,0.22)" : (deviceStatus?.registered ? "rgba(245,158,11,0.22)" : "rgba(220,38,38,0.22)")}`, display: "flex", alignItems: "center", gap: 1.5, flexWrap: "wrap" }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 13 }, color: deviceStatus?.approved ? "#15803d" : "#92400e" }}>
-                {deviceStatus?.approved ? "✓ Device Approved" : "⏳ Pending Approval"}
+              <Typography sx={{ fontWeight: 700, fontSize: { xs: 12, sm: 13 }, color: deviceStatus?.approved ? "#15803d" : (deviceStatus?.registered ? "#92400e" : "#dc2626") }}>
+                {deviceStatus?.approved ? "✓ Device Approved" : (deviceStatus?.registered ? "⏳ Pending Approval" : "✗ Device Not Registered")}
               </Typography>
               <Typography sx={{ fontSize: { xs: 9, sm: 10.5 }, color: "text.secondary", mt: 0.2, wordBreak: "break-all" }}>ID: {deviceStatus?.deviceId ?? getDeviceId()}</Typography>
             </Box>
-            {!deviceStatus?.approved && (
+            {!deviceStatus?.registered && (
               <Button size="small" variant="outlined" onClick={() => registerDevice().catch(e => setErr(apiMessage(e, "Registration failed")))} sx={{ borderRadius: 2, fontWeight: 700, flexShrink: 0, fontSize: 12 }}>
                 Register
               </Button>

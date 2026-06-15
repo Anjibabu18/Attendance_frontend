@@ -101,6 +101,12 @@ public class ProductionFeatureService {
         .orElse(false);
   }
 
+  public boolean isDeviceRegistered(String username, String deviceId) {
+    if (deviceId == null || deviceId.isBlank())
+      return false;
+    return deviceRepo.findByUser_UsernameAndDeviceId(username, deviceId).isPresent();
+  }
+
   public void validateApprovedDevice(String username, String deviceId) {
     if (deviceId == null || deviceId.isBlank()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Device approval is required before punch");

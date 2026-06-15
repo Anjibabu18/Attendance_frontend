@@ -16,7 +16,11 @@ public class DeviceController {
   @GetMapping("/current")
   public Map<String, Object> current(@RequestParam("deviceId") String deviceId) {
     String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-    return Map.of("deviceId", deviceId, "approved", service.deviceApproved(username, deviceId));
+    Map<String, Object> res = new java.util.LinkedHashMap<>();
+    res.put("deviceId", deviceId);
+    res.put("approved", service.deviceApproved(username, deviceId));
+    res.put("registered", service.isDeviceRegistered(username, deviceId));
+    return res;
   }
 
   @PostMapping
@@ -33,6 +37,7 @@ public class DeviceController {
     res.put("label", d.getLabel() == null ? "" : d.getLabel());
     res.put("approved", d.isApproved());
     res.put("createdAt", d.getCreatedAt());
+    res.put("registered", true);
     return res;
   }
 }
