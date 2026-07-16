@@ -29,9 +29,12 @@ export function PunchOverlay({
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
+  const qrScanActiveRef = useRef(false);
+  const qrFileInputRef = useRef<HTMLInputElement>(null);
   const [location, setLocation] = useState<{lat: number, lng: number}|null>(null);
 
   const [qrToken, setQrToken] = useState<string>("");
+  const [manualQr, setManualQr] = useState<string>("");
   const [qrMode, setQrMode] = useState<string>("");
   const [dailyCode, setDailyCode] = useState<string>("");
   const [officeLocation, setOfficeLocation] = useState<{ lat: number; lng: number; radius: number } | null>(null);
@@ -47,12 +50,12 @@ export function PunchOverlay({
       if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; }
       const map = L.map(mapContainerRef.current!, { zoomControl: true, scrollWheelZoom: false });
       mapInstanceRef.current = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'Â© OpenStreetMap' }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'Ãƒâ€šÃ‚Â© OpenStreetMap' }).addTo(map);
       // Office circle
       L.circle([officeLocation.lat, officeLocation.lng], { radius: officeLocation.radius, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.1, weight: 2 }).addTo(map);
-      L.marker([officeLocation.lat, officeLocation.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ðŸ¢ Office').addTo(map);
+      L.marker([officeLocation.lat, officeLocation.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Office').addTo(map);
       // Employee position
-      L.marker([location.lat, location.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#3b82f6;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ðŸ“ You are here').addTo(map);
+      L.marker([location.lat, location.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#3b82f6;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â You are here').addTo(map);
       // Fit bounds
       const bounds = L.latLngBounds([[officeLocation.lat, officeLocation.lng], [location.lat, location.lng]]);
       map.fitBounds(bounds, { padding: [40, 40] });
@@ -107,6 +110,7 @@ export function PunchOverlay({
   }, [open]);
 
   const stopCamera = () => {
+    qrScanActiveRef.current = false;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   };
@@ -115,7 +119,8 @@ export function PunchOverlay({
   const startQrCamera = async () => {
     try {
       stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      qrScanActiveRef.current = true;
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -128,7 +133,7 @@ export function PunchOverlay({
   };
 
   const scanQrLoop = () => {
-    if (!videoRef.current || step !== 1) return;
+    if (!videoRef.current || !qrScanActiveRef.current) return;
     const v = videoRef.current;
     if (v.readyState === v.HAVE_ENOUGH_DATA) {
       const c = document.createElement("canvas");
@@ -138,7 +143,7 @@ export function PunchOverlay({
       if (ctx) {
         ctx.drawImage(v, 0, 0, c.width, c.height);
         const imgData = ctx.getImageData(0, 0, c.width, c.height);
-        const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "dontInvert" });
+        const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
         if (code) {
           handleQrScanned(code.data);
           return;
@@ -148,7 +153,24 @@ export function PunchOverlay({
     requestAnimationFrame(scanQrLoop);
   };
 
-  const handleQrScanned = async (token: string) => {
+  const extractQrToken = (value: string) => {
+    const raw = value.trim();
+    if (!raw) return "";
+    try {
+      const parsed = new URL(raw);
+      return parsed.searchParams.get('punchQr') || parsed.searchParams.get('qrToken') || parsed.searchParams.get('token') || raw;
+    } catch {
+      const match = raw.match(/(?:punchQr|qrToken|token)=([^&\s]+)/i);
+      return match ? decodeURIComponent(match[1]) : raw;
+    }
+  };
+
+  const handleQrScanned = async (value: string) => {
+    const token = extractQrToken(value);
+    if (!token) {
+      setError("QR code is empty");
+      return;
+    }
     stopCamera();
     setBusy(true);
     try {
@@ -156,16 +178,38 @@ export function PunchOverlay({
       setQrToken(token);
       if (res.data.mode === "FIXED_QR_DAILY_CODE") {
         setQrMode("FIXED_QR_DAILY_CODE");
-        setStep(2); // Ask for daily code
+        setStep(2);
       } else {
-        setStep(3); // Go directly to selfie
+        setStep(3);
         startSelfieCamera();
       }
     } catch (e: any) {
       setError(e?.response?.data?.error || "Invalid QR Code");
+      setTimeout(() => startQrCamera(), 500);
     } finally {
       setBusy(false);
     }
+  };
+
+  const scanQrImageFile = async (file: File) => {
+    setError(null);
+    const image = new Image();
+    image.src = URL.createObjectURL(file);
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("Cannot read QR image"));
+    });
+    const canvas = document.createElement("canvas");
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Cannot scan QR image");
+    ctx.drawImage(image, 0, 0);
+    URL.revokeObjectURL(image.src);
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
+    if (!code) throw new Error("No QR found in image");
+    await handleQrScanned(code.data);
   };
 
   const handleDailyCodeSubmit = () => {
@@ -294,7 +338,7 @@ export function PunchOverlay({
               </>
             ) : (
               <>
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#EF4444' }}>ðŸ“ Location Issue</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#EF4444' }}>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â Location Issue</Typography>
                 <Typography sx={{ color: '#94A3B8', mb: 2 }}>{error}</Typography>
                 {location && officeLocation && (
                   <Box sx={{ borderRadius: 3, overflow: 'hidden', mb: 3, height: 260 }}>
@@ -315,11 +359,18 @@ export function PunchOverlay({
         {step === 1 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Scan Office QR</Typography>
-            <Typography sx={{ color: '#94A3B8', mb: 4 }}>Point your camera at the office QR code.</Typography>
+            <Typography sx={{ color: '#94A3B8', mb: 2 }}>Point your camera at the office QR code.</Typography>
+            <Typography sx={{ color: '#CBD5E1', mb: 3, fontSize: 13 }}>Keep the QR flat, bright, and inside the blue frame.</Typography>
             {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
-            <Box sx={{ flex: 1, position: 'relative', borderRadius: 4, overflow: 'hidden', border: '4px solid #0052FF', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
+            <Box sx={{ flex: 1, position: 'relative', borderRadius: 4, overflow: 'hidden', border: '4px solid #0052FF', mb: 2, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
               <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </Box>
+            <TextField size="small" placeholder="Paste QR token if camera cannot scan" value={manualQr} onChange={(event) => setManualQr(event.target.value)} sx={{ bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2, mb: 1, input: { color: 'white' } }} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+              <Button variant="outlined" sx={{ borderColor: '#60A5FA', color: '#BFDBFE' }} onClick={() => handleQrScanned(manualQr)}>Use token</Button>
+              <Button variant="outlined" sx={{ borderColor: '#60A5FA', color: '#BFDBFE' }} onClick={() => qrFileInputRef.current?.click()}>Upload QR</Button>
+            </Box>
+            <input ref={qrFileInputRef} hidden type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) scanQrImageFile(file).catch((err) => setError(err?.message || 'QR image scan failed')); }} />
           </Box>
         )}
 
