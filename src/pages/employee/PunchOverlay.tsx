@@ -8,6 +8,7 @@ import { useEmployee } from './EmployeeContext';
 import dayjs from 'dayjs';
 import jsQR from 'jsqr';
 import 'leaflet/dist/leaflet.css';
+import * as faceapi from '@vladmandic/face-api';
 
 export function PunchOverlay({ 
   open, 
@@ -24,6 +25,7 @@ export function PunchOverlay({
   // 0: Location, 1: QR Scan, 2: Daily Code, 3: Selfie, 4: Success
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string|null>(null);
+  const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -189,6 +191,22 @@ export function PunchOverlay({
     } catch (e: any) {
       setError("Camera unavailable for selfie");
     }
+
+    if (!faceModelsLoaded) {
+      setBusy(true);
+      try {
+        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+        await Promise.all([
+          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        setFaceModelsLoaded(true);
+      } catch (err) {
+        setError("Failed to load Face AI Models");
+      }
+      setBusy(false);
+    }
   };
 
   const handleCaptureAndPunch = async () => {
@@ -227,6 +245,16 @@ export function PunchOverlay({
         }
       }
       fd.append("file", file);
+
+      setBusy(true);
+      // Run Face Recognition
+      const detection = await faceapi.detectSingleFace(v).withFaceLandmarks().withFaceDescriptor();
+      if (detection) {
+        const descriptorArray = Array.from(detection.descriptor);
+        fd.append("faceDescriptor", JSON.stringify(descriptorArray));
+      } else {
+        throw new Error("No face detected! Please ensure your face is clearly visible.");
+      }
 
       await api.post(`/api/employee/punch/${kind}`, fd, { 
         headers: { "Content-Type": "multipart/form-data" } 
