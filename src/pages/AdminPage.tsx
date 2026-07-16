@@ -30,10 +30,12 @@ import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
 import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
 import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { motion } from "framer-motion";
 
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
+import { clearAuth } from "../auth/auth";
 
 const MotionBox = motion.create(Box);
 
@@ -400,6 +402,11 @@ export default function AdminPage() {
     await refresh();
   }
 
+  function handleLogout() {
+    clearAuth();
+    window.location.href = "/";
+  }
+
   async function resetDeviceBinding(employeeId: number) {
     if (!window.confirm("Are you sure you want to clear this employee's bound device?")) return;
     await api.post(`/api/admin/employees/${employeeId}/reset-device-binding`);
@@ -537,7 +544,10 @@ export default function AdminPage() {
               <Typography sx={{ color: "#64748B", fontSize: 13 }}>People, policies, holidays, shifts, managers, and setup health.</Typography>
             </Box>
           </Box>
-          <Button onClick={refresh} startIcon={<RefreshRoundedIcon />} variant="outlined" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }} disabled={busy}>Refresh</Button>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button onClick={refresh} startIcon={<RefreshRoundedIcon />} variant="outlined" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }} disabled={busy}>Refresh</Button>
+            <Button onClick={handleLogout} startIcon={<LogoutRoundedIcon />} variant="outlined" color="error" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }}>Logout</Button>
+          </Box>
         </Box>
       </Box>
 
