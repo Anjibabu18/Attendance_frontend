@@ -148,6 +148,7 @@ export default function AdminPage() {
   const [selectedQrOfficeId, setSelectedQrOfficeId] = useState("");
   const [officeQr, setOfficeQr] = useState<OfficeQr | null>(null);
   const [qrBusy, setQrBusy] = useState(false);
+  const [adminLoadError, setAdminLoadError] = useState<string | null>(null);
   const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
   const [search, setSearch] = useState("");
   const [busy, setBusy] = useState(false);
@@ -265,6 +266,14 @@ export default function AdminPage() {
           attachmentUrl: item.attachmentUrl,
         })));
       }
+      const rejected = [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes]
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected");
+      const unauthorized = rejected.find((result) => result.reason?.response?.status === 401 || result.reason?.response?.status === 403);
+      const notFound = rejected.find((result) => result.reason?.response?.status === 404);
+      const serverError = rejected.find((result) => result.reason?.response?.status >= 500);
+      if (unauthorized) setAdminLoadError("Admin session expired or this account is not ROLE_ADMIN. Login again as admin.");
+      else if (notFound) setAdminLoadError("Backend is missing some admin routes. Redeploy the latest backend code.");
+      else if (serverError) setAdminLoadError(serverError.reason?.response?.data?.error || "Backend server error. Check deployed backend logs.");
       setApprovalItems(approvalRows.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
     } catch (err: any) {
       toastError(err?.response?.data?.error || "Failed to load admin dashboard");
@@ -564,6 +573,13 @@ export default function AdminPage() {
             <Typography sx={{ color: "rgba(255,255,255,0.68)", mt: 1, fontSize: 13 }}>{configuredEmployees} of {employees.length} employees have department, shift, or office setup.</Typography>
           </Box>
         </Box>
+
+        {adminLoadError ? (
+          <Box sx={{ border: "1px solid #FCA5A5", bgcolor: "#FEF2F2", color: "#991B1B", borderRadius: "8px", p: 1.5 }}>
+            <Typography sx={{ fontWeight: 950 }}>Admin data could not load</Typography>
+            <Typography sx={{ fontSize: 13, mt: 0.35 }}>{adminLoadError}</Typography>
+          </Box>
+        ) : null}
 
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" }, gap: 1.5 }}>
           {statCards.map((item, index) => (
