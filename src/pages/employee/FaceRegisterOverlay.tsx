@@ -1,7 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import * as faceapi from '@vladmandic/face-api';
-import { XMarkIcon, UserCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import api from '../../api/client';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import { api } from '../../api/client';
 
 export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -78,7 +80,7 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
           onClick={onClose}
           className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
         >
-          <XMarkIcon className="w-6 h-6" />
+          <CloseRoundedIcon sx={{ width: 24, height: 24 }} />
         </button>
 
         <div className="p-6 text-center">
@@ -90,12 +92,12 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
           <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black mb-6">
             {!modelsLoaded ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                <UserCircleIcon className="w-16 h-16 mb-4 opacity-50 animate-pulse" />
+                <AccountCircleRoundedIcon sx={{ width: 64, height: 64, mb: 2, opacity: 0.5, animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
                 <p className="text-sm px-4 text-center">{loadingMsg}</p>
               </div>
             ) : success ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-400 bg-emerald-950">
-                <CheckCircleIcon className="w-20 h-20 mb-4" />
+                <CheckCircleRoundedIcon sx={{ width: 80, height: 80, mb: 2 }} />
                 <p className="font-medium">Face Registered!</p>
               </div>
             ) : (
