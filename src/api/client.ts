@@ -16,7 +16,7 @@ const resolvedBaseUrl = (() => {
   // with `VITE_API_URL=...` and restart `npm run dev`.
   // eslint-disable-next-line no-console
   if (import.meta.env.PROD) {
-    return "https://attendance-backend-cquw.onrender.com";
+    return "https://attendance-backend-nodejs.vercel.app";
   }
 
   console.warn(
