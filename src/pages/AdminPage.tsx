@@ -266,14 +266,32 @@ export default function AdminPage() {
           attachmentUrl: item.attachmentUrl,
         })));
       }
-      const rejected = [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes]
-        .filter((result): result is PromiseRejectedResult => result.status === "rejected");
-      const unauthorized = rejected.find((result) => result.reason?.response?.status === 401 || result.reason?.response?.status === 403);
-      const notFound = rejected.find((result) => result.reason?.response?.status === 404);
-      const serverError = rejected.find((result) => result.reason?.response?.status >= 500);
-      if (unauthorized) setAdminLoadError("Admin session expired or this account is not ROLE_ADMIN. Login again as admin.");
-      else if (notFound) setAdminLoadError("Backend is missing some admin routes. Redeploy the latest backend code.");
-      else if (serverError) setAdminLoadError(serverError.reason?.response?.data?.error || "Backend server error. Check deployed backend logs.");
+      const requestResults = [
+        { label: "Employees", result: employeeRes },
+        { label: "Roles", result: roleRes },
+        { label: "Departments", result: departmentRes },
+        { label: "Shifts", result: shiftRes },
+        { label: "Managers", result: managerRes },
+        { label: "Office locations", result: officeRes },
+        { label: "Holidays", result: holidayRes },
+        { label: "Attendance settings", result: settingsRes },
+        { label: "Analytics", result: analyticsRes },
+        { label: "Payroll lock", result: payrollLockRes },
+        { label: "Leave approvals", result: leaveReqRes },
+        { label: "Corrections", result: correctionReqRes },
+        { label: "Work requests", result: workReqRes },
+        { label: "Comp-off requests", result: compOffReqRes },
+      ];
+      const rejected = requestResults.filter((item): item is { label: string; result: PromiseRejectedResult } => item.result.status === "rejected");
+      const failedList = rejected.map((item) => `${item.label} (${item.result.reason?.response?.status || "network"})`).join(", ");
+      const unauthorized = rejected.find((item) => item.result.reason?.response?.status === 401 || item.result.reason?.response?.status === 403);
+      const notFound = rejected.find((item) => item.result.reason?.response?.status === 404);
+      const serverError = rejected.find((item) => item.result.reason?.response?.status >= 500);
+      if (!rejected.length) setAdminLoadError(null);
+      else if (unauthorized) setAdminLoadError(`Admin access failed for: ${failedList}. Login again as ROLE_ADMIN.`);
+      else if (notFound) setAdminLoadError(`Backend is not on the latest Node build. Missing routes: ${failedList}. Redeploy Attendance_Backend_Nodejs main.`);
+      else if (serverError) setAdminLoadError(`${serverError.label} failed: ${serverError.result.reason?.response?.data?.error || "Backend server error. Check deployed backend logs."}`);
+      else setAdminLoadError(`Some admin data could not load: ${failedList}`);
       setApprovalItems(approvalRows.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
     } catch (err: any) {
       toastError(err?.response?.data?.error || "Failed to load admin dashboard");
