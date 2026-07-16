@@ -7,16 +7,22 @@ function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, "");
 }
 
+const PRODUCTION_API_URL = "https://attendance-backend-nodejs.vercel.app";
+const STALE_RENDER_API_URL = "https://attendance-backend-cquw.onrender.com";
+
 const resolvedBaseUrl = (() => {
   const fromEnv = import.meta.env.VITE_API_URL?.trim();
-  if (fromEnv) return normalizeBaseUrl(fromEnv);
+  if (fromEnv) {
+    const normalized = normalizeBaseUrl(fromEnv);
+    return normalized === STALE_RENDER_API_URL ? PRODUCTION_API_URL : normalized;
+  }
 
   // This fallback is only for local dev when the backend runs on your machine.
   // If you're seeing `net::ERR_CONNECTION_REFUSED` in the browser, create `frontend/.env`
   // with `VITE_API_URL=...` and restart `npm run dev`.
   // eslint-disable-next-line no-console
   if (import.meta.env.PROD) {
-    return "https://attendance-backend-nodejs.vercel.app";
+    return PRODUCTION_API_URL;
   }
 
   console.warn(
