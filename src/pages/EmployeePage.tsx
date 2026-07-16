@@ -72,8 +72,8 @@ function EmployeeContent() {
   const renderTab = () => {
     if (activeTab === 0) return <DashboardTab />;
     if (activeTab === 1) return <AttendanceTab />;
-    if (activeTab === 2) return <RequestsTab />;
-    return <MoreTab />;
+    if (activeTab === 2) return <RequestsTab initialMode={quickRequestMode} />;
+    return <MoreTab onQuickRequest={(mode) => { setQuickRequestMode(mode); setActiveTab(2); }} />;
   };
 
   return (
