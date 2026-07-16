@@ -364,7 +364,7 @@ export default function AdminPage() {
     try {
       const response = await api.post<OfficeQr>("/api/admin/production/qr", { officeId });
       setOfficeQr(response.data);
-      toastSuccess("Office QR generated");
+      toastSuccess("Permanent office QR ready");
     } finally {
       setQrBusy(false);
     }
@@ -379,6 +379,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (!selectedQrOfficeId && offices.length) setSelectedQrOfficeId(String(offices[0].id));
   }, [offices, selectedQrOfficeId]);
+
+  useEffect(() => {
+    if (selectedQrOfficeId) loadLatestOfficeQr(Number(selectedQrOfficeId)).catch(() => undefined);
+  }, [selectedQrOfficeId]);
 
   async function createRole() {
     if (!roleName.trim()) return;
@@ -767,43 +771,33 @@ export default function AdminPage() {
                   <Avatar sx={{ bgcolor: "#1D4ED8", borderRadius: "8px" }}><QrCode2RoundedIcon /></Avatar>
                   <Box>
                     <Typography sx={{ fontWeight: 950, fontSize: 20 }}>Permanent Office QR</Typography>
-                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Generate the QR employees scan for punch in/out.</Typography>
+                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>One permanent office QR employees scan every day for punch in/out.</Typography>
                   </Box>
                 </Box>
-                <Chip size="small" label={officeQr?.mode || "Not generated"} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: officeQr?.token ? "#DCFCE7" : "#F1F5F9", color: officeQr?.token ? "#166534" : "#475569" }} />
+                <Chip size="small" label={officeQr?.token ? "Permanent" : "Not created"} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: officeQr?.token ? "#DCFCE7" : "#F1F5F9", color: officeQr?.token ? "#166534" : "#475569" }} />
               </Box>
               <Box sx={{ display: "grid", gap: 1.25 }}>
                 <TextField select size="small" label="Office location" value={selectedQrOfficeId} onChange={(event) => { setSelectedQrOfficeId(event.target.value); setOfficeQr(null); }}>
                   {offices.map((office) => <MenuItem key={office.id} value={office.id}>{office.officeName || `Office #${office.id}`}</MenuItem>)}
                 </TextField>
                 <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
-                  <Button disabled={qrBusy || !selectedQrOffice} variant="contained" onClick={() => generateOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR generation failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Generate QR</Button>
-                  <Button disabled={qrBusy || !selectedQrOffice} variant="outlined" onClick={() => loadLatestOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR load failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Load latest</Button>
+                  <Button disabled={qrBusy || !selectedQrOffice} variant="contained" onClick={() => generateOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR generation failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>{officeQr?.token ? "Show permanent QR" : "Create permanent QR"}</Button>
+                  <Button disabled={qrBusy || !selectedQrOffice} variant="outlined" onClick={() => loadLatestOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR load failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Refresh QR</Button>
                 </Box>
                 {officeQr?.token ? (
                   <Box sx={{ border: "1px solid #DCE7F3", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC", display: "grid", gap: 1.25, justifyItems: "center" }}>
                     <Box component="img" src={qrImageUrl} alt="Office attendance QR" sx={{ width: "min(100%, 240px)", aspectRatio: "1 / 1", borderRadius: "8px", border: "8px solid white", boxShadow: "0 14px 34px rgba(15,23,42,0.12)" }} />
-                    <Box sx={{ width: "100%", display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
-                      <Box sx={{ bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
-                        <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Daily code</Typography>
-                        <Typography sx={{ fontWeight: 950, fontSize: 24 }}>{officeQr.dailyCode || "----"}</Typography>
-                      </Box>
-                      <Box sx={{ bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
-                        <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Office</Typography>
-                        <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{officeQr.officeName || selectedQrOffice?.officeName || "Office"}</Typography>
-                      </Box>
+                    <Box sx={{ width: "100%", bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
+                      <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Office</Typography>
+                      <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{officeQr.officeName || selectedQrOffice?.officeName || "Office"}</Typography>
                     </Box>
-                    <TextField size="small" label="QR token" value={officeQr.token} fullWidth InputProps={{ readOnly: true }} />
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1, width: "100%" }}>
-                      <Button variant="outlined" startIcon={<ContentCopyRoundedIcon />} onClick={() => copyOfficeQrToken().catch(() => toastError("Copy failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Copy token</Button>
-                      <Button variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open QR</Button>
-                    </Box>
-                    <Typography sx={{ color: "#64748B", fontSize: 12, textAlign: "center" }}>Print this QR and place it at the office entrance. Employees scan it from the punch screen.</Typography>
+                    <Button fullWidth variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open printable QR</Button>
+                    <Typography sx={{ color: "#64748B", fontSize: 12, textAlign: "center" }}>This same QR stays valid. Print it once and keep it at the office entrance for daily punch scans.</Typography>
                   </Box>
                 ) : (
                   <Box sx={{ border: "1px dashed #CBD5E1", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC" }}>
                     <Typography sx={{ fontWeight: 900, fontSize: 13 }}>No QR loaded</Typography>
-                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Select an office, then generate a permanent office QR.</Typography>
+                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Select an office. Existing permanent QR will load automatically, or create it once.</Typography>
                   </Box>
                 )}
               </Box>
