@@ -163,15 +163,18 @@ export function AttendanceTab() {
 
             <Box sx={{ display: 'grid', gap: 1 }}>
               {[
-                { label: 'Punch in', value: timeLabel(selectedEntry?.inTime), icon: <LoginRoundedIcon />, color: '#16A34A' },
+                { label: 'Punch in', value: timeLabel(selectedEntry?.inTime), icon: <LoginRoundedIcon />, color: '#16A34A', photo: selectedEntry?.checkInPhotoUrl },
                 { label: 'Break out', value: todayBreak?.startTime ? timeLabel(todayBreak.startTime) : '--:--', icon: <FreeBreakfastRoundedIcon />, color: '#D97706' },
                 { label: 'Break in', value: todayBreak?.endTime ? timeLabel(todayBreak.endTime) : '--:--', icon: <TimerRoundedIcon />, color: '#2563EB' },
-                { label: 'Punch out', value: timeLabel(selectedEntry?.outTime), icon: <LogoutRoundedIcon />, color: '#DC2626' },
+                { label: 'Punch out', value: timeLabel(selectedEntry?.outTime), icon: <LogoutRoundedIcon />, color: '#DC2626', photo: selectedEntry?.checkOutPhotoUrl },
               ].map((item) => (
                 <Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1.25, p: 1.5, border: '1px solid #EEF2F7', borderRadius: '8px' }}>
                   <Box sx={{ color: item.color, display: 'flex' }}>{item.icon}</Box>
                   <Typography sx={{ color: '#64748B', fontWeight: 800, fontSize: 13, flex: 1 }}>{item.label}</Typography>
                   <Typography sx={{ fontWeight: 900 }}>{item.value}</Typography>
+                  {item.photo && (
+                    <Box component="img" src={item.photo} sx={{ width: 32, height: 32, borderRadius: '6px', objectFit: 'cover', ml: 1, border: '1px solid #E2E8F0' }} />
+                  )}
                 </Box>
               ))}
             </Box>
