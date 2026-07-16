@@ -14,15 +14,19 @@ export function isBiometricSupported(): boolean {
  * Requires a valid JWT in auth headers (user must be logged in).
  */
 export async function registerBiometric(): Promise<void> {
-  // Step 1: Get registration options from server
-  const optionsRes = await api.get('/api/webauthn/register/generate');
-  const options = optionsRes.data;
+  try {
+    // Step 1: Get registration options from server
+    const optionsRes = await api.get('/api/webauthn/register/generate');
+    const options = optionsRes.data;
 
-  // Step 2: Use the browser API to prompt for biometric
-  const registration = await startRegistration(options);
+    // Step 2: Use the browser API to prompt for biometric
+    const registration = await startRegistration(options);
 
-  // Step 3: Verify with server
-  await api.post('/api/webauthn/register/verify', registration);
+    // Step 3: Verify with server
+    await api.post('/api/webauthn/register/verify', registration);
+  } catch (err: any) {
+    throw new Error(err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Biometric registration failed. Please try again.');
+  }
 }
 
 /**
