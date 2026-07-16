@@ -31,6 +31,7 @@ export async function registerBiometric(): Promise<void> {
  */
 export async function loginWithBiometric(username: string): Promise<{
   token: string;
+  refreshToken?: string;
   role: string;
   employeeId?: number | null;
   name?: string | null;
