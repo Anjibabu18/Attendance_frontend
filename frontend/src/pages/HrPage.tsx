@@ -138,6 +138,7 @@ type CompOffRequest = {
 };
 type DeviceRequest = { id: number; username: string; deviceId: string; label: string; approved: boolean; createdAt: string };
 type ExceptionItem = { id: number; employeeId?: number | null; employeeName: string; employeeNumber: string; type: string; message: string; resolved: boolean; createdAt: string };
+type PayrollLock = { month: string; locked: boolean; updatedAt?: string | null; updatedBy?: string | null };
 type PayrollRow = {
   employeeId: number;
   employeeName: string;
@@ -187,6 +188,7 @@ export default function HrPage() {
   const [pendingDeviceRequests, setPendingDeviceRequests] = useState<DeviceRequest[]>([]);
   const [attendanceExceptions, setAttendanceExceptions] = useState<ExceptionItem[]>([]);
   const [payrollRows, setPayrollRows] = useState<PayrollRow[]>([]);
+  const [payrollLock, setPayrollLock] = useState<PayrollLock | null>(null);
   const [analytics, setAnalytics] = useState<Record<string, any> | null>(null);
   const [leaveRemarks, setLeaveRemarks] = useState<Record<number, string>>({});
   const [regularizationRemarks, setRegularizationRemarks] = useState<Record<number, string>>({});
@@ -267,8 +269,29 @@ export default function HrPage() {
   }
 
   async function loadPayroll(m: string) {
-    const res = await api.get<PayrollRow[]>("/api/hr/payroll", { params: { month: m } });
-    setPayrollRows(res.data);
+    const [rows, lock] = await Promise.all([
+      api.get<PayrollRow[]>("/api/hr/payroll", { params: { month: m } }),
+      api.get<PayrollLock>("/api/hr/payroll-lock", { params: { month: m } }),
+    ]);
+    setPayrollRows(rows.data);
+    setPayrollLock(lock.data);
+  }
+
+  async function setPayrollLocked(locked: boolean) {
+    const res = await api.post<PayrollLock>("/api/hr/payroll-lock", null, { params: { month, locked } });
+    setPayrollLock(res.data);
+    setOk(locked ? "Payroll month locked" : "Payroll month unlocked");
+  }
+
+  async function exportPayrollCsv() {
+    const res = await api.get<Blob>("/api/hr/payroll/export", { params: { month }, responseType: "blob" });
+    downloadBlob(res.data, `payroll-${month}.csv`);
+  }
+
+  async function scanMissingCheckouts() {
+    const res = await api.post<Record<string, number>>("/api/hr/exceptions/scan-missing-checkouts");
+    setOk(`Missing checkout scan complete: ${res.data.createdExceptions ?? 0} new exceptions`);
+    await loadExceptions();
   }
 
   async function refreshAfterDecision() {
@@ -717,9 +740,14 @@ export default function HrPage() {
                 Monthly payable-days, late deductions, overtime time, and net-pay preview from attendance rules.
               </Typography>
             </Box>
-            <Button variant="outlined" onClick={() => loadPayroll(month).catch(() => {})}>
-              Refresh payroll
-            </Button>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <Chip size="small" label={payrollLock?.locked ? "Locked" : "Unlocked"} color={payrollLock?.locked ? "success" : "warning"} sx={{ borderRadius: 1, fontWeight: 900 }} />
+              <Button variant="outlined" onClick={() => exportPayrollCsv().catch((e) => setErr(e?.response?.data?.error ?? "Payroll export failed"))}>Export CSV</Button>
+              <Button variant="outlined" color={payrollLock?.locked ? "warning" : "success"} onClick={() => setPayrollLocked(!payrollLock?.locked).catch((e) => setErr(e?.response?.data?.error ?? "Payroll lock failed"))}>
+                {payrollLock?.locked ? "Unlock month" : "Lock month"}
+              </Button>
+              <Button variant="outlined" onClick={() => loadPayroll(month).catch(() => {})}>Refresh payroll</Button>
+            </Box>
           </Box>
           <Box className="grid gap-4 md:grid-cols-3 xl:grid-cols-4" sx={{ mt: 2 }}>
             <StatCard label="Payroll employees" value={payrollRows.length} helper={`Register for ${month}`} icon={<GroupsIcon />} />
@@ -832,7 +860,10 @@ export default function HrPage() {
                 Review suspicious punch behavior, failed geofence attempts, and operational exceptions.
               </Typography>
             </Box>
-            <Button variant="outlined" onClick={() => loadExceptions().catch(() => {})}>Refresh exceptions</Button>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              <Button variant="outlined" onClick={() => scanMissingCheckouts().catch((e) => setErr(e?.response?.data?.error ?? "Missing checkout scan failed"))}>Scan missing checkouts</Button>
+              <Button variant="outlined" onClick={() => loadExceptions().catch(() => {})}>Refresh exceptions</Button>
+            </Box>
           </Box>
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: "grid", gap: 1 }}>
@@ -1626,3 +1657,8 @@ function workRequestStatusColor(status: WorkRequest["status"]): "default" | "suc
   if (status === "MANAGER_RECOMMENDED") return "info";
   return "warning";
 }
+
+
+
+
+

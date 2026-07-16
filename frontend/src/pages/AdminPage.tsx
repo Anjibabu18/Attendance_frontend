@@ -1,5 +1,5 @@
+import { useEffect, useMemo, useState } from "react";
 import {
-  Alert,
   Avatar,
   Box,
   Button,
@@ -7,49 +7,83 @@ import {
   Divider,
   Drawer,
   FormControlLabel,
+  LinearProgress,
   MenuItem,
   Switch,
-  Tab,
-  Tabs,
   TextField,
   Typography,
 } from "@mui/material";
-import BadgeIcon from "@mui/icons-material/Badge";
-import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import DomainIcon from "@mui/icons-material/Domain";
-import GroupsIcon from "@mui/icons-material/Groups";
-import Autocomplete from "@mui/material/Autocomplete";
-import { useEffect, useMemo, useState } from "react";
+import AdminPanelSettingsRoundedIcon from "@mui/icons-material/AdminPanelSettingsRounded";
+import ApartmentRoundedIcon from "@mui/icons-material/ApartmentRounded";
+import BadgeRoundedIcon from "@mui/icons-material/BadgeRounded";
+import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import FileDownloadRoundedIcon from "@mui/icons-material/FileDownloadRounded";
+import LockRoundedIcon from "@mui/icons-material/LockRounded";
+import LockOpenRoundedIcon from "@mui/icons-material/LockOpenRounded";
+import GroupsRoundedIcon from "@mui/icons-material/GroupsRounded";
+import PersonAddAlt1RoundedIcon from "@mui/icons-material/PersonAddAlt1Rounded";
+import ContentCopyRoundedIcon from "@mui/icons-material/ContentCopyRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
+import QrCode2RoundedIcon from "@mui/icons-material/QrCode2Rounded";
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import SaveRoundedIcon from "@mui/icons-material/SaveRounded";
+import SettingsRoundedIcon from "@mui/icons-material/SettingsRounded";
+import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import { motion } from "framer-motion";
+
 import { api } from "../api/client";
-import AnalyticsPanel from "../components/AnalyticsPanel";
-import AppCard from "../components/AppCard";
-import DashboardHero from "../components/DashboardHero";
-import Layout from "../components/Layout";
-import ProductionControls from "../components/ProductionControls";
-import RealtimeBoard from "../components/RealtimeBoard";
-import StatCard from "../components/StatCard";
 import { useToast } from "../components/Toast";
+import { clearAuth } from "../auth/auth";
+
+const MotionBox = motion.create(Box);
 
 type CompanyRole = { id: number; name: string; photoUrl?: string | null };
+type Department = { id: number; name: string };
+type Shift = { id: number; name: string; inTime: string; outTime: string; flexible: boolean };
+type Manager = { id: number; username: string; enabled: boolean };
+type OfficeLocation = { id: number; officeName?: string | null; latitude: number; longitude: number; radiusMeters: number; active: boolean; officeIpAddress?: string | null; };
+type Holiday = { id: number; date: string; name: string };
+type PayrollLock = { month: string; locked: boolean; updatedAt?: string | null; updatedBy?: string | null };
+type OfficeQr = { valid: boolean; token: string | null; officeId?: number; officeName?: string | null; createdAt?: string; expiresAt?: string; printedQrExpiresAt?: string; dailyCode?: string; mode?: string };
 type Employee = {
   id: number;
   employeeNumber: string;
   name: string;
-  loginRole: string;
   username?: string | null;
-  companyRole?: CompanyRole | null;
-  assignedOfficeLocation?: Exclude<OfficeLocation, null> | null;
-  department?: Department | null;
-  shift?: WorkShift | null;
+  loginRole: string;
   enabled?: boolean;
-  lastLoginAt?: string | null;
-  lastLoginIp?: string | null;
-  status?: "ACTIVE" | "INACTIVE" | "PROBATION" | "NOTICE_PERIOD" | "RESIGNED";
+  status?: string | null;
   profilePhotoUrl?: string | null;
-  joinDate?: string | null;
-  exitDate?: string | null;
+  companyRole?: CompanyRole | null;
+  department?: Department | null;
+  shift?: Shift | null;
+  assignedOfficeLocation?: OfficeLocation | null;
 };
-
+type EmployeeDetail = {
+  employee: Employee & { joinDate?: string | null; exitDate?: string | null; lastLoginAt?: string | null; lastLoginIp?: string | null };
+  summary: { workingDays: number; presentDays: number; halfDays: number; leaveDays: number; absentDays: number; workedMinutes: number; lateMinutes: number; overtimeMinutes: number };
+  attendance: Array<{ id: number; date: string; status: string; inTime?: string | null; outTime?: string | null; workedMinutes: number; lateMinutes: number; overtimeMinutes: number }>;
+  leaveBalances: Array<{ id: number; leaveType: string; allocatedDays: number; usedDays: number; remainingDays: number }>;
+  managers: Array<{ id: number; username: string; enabled: boolean }>;
+  exceptions: Array<{ id: number; type: string; message: string; resolved: boolean; createdAt: string }>;
+  requests: Array<{ id: number; type: string; status: string; date: string; title: string }>;
+};
+type ApprovalKind = "leave" | "correction" | "work" | "compOff";
+type ApprovalItem = {
+  id: number;
+  kind: ApprovalKind;
+  title: string;
+  employeeName: string;
+  employeeNumber: string;
+  dateText: string;
+  detail: string;
+  reason: string;
+  status: string;
+  createdAt?: string | null;
+  attachmentUrl?: string | null;
+};
 type AttendanceSettings = {
   defaultInTime: string;
   defaultOutTime: string;
@@ -67,1744 +101,836 @@ type AttendanceSettings = {
   permanentOfficeQr: boolean;
   qrTokenValidityMinutes: number;
 };
-type Holiday = { id: number; date: string; name: string };
-type CompanyProfile = { groupPhotoUrl?: string | null };
-type Department = { id: number; name: string };
-type WorkShift = { id: number; name: string; inTime: string; outTime: string; flexible: boolean };
-type AuditLog = {
-  id: number;
-  actorUsername: string;
-  action: string;
-  targetType: string;
-  targetId?: string | null;
-  details?: string | null;
-  createdAt: string;
+
+const cardSx = {
+  bgcolor: "rgba(255,255,255,0.94)",
+  border: "1px solid rgba(203,213,225,0.86)",
+  borderRadius: "8px",
+  boxShadow: "0 18px 46px rgba(15,23,42,0.08)",
+  transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
+  minWidth: 0,
+  "&:hover": { transform: "translateY(-2px)", borderColor: "#AFC5FF", boxShadow: "0 24px 70px rgba(15,23,42,0.12)" },
 };
-type OfficeLocation = {
-  id: number;
-  officeName?: string | null;
-  latitude: number;
-  longitude: number;
-  radiusMeters: number;
-  active: boolean;
-  updatedAt: string;
-} | null;
+
+const timeOnly = (value?: string | null, fallback = "09:00") => {
+  if (!value) return fallback;
+  if (/^\d{1,2}:\d{2}/.test(value)) return value.slice(0, 5);
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed.toISOString().slice(11, 16);
+};
+const timePayload = (value: string) => `1970-01-01T${value.length === 5 ? `${value}:00` : value}Z`;
+const dateOnly = (value?: string | Date | null) => value ? new Date(value).toISOString().slice(0, 10) : "--";
+const displayTime = (value?: string | Date | null) => value ? timeOnly(String(value), "--") : "--";
+
+const requestTone = (kind: ApprovalKind) => {
+  if (kind === "leave") return { bg: "#EFF6FF", color: "#1D4ED8", label: "Leave" };
+  if (kind === "correction") return { bg: "#F0FDFA", color: "#0F766E", label: "Correction" };
+  if (kind === "work") return { bg: "#F5F3FF", color: "#6D28D9", label: "Work" };
+  return { bg: "#FFF7ED", color: "#C2410C", label: "Comp off" };
+};
 
 export default function AdminPage() {
   const { toastSuccess, toastError } = useToast();
-  const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [attendanceSettings, setAttendanceSettings] = useState<AttendanceSettings | null>(null);
-  const [defaultIn, setDefaultIn] = useState("09:00");
-  const [defaultOut, setDefaultOut] = useState("18:00");
-  const [fullDayMinutes, setFullDayMinutes] = useState(480);
-  const [halfDayMinutes, setHalfDayMinutes] = useState(240);
-  const [lateGraceMinutes, setLateGraceMinutes] = useState(10);
-  const [earlyLeaveGraceMinutes, setEarlyLeaveGraceMinutes] = useState(10);
-  const [overtimeAfterMinutes, setOvertimeAfterMinutes] = useState(480);
-  const [weekendDays, setWeekendDays] = useState<string[]>(["SUNDAY"]);
-  const [lateDeductionPerMinute, setLateDeductionPerMinute] = useState(1);
-  const [overtimePayPerHour, setOvertimePayPerHour] = useState(0);
-  const [unpaidLeaveDailyRate, setUnpaidLeaveDailyRate] = useState(500);
-  const [standardMonthlySalary, setStandardMonthlySalary] = useState(25000);
-  const [requireQrForPunch, setRequireQrForPunch] = useState(false);
-  const [permanentOfficeQr, setPermanentOfficeQr] = useState(false);
-  const [qrTokenValidityMinutes, setQrTokenValidityMinutes] = useState(10080);
-  const [err, setErr] = useState<string | null>(null);
-  const [ok, setOk] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (err) {
-      toastError(err);
-      setErr(null);
-    }
-  }, [err, toastError]);
-
-  useEffect(() => {
-    if (ok) {
-      toastSuccess(ok);
-      setOk(null);
-    }
-  }, [ok, toastSuccess]);
+  const [roles, setRoles] = useState<CompanyRole[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [managers, setManagers] = useState<Manager[]>([]);
+  const [offices, setOffices] = useState<OfficeLocation[]>([]);
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [settings, setSettings] = useState<AttendanceSettings | null>(null);
+  const [analytics, setAnalytics] = useState<Record<string, any> | null>(null);
+  const [payrollLock, setPayrollLock] = useState<PayrollLock | null>(null);
+  const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([]);
+  const [approvalFilter, setApprovalFilter] = useState<ApprovalKind | "all">("all");
+  const [approvalRemarks, setApprovalRemarks] = useState<Record<string, string>>({});
+  const [approvalBusyId, setApprovalBusyId] = useState<string | null>(null);
+  const [selectedQrOfficeId, setSelectedQrOfficeId] = useState("");
+  const [officeQr, setOfficeQr] = useState<OfficeQr | null>(null);
+  const [qrBusy, setQrBusy] = useState(false);
+  const [adminLoadError, setAdminLoadError] = useState<string | null>(null);
+  const [month, setMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [search, setSearch] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [employeeDetail, setEmployeeDetail] = useState<EmployeeDetail | null>(null);
+  const [detailBusy, setDetailBusy] = useState(false);
+  const [selectedManagerId, setSelectedManagerId] = useState("");
+  const [leaveBalanceForm, setLeaveBalanceForm] = useState({ leaveType: "CASUAL_LEAVE", allocatedDays: 12, usedDays: 0 });
+  const [reportBusy, setReportBusy] = useState(false);
 
   const [roleName, setRoleName] = useState("");
-
-  const [hrUsername, setHrUsername] = useState("");
-  const [hrPassword, setHrPassword] = useState("");
-  const [managerUsername, setManagerUsername] = useState("");
-  const [managerPassword, setManagerPassword] = useState("");
-
-  const [empNo, setEmpNo] = useState("");
-  const [empName, setEmpName] = useState("");
-  const [empUsername, setEmpUsername] = useState("");
-  const [empPassword, setEmpPassword] = useState("");
-  const [empRoleId, setEmpRoleId] = useState<number | "">("");
-  const [empOfficeId, setEmpOfficeId] = useState<number | "">("");
-  const [empDepartmentId, setEmpDepartmentId] = useState<number | "">("");
-  const [empShiftId, setEmpShiftId] = useState<number | "">("");
-
-  const [holidayMonth, setHolidayMonth] = useState(() => new Date().toISOString().slice(0, 7));
-  const [holidays, setHolidays] = useState<Holiday[]>([]);
-  const [holidayDate, setHolidayDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [holidayName, setHolidayName] = useState("Festival");
-  const [companyPhotoUrl, setCompanyPhotoUrl] = useState<string | null>(null);
-  const [officeLocation, setOfficeLocation] = useState<OfficeLocation>(null);
-  const [officeLocations, setOfficeLocations] = useState<Exclude<OfficeLocation, null>[]>([]);
-  const [officeName, setOfficeName] = useState("Main office");
-  const [officeLat, setOfficeLat] = useState("16.5062");
-  const [officeLng, setOfficeLng] = useState("80.6480");
-  const [officeRadius, setOfficeRadius] = useState("150");
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [resetPasswords, setResetPasswords] = useState<Record<number, string>>({});
-  const [bulkPassword, setBulkPassword] = useState("");
-  const [usernameEdits, setUsernameEdits] = useState<Record<number, string>>({});
-  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<number[]>([]);
-  const [bulkOfficeId, setBulkOfficeId] = useState<number | "">("");
-  const [bulkDepartmentId, setBulkDepartmentId] = useState<number | "">("");
-  const [bulkShiftId, setBulkShiftId] = useState<number | "">("");
-  const [bulkStatus, setBulkStatus] = useState<Employee["status"] | "">("");
-  const [rosterEmployeeId, setRosterEmployeeId] = useState<number | "">("");
-  const [rosterShiftId, setRosterShiftId] = useState<number | "">("");
-  const [rosterFrom, setRosterFrom] = useState(() => new Date().toISOString().slice(0, 10));
-  const [rosterTo, setRosterTo] = useState(() => new Date().toISOString().slice(0, 10));
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [shifts, setShifts] = useState<WorkShift[]>([]);
   const [departmentName, setDepartmentName] = useState("");
   const [shiftName, setShiftName] = useState("General");
-  const [shiftIn, setShiftIn] = useState("09:00");
-  const [shiftOut, setShiftOut] = useState("18:00");
-  const [analytics, setAnalytics] = useState<Record<string, any> | null>(null);
-  const [checklist, setChecklist] = useState<Record<string, any> | null>(null);
-  const [adminSection, setAdminSection] = useState("live");
-  const [employeeQuery, setEmployeeQuery] = useState("");
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-  const [auditActor, setAuditActor] = useState("");
-  const [auditAction, setAuditAction] = useState("");
-  const [auditTargetType, setAuditTargetType] = useState("");
-  const [auditFrom, setAuditFrom] = useState("");
-  const [auditTo, setAuditTo] = useState("");
-  const [wizardStep, setWizardStep] = useState(0);
+  const [shiftIn, setShiftIn] = useState("09:30");
+  const [shiftOut, setShiftOut] = useState("17:30");
+  const [managerUsername, setManagerUsername] = useState("");
+  const [managerPassword, setManagerPassword] = useState("");
+  const [holidayDate, setHolidayDate] = useState(new Date().toISOString().slice(0, 10));
+  const [holidayName, setHolidayName] = useState("Festival");
+  const [officeName, setOfficeName] = useState("");
+  const [officeLat, setOfficeLat] = useState("");
+  const [officeLng, setOfficeLng] = useState("");
+  const [officeRadius, setOfficeRadius] = useState("100");
+  const [officeIp, setOfficeIp] = useState("");
 
-  const roleById = useMemo(() => new Map(roles.map((r) => [r.id, r])), [roles]);
-  const roleSelectValue = empRoleId !== "" && roles.some((r) => r.id === empRoleId) ? empRoleId : "";
-  const employeeOfficeSelectValue = empOfficeId !== "" && officeLocations.some((loc) => loc.id === empOfficeId) ? empOfficeId : "";
-  const employeeDepartmentSelectValue = empDepartmentId !== "" && departments.some((d) => d.id === empDepartmentId) ? empDepartmentId : "";
-  const employeeShiftSelectValue = empShiftId !== "" && shifts.some((s) => s.id === empShiftId) ? empShiftId : "";
-  const bulkOfficeSelectValue = bulkOfficeId !== "" && officeLocations.some((loc) => loc.id === bulkOfficeId) ? bulkOfficeId : "";
-  const bulkDepartmentSelectValue = bulkDepartmentId !== "" && departments.some((d) => d.id === bulkDepartmentId) ? bulkDepartmentId : "";
-  const bulkShiftSelectValue = bulkShiftId !== "" && shifts.some((s) => s.id === bulkShiftId) ? bulkShiftId : "";
-  const rosterEmployeeSelectValue = rosterEmployeeId !== "" && employees.some((e) => e.id === rosterEmployeeId) ? rosterEmployeeId : "";
-  const rosterShiftSelectValue = rosterShiftId !== "" && shifts.some((s) => s.id === rosterShiftId) ? rosterShiftId : "";
-  const filteredEmployees = useMemo(() => {
-    const q = employeeQuery.trim().toLowerCase();
-    if (!q) return employees;
-    return employees.filter(
-      (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.employeeNumber.toLowerCase().includes(q) ||
-        (e.department?.name ?? "").toLowerCase().includes(q) ||
-        (e.shift?.name ?? "").toLowerCase().includes(q),
-    );
-  }, [employeeQuery, employees]);
+  const [employeeForm, setEmployeeForm] = useState({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
 
   async function refresh() {
-    const [r, e] = await Promise.all([
-      api.get<CompanyRole[]>("/api/admin/company-roles"),
-      api.get<Employee[]>("/api/admin/employees"),
-    ]);
-    setRoles(r.data);
-    setEmployees(e.data);
-  }
-
-  async function loadAuditLogs() {
-    const res = await api.get<AuditLog[]>("/api/admin/audit-logs", {
-      params: {
-        actor: auditActor.trim() || undefined,
-        action: auditAction.trim() || undefined,
-        targetType: auditTargetType.trim() || undefined,
-        from: auditFrom || undefined,
-        to: auditTo || undefined,
-      },
-    });
-    setAuditLogs(res.data);
-  }
-
-  async function loadOrg() {
-    const [d, s, a, c] = await Promise.all([
-      api.get<Department[]>("/api/admin/departments"),
-      api.get<WorkShift[]>("/api/admin/shifts"),
-      api.get<Record<string, any>>("/api/admin/analytics", { params: { month: holidayMonth } }),
-      api.get<Record<string, any>>("/api/admin/production-checklist"),
-    ]);
-    setDepartments(d.data);
-    setShifts(s.data);
-    setAnalytics(a.data);
-    setChecklist(c.data);
-  }
-
-  async function loadOfficeLocation() {
-    const [active, all] = await Promise.all([
-      api.get<OfficeLocation>("/api/admin/office-location/active"),
-      api.get<Exclude<OfficeLocation, null>[]>("/api/admin/office-location"),
-    ]);
-    setOfficeLocation(active.data);
-    setOfficeLocations(all.data);
-    const defaultLoc = active.data ?? all.data[0];
-    if (defaultLoc) {
-      setOfficeName(defaultLoc.officeName ?? "Main office");
-      setOfficeLat(String(defaultLoc.latitude));
-      setOfficeLng(String(defaultLoc.longitude));
-      setOfficeRadius(String(defaultLoc.radiusMeters));
+    setBusy(true);
+    try {
+      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes] = await Promise.allSettled([
+        api.get<Employee[]>("/api/admin/employees"),
+        api.get<CompanyRole[]>("/api/admin/company-roles"),
+        api.get<Department[]>("/api/admin/departments"),
+        api.get<Shift[]>("/api/admin/shifts"),
+        api.get<Manager[]>("/api/admin/managers"),
+        api.get<OfficeLocation[]>("/api/admin/office-location"),
+        api.get<Holiday[]>("/api/admin/holidays", { params: { month } }),
+        api.get<AttendanceSettings>("/api/admin/settings/attendance"),
+        api.get<Record<string, any>>("/api/admin/analytics", { params: { month } }),
+        api.get<PayrollLock>("/api/hr/payroll-lock", { params: { month } }),
+        api.get<any[]>("/api/hr/leave-requests/pending"),
+        api.get<any[]>("/api/hr/regularization-requests/pending"),
+        api.get<any[]>("/api/hr/work-requests/pending"),
+        api.get<any[]>("/api/hr/comp-off-requests/pending"),
+      ]);
+      if (employeeRes.status === "fulfilled") setEmployees(employeeRes.value.data);
+      if (roleRes.status === "fulfilled") setRoles(roleRes.value.data);
+      if (departmentRes.status === "fulfilled") setDepartments(departmentRes.value.data);
+      if (shiftRes.status === "fulfilled") setShifts(shiftRes.value.data);
+      if (managerRes.status === "fulfilled") setManagers(managerRes.value.data);
+      if (officeRes.status === "fulfilled") setOffices(officeRes.value.data);
+      if (holidayRes.status === "fulfilled") setHolidays(holidayRes.value.data);
+      if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.data);
+      if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value.data);
+      if (payrollLockRes.status === "fulfilled") setPayrollLock(payrollLockRes.value.data);
+      const approvalRows: ApprovalItem[] = [];
+      if (leaveReqRes.status === "fulfilled") {
+        approvalRows.push(...leaveReqRes.value.data.map((item: any) => ({
+          id: item.id,
+          kind: "leave" as const,
+          title: item.leaveType || "Leave request",
+          employeeName: item.employee?.name || "Employee",
+          employeeNumber: item.employee?.employeeNumber || "--",
+          dateText: `${dateOnly(item.fromDate)} to ${dateOnly(item.toDate)}`,
+          detail: item.mailSubject || "Leave approval pending",
+          reason: item.reason || item.mailMessage || "--",
+          status: item.status,
+          createdAt: item.createdAt,
+          attachmentUrl: item.attachmentUrl,
+        })));
+      }
+      if (correctionReqRes.status === "fulfilled") {
+        approvalRows.push(...correctionReqRes.value.data.map((item: any) => ({
+          id: item.id,
+          kind: "correction" as const,
+          title: "Attendance correction",
+          employeeName: item.employee?.name || "Employee",
+          employeeNumber: item.employee?.employeeNumber || "--",
+          dateText: dateOnly(item.date),
+          detail: `Requested ${displayTime(item.requestedInTime)} - ${displayTime(item.requestedOutTime)}`,
+          reason: item.reason || "--",
+          status: item.status,
+          createdAt: item.createdAt,
+          attachmentUrl: item.attachmentUrl,
+        })));
+      }
+      if (workReqRes.status === "fulfilled") {
+        approvalRows.push(...workReqRes.value.data.map((item: any) => ({
+          id: item.id,
+          kind: "work" as const,
+          title: String(item.type || "Work request").replaceAll("_", " "),
+          employeeName: item.employee?.name || "Employee",
+          employeeNumber: item.employee?.employeeNumber || "--",
+          dateText: `${dateOnly(item.fromDate)} to ${dateOnly(item.toDate)}`,
+          detail: "Remote/on-duty work request",
+          reason: item.reason || "--",
+          status: item.status,
+          createdAt: item.createdAt,
+          attachmentUrl: item.attachmentUrl,
+        })));
+      }
+      if (compOffReqRes.status === "fulfilled") {
+        approvalRows.push(...compOffReqRes.value.data.map((item: any) => ({
+          id: item.id,
+          kind: "compOff" as const,
+          title: "Comp-off request",
+          employeeName: item.employee?.name || "Employee",
+          employeeNumber: item.employee?.employeeNumber || "--",
+          dateText: `${dateOnly(item.requestedDate)} for overtime on ${dateOnly(item.overtimeDate)}`,
+          detail: `${item.overtimeMinutes || 0} overtime minutes`,
+          reason: item.reason || "--",
+          status: item.status,
+          createdAt: item.createdAt,
+          attachmentUrl: item.attachmentUrl,
+        })));
+      }
+      const rejected = [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes]
+        .filter((result): result is PromiseRejectedResult => result.status === "rejected");
+      const unauthorized = rejected.find((result) => result.reason?.response?.status === 401 || result.reason?.response?.status === 403);
+      const notFound = rejected.find((result) => result.reason?.response?.status === 404);
+      const serverError = rejected.find((result) => result.reason?.response?.status >= 500);
+      if (unauthorized) setAdminLoadError("Admin session expired or this account is not ROLE_ADMIN. Login again as admin.");
+      else if (notFound) setAdminLoadError("Backend is missing some admin routes. Redeploy the latest backend code.");
+      else if (serverError) setAdminLoadError(serverError.reason?.response?.data?.error || "Backend server error. Check deployed backend logs.");
+      setApprovalItems(approvalRows.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
+    } catch (err: any) {
+      toastError(err?.response?.data?.error || "Failed to load admin dashboard");
+    } finally {
+      setBusy(false);
     }
   }
 
-  async function saveOfficeLocation() {
-    setErr(null);
-    setOk(null);
-    const latitude = Number(officeLat);
-    const longitude = Number(officeLng);
-    const radiusMeters = Number(officeRadius);
-    const res = await api.post<OfficeLocation>("/api/admin/office-location/active", {
-      officeName: officeName.trim() || null,
-      latitude,
-      longitude,
-      radiusMeters,
-    });
-    setOfficeLocation(res.data);
-    await loadOfficeLocation();
-    setOk("Office location saved");
-  }
+  useEffect(() => { refresh(); }, [month]);
 
-  async function deleteOfficeLocation(id: number) {
-    setErr(null);
-    setOk(null);
+  const filteredEmployees = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return employees;
+    return employees.filter((employee) => [employee.name, employee.employeeNumber, employee.username, employee.department?.name, employee.companyRole?.name].some((value) => String(value || "").toLowerCase().includes(query)));
+  }, [employees, search]);
+
+  const activeEmployees = employees.filter((employee) => employee.enabled !== false && employee.status !== "INACTIVE").length;
+  const configuredEmployees = employees.filter((employee) => employee.department || employee.shift || employee.assignedOfficeLocation).length;
+  const setupProgress = employees.length ? Math.round((configuredEmployees / employees.length) * 100) : 0;
+  const filteredApprovalItems = approvalFilter === "all" ? approvalItems : approvalItems.filter((item) => item.kind === approvalFilter);
+  const approvalCounts = {
+    all: approvalItems.length,
+    leave: approvalItems.filter((item) => item.kind === "leave").length,
+    correction: approvalItems.filter((item) => item.kind === "correction").length,
+    work: approvalItems.filter((item) => item.kind === "work").length,
+    compOff: approvalItems.filter((item) => item.kind === "compOff").length,
+  };
+
+  async function decideApproval(item: ApprovalItem, action: "approve" | "reject") {
+    const endpoint = item.kind === "leave"
+      ? "leave-requests"
+      : item.kind === "correction"
+        ? "regularization-requests"
+        : item.kind === "work"
+          ? "work-requests"
+          : "comp-off-requests";
+    const key = `${item.kind}-${item.id}`;
+    setApprovalBusyId(`${key}-${action}`);
     try {
-      await api.delete(`/api/admin/office-location/${id}`);
-      await loadOfficeLocation();
+      await api.post(`/api/hr/${endpoint}/${item.id}/${action}`, { remarks: approvalRemarks[key] || undefined });
+      setApprovalRemarks((previous) => ({ ...previous, [key]: "" }));
+      toastSuccess(action === "approve" ? "Request approved" : "Request rejected");
       await refresh();
-      setOk("Office location deleted");
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Delete office failed");
+    } finally {
+      setApprovalBusyId(null);
     }
   }
 
-  async function assignEmployeeOffice(employeeId: number, officeLocationId: number | "") {
-    setErr(null);
-    setOk(null);
+  const selectedQrOffice = offices.find((office) => String(office.id) === selectedQrOfficeId) || offices[0];
+  const qrImageUrl = officeQr?.token ? `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(officeQr.token)}` : "";
+
+  async function loadLatestOfficeQr(officeId = selectedQrOffice?.id) {
+    if (!officeId) return;
+    setQrBusy(true);
     try {
-      await api.post(`/api/admin/employees/${employeeId}/office-location`, {
-        officeLocationId: officeLocationId === "" ? null : officeLocationId,
-      });
-      setOk("Employee office assignment saved");
-      await refresh();
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Assign office failed");
+      const response = await api.get<OfficeQr>("/api/admin/production/qr/latestToken", { params: { officeId } });
+      setOfficeQr(response.data.token ? response.data : null);
+    } finally {
+      setQrBusy(false);
     }
   }
 
-  async function assignEmployeeRole(employee: Employee, companyRoleId: number | "") {
-    if (companyRoleId === "") return;
-    setErr(null);
-    setOk(null);
-    try {
-      const res = await api.post<Employee>(`/api/admin/employees/${employee.id}`, {
-        employeeNumber: employee.employeeNumber,
-        name: employee.name,
-        companyRoleId,
-        officeLocationId: employee.assignedOfficeLocation?.id ?? null,
-        departmentId: employee.department?.id ?? null,
-        shiftId: employee.shift?.id ?? null,
-        joinDate: employee.joinDate ?? null,
-      });
-      setEmployees((prev) => prev.map((item) => (item.id === employee.id ? res.data : item)));
-      setSelectedEmployee((prev) => (prev?.id === employee.id ? res.data : prev));
-      setOk("Employee role assigned");
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Assign role failed");
-    }
-  }
-
-  async function updateEmployeeOrg(
-    employee: Employee,
-    overrides: { companyRoleId?: number; departmentId?: number | null; shiftId?: number | null; officeLocationId?: number | null },
-    successMessage: string,
-  ) {
-    const companyRoleId = overrides.companyRoleId ?? employee.companyRole?.id;
-    if (!companyRoleId) {
-      setErr("Assign a company role before updating department or shift");
+  async function generateOfficeQr() {
+    const officeId = selectedQrOffice?.id;
+    if (!officeId) {
+      toastError("Create an office location first");
       return;
     }
-    setErr(null);
-    setOk(null);
+    setQrBusy(true);
     try {
-      const res = await api.post<Employee>(`/api/admin/employees/${employee.id}`, {
-        employeeNumber: employee.employeeNumber,
-        name: employee.name,
-        companyRoleId,
-        officeLocationId: overrides.officeLocationId !== undefined ? overrides.officeLocationId : (employee.assignedOfficeLocation?.id ?? null),
-        departmentId: overrides.departmentId !== undefined ? overrides.departmentId : (employee.department?.id ?? null),
-        shiftId: overrides.shiftId !== undefined ? overrides.shiftId : (employee.shift?.id ?? null),
-        joinDate: employee.joinDate ?? null,
-      });
-      setEmployees((prev) => prev.map((item) => (item.id === employee.id ? res.data : item)));
-      setSelectedEmployee((prev) => (prev?.id === employee.id ? res.data : prev));
-      setOk(successMessage);
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Employee update failed");
+      const response = await api.post<OfficeQr>("/api/admin/production/qr", { officeId });
+      setOfficeQr(response.data);
+      toastSuccess("Office QR generated");
+    } finally {
+      setQrBusy(false);
     }
   }
 
-  async function loadSettings() {
-    const res = await api.get<AttendanceSettings>("/api/admin/settings/attendance");
-    setAttendanceSettings(res.data);
-    setDefaultIn(res.data.defaultInTime?.slice(0, 5) || "09:00");
-    setDefaultOut(res.data.defaultOutTime?.slice(0, 5) || "18:00");
-    setFullDayMinutes(res.data.fullDayMinutes ?? 480);
-    setHalfDayMinutes(res.data.halfDayMinutes ?? 240);
-    setLateGraceMinutes(res.data.lateGraceMinutes ?? 10);
-    setEarlyLeaveGraceMinutes(res.data.earlyLeaveGraceMinutes ?? 10);
-    setOvertimeAfterMinutes(res.data.overtimeAfterMinutes ?? res.data.fullDayMinutes ?? 480);
-    setLateDeductionPerMinute(res.data.lateDeductionPerMinute ?? 1);
-    setOvertimePayPerHour(res.data.overtimePayPerHour ?? 0);
-    setUnpaidLeaveDailyRate(res.data.unpaidLeaveDailyRate ?? 500);
-    setStandardMonthlySalary(res.data.standardMonthlySalary ?? 25000);
-    setRequireQrForPunch(Boolean(res.data.requireQrForPunch));
-    setPermanentOfficeQr(Boolean(res.data.permanentOfficeQr));
-    setQrTokenValidityMinutes(res.data.qrTokenValidityMinutes ?? 10080);
-    const wd = (res.data.weekendDays ?? "SUNDAY")
-      .split(",")
-      .map((s) => s.trim().toUpperCase())
-      .filter(Boolean);
-    setWeekendDays(wd.length ? wd : ["SUNDAY"]);
+  async function copyOfficeQrToken() {
+    if (!officeQr?.token) return;
+    await navigator.clipboard.writeText(officeQr.token);
+    toastSuccess("QR token copied");
   }
 
   useEffect(() => {
-    Promise.all([refresh(), loadSettings(), loadOfficeLocation(), loadAuditLogs(), loadOrg()]).catch((e) =>
-      setErr(e?.response?.data?.error ?? "Failed to load"),
-    );
-  }, []);
+    if (!selectedQrOfficeId && offices.length) setSelectedQrOfficeId(String(offices[0].id));
+  }, [offices, selectedQrOfficeId]);
 
-  useEffect(() => {
-    api
-      .get<CompanyProfile>("/api/company")
-      .then((r) => setCompanyPhotoUrl(r.data.groupPhotoUrl ?? null))
-      .catch(() => { });
-  }, []);
-
-  useEffect(() => {
-    api
-      .get<Holiday[]>("/api/admin/holidays", { params: { month: holidayMonth } })
-      .then((r) => setHolidays(r.data))
-      .catch(() => { });
-  }, [holidayMonth]);
-
-  useEffect(() => {
-    loadAuditLogs().catch(() => { });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [auditActor, auditAction, auditTargetType, auditFrom, auditTo]);
-
-  function goToSection(next: string) {
-    setAdminSection(next);
-    const node = document.getElementById(`admin-${next}`);
-    if (node) node.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
-  const companyPhotoReady = Boolean(companyPhotoUrl);
-  const companyRoleReady = roles.length > 0;
-  const officeLocationReady = Boolean(officeLocation);
-  const attendanceRulesReady = Boolean(attendanceSettings);
-  const employeesReady = employees.length > 0;
-  const hrReady = Boolean(checklist?.hrAccount ?? checklist?.HR ?? false);
-  const managerReady = Boolean(checklist?.managerAccount ?? checklist?.manager ?? false);
-
-  const wizardSteps = [
-    {
-      title: "Company identity",
-      description: "Add your company brand and role structure so employees can be assigned properly.",
-      tasks: [
-        { label: "Upload a company group photo", done: companyPhotoReady, section: "company" },
-        { label: "Create at least one company role", done: companyRoleReady, section: "company" },
-      ],
-    },
-    {
-      title: "Workplace rules",
-      description: "Define an office geofence and attendance rules for payroll, overtime, and late tracking.",
-      tasks: [
-        { label: "Save an active office location", done: officeLocationReady, section: "company" },
-        { label: "Save attendance defaults and payroll settings", done: attendanceRulesReady, section: "company" },
-      ],
-    },
-    {
-      title: "Manager access",
-      description: "Create HR and manager accounts so approvals and recommendations can be processed.",
-      tasks: [
-        { label: "Create an HR login", done: hrReady, section: "company" },
-        { label: "Create a manager login", done: managerReady, section: "company" },
-      ],
-    },
-    {
-      title: "Launch team",
-      description: "Import employees and holidays so payroll, attendance, and face verification begin working.",
-      tasks: [
-        { label: "Import employee records", done: employeesReady, section: "employees" },
-        { label: "Add company holidays", done: Boolean(holidays.length), section: "company" },
-      ],
-    },
-  ];
-
-  const payrollPreview = useMemo(() => {
-    const [yearRaw, monthRaw] = holidayMonth.split("-").map(Number);
-    const year = Number.isFinite(yearRaw) ? yearRaw : new Date().getFullYear();
-    const monthIndex = Number.isFinite(monthRaw) ? monthRaw - 1 : new Date().getMonth();
-    const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-    const weekendSet = new Set(weekendDays);
-    let workingDays = 0;
-    for (let day = 1; day <= daysInMonth; day++) {
-      const weekday = new Date(year, monthIndex, day).toLocaleDateString("en-US", { weekday: "long" }).toUpperCase();
-      if (!weekendSet.has(weekday)) workingDays++;
-    }
-    const monthlySalary = Math.max(0, Number(standardMonthlySalary) || 0);
-    const perDay = workingDays > 0 ? monthlySalary / workingDays : 0;
-    return { workingDays, perDay };
-  }, [holidayMonth, standardMonthlySalary, weekendDays]);
-
-  async function createCompanyRole() {
-    setErr(null);
-    setOk(null);
-    try {
-      await api.post("/api/admin/company-roles", { name: roleName });
-      setRoleName("");
-      setOk("Company role created");
-      await refresh();
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Create role failed");
-    }
-  }
-
-  async function uploadRolePhoto(roleId: number, file: File) {
-    setErr(null);
-    setOk(null);
-    try {
-      const fd = new FormData();
-      fd.append("file", file);
-      await api.post(`/api/admin/company-roles/${roleId}/photo`, fd);
-      setOk("Role photo uploaded");
-      await refresh();
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Upload failed");
-    }
-  }
-
-  async function createHr() {
-    setErr(null);
-    setOk(null);
-    try {
-      await api.post("/api/admin/hr", { username: hrUsername, password: hrPassword });
-      setHrUsername("");
-      setHrPassword("");
-      setOk("HR created");
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Create HR failed");
-    }
-  }
-
-  async function createManager() {
-    setErr(null);
-    setOk(null);
-    try {
-      await api.post("/api/admin/manager", { username: managerUsername, password: managerPassword });
-      setManagerUsername("");
-      setManagerPassword("");
-      setOk("Manager created");
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Create manager failed");
-    }
-  }
-
-  async function createEmployee() {
-    setErr(null);
-    setOk(null);
-    try {
-      await api.post("/api/admin/employees", {
-        employeeNumber: empNo,
-        name: empName,
-        username: empUsername,
-        password: empPassword,
-        companyRoleId: empRoleId,
-        officeLocationId: empOfficeId === "" ? null : empOfficeId,
-        departmentId: empDepartmentId === "" ? null : empDepartmentId,
-        shiftId: empShiftId === "" ? null : empShiftId,
-      });
-      setEmpNo("");
-      setEmpName("");
-      setEmpUsername("");
-      setEmpPassword("");
-      setEmpRoleId("");
-      setEmpOfficeId("");
-      setEmpDepartmentId("");
-      setEmpShiftId("");
-      setOk("Employee created");
-      await refresh();
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Create employee failed");
-    }
-  }
-
-  async function resetEmployeePassword(employeeId: number) {
-    const newPassword = resetPasswords[employeeId]?.trim();
-    if (!newPassword) return;
-    setErr(null);
-    setOk(null);
-    try {
-      await api.post(`/api/admin/employees/${employeeId}/password`, { newPassword });
-      setResetPasswords((prev) => ({ ...prev, [employeeId]: "" }));
-      setOk("Employee password reset");
-      await loadAuditLogs();
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Password reset failed");
-    }
-  }
-
-  async function setEmployeeStatus(employeeId: number, status: Employee["status"]) {
-    if (!status) return;
-    setErr(null);
-    setOk(null);
-    await api.post(`/api/admin/employees/${employeeId}/status`, { status, exitDate: status === "RESIGNED" ? new Date().toISOString().slice(0, 10) : null });
-    setOk("Employee lifecycle status updated");
+  async function createRole() {
+    if (!roleName.trim()) return;
+    await api.post("/api/admin/company-roles", { name: roleName.trim() });
+    setRoleName("");
+    toastSuccess("Role created");
     await refresh();
-  }
-
-  async function saveEmployeeUsername(employee: Employee) {
-    const username = (usernameEdits[employee.id] ?? employee.username ?? "").trim();
-    if (!username) {
-      setErr("Username is required");
-      return;
-    }
-    const res = await api.post<Employee>(`/api/admin/employees/${employee.id}/username`, { username });
-    setEmployees((prev) => prev.map((item) => (item.id === employee.id ? res.data : item)));
-    setSelectedEmployee((prev) => (prev?.id === employee.id ? res.data : prev));
-    setUsernameEdits((prev) => {
-      const next = { ...prev };
-      delete next[employee.id];
-      return next;
-    });
-    setOk("Employee username updated");
-  }
-
-  async function bulkResetPasswords() {
-    const employeeIds = employees.map((e) => e.id);
-    const res = await api.post<{ updated: number }>("/api/admin/employees/passwords/bulk-reset", { employeeIds, newPassword: bulkPassword });
-    setBulkPassword("");
-    setOk(`Bulk reset ${res.data.updated} employee passwords`);
-    await loadAuditLogs();
-  }
-
-  async function bulkEditEmployees() {
-    const res = await api.post<{ updated: number }>("/api/admin/employees/bulk-edit", {
-      employeeIds: selectedEmployeeIds,
-      officeLocationId: bulkOfficeId === "" ? null : bulkOfficeId,
-      departmentId: bulkDepartmentId === "" ? null : bulkDepartmentId,
-      shiftId: bulkShiftId === "" ? null : bulkShiftId,
-      status: bulkStatus || null,
-      newPassword: bulkPassword.trim() || null,
-    });
-    setOk(`Bulk updated ${res.data.updated} employees`);
-    setBulkPassword("");
-    setBulkDepartmentId("");
-    await refresh();
-  }
-
-  async function assignRoster() {
-    const res = await api.post<{ assignedDays: number }>("/api/admin/roster", {
-      employeeId: rosterEmployeeId,
-      shiftId: rosterShiftId,
-      fromDate: rosterFrom,
-      toDate: rosterTo,
-    });
-    setOk(`Roster assigned for ${res.data.assignedDays} days`);
-  }
-
-  function toggleEmployeeSelection(id: number) {
-    setSelectedEmployeeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
-
-  async function exportEmployeeBackup() {
-    const res = await api.get<Blob>("/api/admin/backup/employees.csv", { responseType: "blob" });
-    const url = URL.createObjectURL(res.data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "attendance-employees-backup.csv";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
   }
 
   async function createDepartment() {
-    await api.post("/api/admin/departments", { name: departmentName });
+    if (!departmentName.trim()) return;
+    await api.post("/api/admin/departments", { name: departmentName.trim() });
     setDepartmentName("");
-    setOk("Department created");
-    await loadOrg();
-  }
-
-  async function createShift() {
-    await api.post("/api/admin/shifts", {
-      name: shiftName,
-      inTime: `${shiftIn}:00`.slice(0, 8),
-      outTime: `${shiftOut}:00`.slice(0, 8),
-      flexible: false,
-    });
-    setShiftName("General");
-    setOk("Shift created");
-    await loadOrg();
-  }
-
-  async function importEmployees(file: File) {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await api.post<{ created: number }>("/api/admin/employees/import", fd);
-    setOk(`Imported ${res.data.created} employees`);
+    toastSuccess("Department created");
     await refresh();
   }
 
-  async function setEmployeeEnabled(employeeId: number, enabled: boolean) {
-    await api.post(`/api/admin/employees/${employeeId}/enabled`, { enabled });
-    setOk(enabled ? "Employee enabled" : "Employee disabled");
+  async function createShift() {
+    await api.post("/api/admin/shifts", { name: shiftName.trim() || "General", inTime: timePayload(shiftIn), outTime: timePayload(shiftOut), flexible: false });
+    toastSuccess("Shift created");
+    await refresh();
+  }
+
+  async function createManager() {
+    if (!managerUsername.trim() || !managerPassword.trim()) return;
+    await api.post("/api/admin/manager", { username: managerUsername.trim(), password: managerPassword });
+    setManagerUsername("");
+    setManagerPassword("");
+    toastSuccess("Manager created");
+    await refresh();
+  }
+
+  async function createOffice() {
+    if (!officeLat.trim() || !officeLng.trim()) return;
+    await api.post("/api/admin/office-location/active", {
+      officeName: officeName.trim(),
+      latitude: Number(officeLat),
+      longitude: Number(officeLng),
+      radiusMeters: Number(officeRadius),
+      officeIpAddress: officeIp.trim() || undefined,
+    });
+    setOfficeName("");
+    setOfficeLat("");
+    setOfficeLng("");
+    setOfficeRadius("100");
+    setOfficeIp("");
+    toastSuccess("Office saved");
+    await refresh();
+  }
+
+  function handleLogout() {
+    clearAuth();
+    window.location.href = "/";
+  }
+
+  async function resetDeviceBinding(employeeId: number) {
+    if (!window.confirm("Are you sure you want to clear this employee's bound device?")) return;
+    await api.post(`/api/admin/employees/${employeeId}/reset-device-binding`);
+    toastSuccess("Device binding reset");
+    await refresh();
+  }
+
+  async function createHoliday() {
+    await api.post("/api/admin/holidays", { date: holidayDate, name: holidayName.trim() || "Holiday" });
+    toastSuccess("Holiday saved");
+    await refresh();
+  }
+
+  async function createEmployee() {
+    const { employeeNumber, name, username, password } = employeeForm;
+    if (!employeeNumber.trim() || !name.trim() || !username.trim() || !password.trim()) return;
+    await api.post("/api/admin/employees", {
+      employeeNumber: employeeNumber.trim(),
+      name: name.trim(),
+      username: username.trim(),
+      password,
+      companyRoleId: employeeForm.companyRoleId ? Number(employeeForm.companyRoleId) : null,
+      departmentId: employeeForm.departmentId ? Number(employeeForm.departmentId) : null,
+      shiftId: employeeForm.shiftId ? Number(employeeForm.shiftId) : null,
+      officeLocationId: employeeForm.officeLocationId ? Number(employeeForm.officeLocationId) : null,
+    });
+    setEmployeeForm({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
+    toastSuccess("Employee created");
     await refresh();
   }
 
   async function saveSettings() {
-    setErr(null);
-    setOk(null);
+    if (!settings) return;
+    await api.post("/api/admin/settings/attendance", settings);
+    toastSuccess("Attendance settings saved");
+    await refresh();
+  }
+
+  function downloadStatutoryReport() {
+    window.open(`/api/admin/reports/statutory?month=${month}`, "_blank");
+  }
+
+  async function openEmployeeDetail(employee: Employee) {
+    setSelectedEmployee(employee);
+    setEmployeeDetail(null);
+    setDetailBusy(true);
     try {
-      const res = await api.post<AttendanceSettings>("/api/admin/settings/attendance", {
-        defaultInTime: `${defaultIn}:00`.slice(0, 8),
-        defaultOutTime: `${defaultOut}:00`.slice(0, 8),
-        weekendDays: weekendDays.join(","),
-        fullDayMinutes,
-        halfDayMinutes,
-        lateGraceMinutes,
-        earlyLeaveGraceMinutes,
-        overtimeAfterMinutes,
-        lateDeductionPerMinute,
-        overtimePayPerHour,
-        unpaidLeaveDailyRate,
-        standardMonthlySalary,
-        requireQrForPunch,
-        permanentOfficeQr,
-        qrTokenValidityMinutes,
-      });
-      setAttendanceSettings(res.data);
-      setOk("Attendance defaults saved");
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Save settings failed");
+      const response = await api.get<EmployeeDetail>(`/api/admin/employees/${employee.id}/detail`, { params: { month, year: Number(month.slice(0, 4)) } });
+      setEmployeeDetail(response.data);
+      setSelectedManagerId(response.data.managers[0]?.id ? String(response.data.managers[0].id) : "");
+    } catch (err: any) {
+      toastError(err?.response?.data?.error || "Employee detail failed");
+    } finally {
+      setDetailBusy(false);
     }
   }
 
-  async function addHoliday() {
-    setErr(null);
-    setOk(null);
-    try {
-      await api.post("/api/admin/holidays", { date: holidayDate, name: holidayName });
-      setOk("Holiday saved");
-      const r = await api.get<Holiday[]>("/api/admin/holidays", { params: { month: holidayMonth } });
-      setHolidays(r.data);
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Save holiday failed");
-    }
+
+  async function assignSelectedManager() {
+    if (!selectedEmployee || !selectedManagerId) return;
+    await api.post("/api/admin/manager-assignments", { managerUserId: Number(selectedManagerId), employeeIds: [selectedEmployee.id] });
+    toastSuccess("Manager assigned");
+    await openEmployeeDetail(selectedEmployee);
+  }
+
+  async function saveSelectedLeaveBalance() {
+    if (!selectedEmployee) return;
+    await api.post("/api/admin/leave-balances", {
+      employeeId: selectedEmployee.id,
+      leaveType: leaveBalanceForm.leaveType,
+      year: Number(month.slice(0, 4)),
+      allocatedDays: Number(leaveBalanceForm.allocatedDays),
+      usedDays: Number(leaveBalanceForm.usedDays),
+    });
+    toastSuccess("Leave balance saved");
+    await openEmployeeDetail(selectedEmployee);
   }
 
   async function deleteHoliday(id: number) {
-    setErr(null);
-    setOk(null);
+    if (!window.confirm("Delete this holiday?")) return;
+    await api.delete(`/api/admin/holidays/${id}`);
+    toastSuccess("Holiday deleted");
+    await refresh();
+  }
+
+  function downloadBlob(blob: Blob, filename: string) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function exportEmployeesCsv() {
+    setReportBusy(true);
     try {
-      await api.delete(`/api/admin/holidays/${id}`);
-      setOk("Holiday deleted");
-      setHolidays((prev) => prev.filter((h) => h.id !== id));
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Delete holiday failed");
+      const res = await api.get<Blob>("/api/admin/backup/employees.csv", { responseType: "blob" });
+      downloadBlob(res.data, `employees-backup-${month}.csv`);
+    } finally {
+      setReportBusy(false);
     }
   }
 
-  async function uploadCompanyPhoto(file: File) {
-    setErr(null);
-    setOk(null);
+  async function exportPayrollCsv() {
+    setReportBusy(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      const res = await api.post<{ groupPhotoUrl: string }>("/api/admin/company/photo", fd);
-      setCompanyPhotoUrl(res.data.groupPhotoUrl);
-      setOk("Company group photo uploaded");
-    } catch (e: any) {
-      setErr(e?.response?.data?.error ?? "Upload company photo failed");
+      const res = await api.get<Blob>("/api/hr/payroll/export", { params: { month }, responseType: "blob" });
+      downloadBlob(res.data, `payroll-${month}.csv`);
+    } finally {
+      setReportBusy(false);
     }
   }
+
+  async function setAdminPayrollLocked(locked: boolean) {
+    const res = await api.post<PayrollLock>("/api/hr/payroll-lock", null, { params: { month, locked } });
+    setPayrollLock(res.data);
+    toastSuccess(locked ? "Payroll locked" : "Payroll unlocked");
+  }
+  const statCards = [
+    { label: "Employees", value: employees.length, helper: `${activeEmployees} active`, icon: <BadgeRoundedIcon />, color: "#2563EB" },
+    { label: "Managers", value: managers.length, helper: "Team owners", icon: <GroupsRoundedIcon />, color: "#0F766E" },
+    { label: "Org Units", value: departments.length + roles.length, helper: "Departments + roles", icon: <ApartmentRoundedIcon />, color: "#7C3AED" },
+    { label: "Holidays", value: holidays.length, helper: month, icon: <CalendarMonthRoundedIcon />, color: "#EA580C" },
+  ];
 
   return (
-    <Layout title="Admin Dashboard">
-      <div className="grid gap-4 md:gap-6">
-        {err ? <Alert severity="error">{err}</Alert> : null}
-        {ok ? <Alert severity="success">{ok}</Alert> : null}
-
-        <DashboardHero
-          eyebrow="Admin workspace"
-          title="Company control room"
-          subtitle="Configure users, offices, working rules, holidays, and company media from one secured operations dashboard."
-          right={
-            <Box sx={{ display: "grid", gap: 1, minWidth: { xs: "100%", lg: 260 } }}>
-              <Button variant="contained" onClick={saveSettings}>
-                Save attendance rules
-              </Button>
-              <Button variant="outlined" onClick={() => loadOfficeLocation().catch(() => { })}>
-                Refresh offices
-              </Button>
+    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "#F5F7FB", backgroundImage: "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "#0F172A" }}>
+      <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "rgba(245,247,251,0.88)", backdropFilter: "blur(18px)", borderBottom: "1px solid #E2E8F0" }}>
+        <Box sx={{ maxWidth: 1440, mx: "auto", px: { xs: 2, md: 3 }, py: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+            <Avatar sx={{ bgcolor: "#0F2F5F", borderRadius: "8px" }}><AdminPanelSettingsRoundedIcon /></Avatar>
+            <Box>
+              <Typography sx={{ fontWeight: 950, fontSize: { xs: 22, md: 30 }, lineHeight: 1 }}>Admin Command Center</Typography>
+              <Typography sx={{ color: "#64748B", fontSize: 13 }}>People, policies, holidays, shifts, managers, and setup health.</Typography>
             </Box>
-          }
-        />
+          </Box>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            <Button onClick={refresh} startIcon={<RefreshRoundedIcon />} variant="outlined" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }} disabled={busy}>Refresh</Button>
+            <Button onClick={handleLogout} startIcon={<LogoutRoundedIcon />} variant="outlined" color="error" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }}>Logout</Button>
+          </Box>
+        </Box>
+      </Box>
 
-        <AppCard contentSx={{ p: 1.25 }}>
-          <Tabs
-            value={adminSection}
-            onChange={(_, value) => goToSection(value)}
-            variant="scrollable"
-            allowScrollButtonsMobile
-            sx={{ "& .MuiTab-root": { minHeight: 42, textTransform: "none", fontWeight: 900 } }}
-          >
-            <Tab value="live" label="Live" />
-            <Tab value="company" label="Company" />
-            <Tab value="employees" label="Employees" />
-            <Tab value="reports" label="Reports" />
-            <Tab value="audit" label="Audit" />
-            <Tab value="setup" label="Setup" />
-          </Tabs>
-        </AppCard>
+      <MotionBox initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} sx={{ maxWidth: 1440, mx: "auto", px: { xs: 2, md: 3 }, py: 3, display: "grid", gap: 2.5 }}>
+        <Box sx={{ ...cardSx, p: { xs: 2, md: 3 }, bgcolor: "#10204A", color: "white", display: "grid", gridTemplateColumns: { xs: "1fr", lg: "minmax(0, 1fr) 360px" }, gap: 3, alignItems: "center" }}>
+          <Box>
+            <Chip label="Production workspace" sx={{ bgcolor: "rgba(147,197,253,0.16)", color: "#BFDBFE", border: "1px solid rgba(191,219,254,0.22)", fontWeight: 900, mb: 2 }} />
+            <Typography sx={{ fontWeight: 950, fontSize: { xs: 30, md: 46 }, lineHeight: 1.03 }}>Control the full attendance system from one place.</Typography>
+            <Typography sx={{ color: "rgba(255,255,255,0.72)", mt: 1.5, maxWidth: 760 }}>Create people, tune attendance rules, manage holidays, assign teams, and verify setup readiness without leaving the admin console.</Typography>
+          </Box>
+          <Box sx={{ bgcolor: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: "8px", p: 2 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}><Typography sx={{ fontWeight: 900 }}>Setup completion</Typography><Typography sx={{ fontWeight: 950 }}>{setupProgress}%</Typography></Box>
+            <LinearProgress value={setupProgress} variant="determinate" sx={{ height: 10, borderRadius: "8px", bgcolor: "rgba(255,255,255,0.14)", "& .MuiLinearProgress-bar": { bgcolor: "#60A5FA" } }} />
+            <Typography sx={{ color: "rgba(255,255,255,0.68)", mt: 1, fontSize: 13 }}>{configuredEmployees} of {employees.length} employees have department, shift, or office setup.</Typography>
+          </Box>
+        </Box>
 
-        <div id="admin-setup">
-          <AppCard>
-            <Typography variant="h6" sx={{ fontWeight: 900 }}>
-              Setup wizard
-            </Typography>
-            <Typography sx={{ opacity: 0.72, mt: 1 }}>
-              Guided company onboarding for group photos, role structure, attendance rules, and manager workflows.
-            </Typography>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.25, mt: 2 }}>
-              {wizardSteps.map((step, index) => (
-                <Button
-                  key={step.title}
-                  size="small"
-                  variant={wizardStep === index ? "contained" : "outlined"}
-                  onClick={() => setWizardStep(index)}
-                >
-                  {index + 1}. {step.title}
-                </Button>
+        {adminLoadError ? (
+          <Box sx={{ border: "1px solid #FCA5A5", bgcolor: "#FEF2F2", color: "#991B1B", borderRadius: "8px", p: 1.5 }}>
+            <Typography sx={{ fontWeight: 950 }}>Admin data could not load</Typography>
+            <Typography sx={{ fontSize: 13, mt: 0.35 }}>{adminLoadError}</Typography>
+          </Box>
+        ) : null}
+
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", xl: "repeat(4, minmax(0, 1fr))" }, gap: 1.5 }}>
+          {statCards.map((item, index) => (
+            <MotionBox key={item.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.05 }} sx={{ ...cardSx, p: 2 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}><Typography sx={{ color: "#64748B", fontWeight: 900, fontSize: 13 }}>{item.label}</Typography><Box sx={{ color: item.color }}>{item.icon}</Box></Box>
+              <Typography sx={{ fontWeight: 950, fontSize: 28 }}>{item.value}</Typography>
+              <Typography sx={{ color: "#64748B", fontSize: 12 }}>{item.helper}</Typography>
+            </MotionBox>
+          ))}
+        </Box>
+
+        <Box sx={{ ...cardSx, p: 2.25 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, flexWrap: "wrap", mb: 2 }}>
+            <Box sx={{ display: "flex", gap: 1.25, alignItems: "center" }}>
+              <Avatar sx={{ bgcolor: "#0F766E", borderRadius: "8px" }}><WorkHistoryRoundedIcon /></Avatar>
+              <Box>
+                <Typography sx={{ fontWeight: 950, fontSize: 22 }}>Request Approval Center</Typography>
+                <Typography sx={{ color: "#64748B", fontSize: 13 }}>Approve or reject leaves, attendance corrections, work requests, and comp-off requests.</Typography>
+              </Box>
+            </Box>
+            <Chip label={`${approvalItems.length} pending`} sx={{ borderRadius: "8px", fontWeight: 950, bgcolor: approvalItems.length ? "#FEF3C7" : "#DCFCE7", color: approvalItems.length ? "#92400E" : "#166534" }} />
+          </Box>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
+            {[
+              ["all", "All", approvalCounts.all],
+              ["leave", "Leaves", approvalCounts.leave],
+              ["correction", "Attendance corrections", approvalCounts.correction],
+              ["work", "Work/WFH", approvalCounts.work],
+              ["compOff", "Comp-off", approvalCounts.compOff],
+            ].map(([key, label, count]) => (
+              <Button key={String(key)} size="small" variant={approvalFilter === key ? "contained" : "outlined"} onClick={() => setApprovalFilter(key as ApprovalKind | "all")} sx={{ borderRadius: "8px", fontWeight: 900 }}>
+                {label} ({count})
+              </Button>
+            ))}
+          </Box>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(2, minmax(0, 1fr))" }, gap: 1.25 }}>
+            {filteredApprovalItems.map((item) => {
+              const tone = requestTone(item.kind);
+              const key = `${item.kind}-${item.id}`;
+              return (
+                <Box key={key} sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5, bgcolor: "#FFFFFF", display: "grid", gap: 1.1 }}>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.25, alignItems: "flex-start" }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Box sx={{ display: "flex", gap: 0.75, alignItems: "center", flexWrap: "wrap" }}>
+                        <Chip size="small" label={tone.label} sx={{ borderRadius: "8px", bgcolor: tone.bg, color: tone.color, fontWeight: 900 }} />
+                        <Chip size="small" label={item.status} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: "#F1F5F9", color: "#334155" }} />
+                      </Box>
+                      <Typography sx={{ fontWeight: 950, mt: 0.8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.title}</Typography>
+                      <Typography sx={{ color: "#64748B", fontSize: 13 }}>{item.employeeName} - {item.employeeNumber}</Typography>
+                    </Box>
+                    <Typography sx={{ color: "#64748B", fontSize: 12, fontWeight: 800, textAlign: "right", minWidth: 100 }}>{item.dateText}</Typography>
+                  </Box>
+                  <Box sx={{ bgcolor: "#F8FAFC", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
+                    <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{item.detail}</Typography>
+                    <Typography sx={{ color: "#64748B", fontSize: 12, mt: 0.35 }}>{item.reason}</Typography>
+                  </Box>
+                  <TextField size="small" label="Admin remarks" value={approvalRemarks[key] || ""} onChange={(event) => setApprovalRemarks((previous) => ({ ...previous, [key]: event.target.value }))} />
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+                    <Button variant="contained" disabled={approvalBusyId === `${key}-approve`} onClick={() => decideApproval(item, "approve").catch((err) => toastError(err?.response?.data?.error || "Approve failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Approve</Button>
+                    <Button variant="outlined" color="error" disabled={approvalBusyId === `${key}-reject`} onClick={() => decideApproval(item, "reject").catch((err) => toastError(err?.response?.data?.error || "Reject failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Reject / Cancel</Button>
+                  </Box>
+                </Box>
+              );
+            })}
+            {!filteredApprovalItems.length ? (
+              <Box sx={{ border: "1px dashed #CBD5E1", borderRadius: "8px", p: 2, bgcolor: "#F8FAFC", gridColumn: "1 / -1" }}>
+                <Typography sx={{ fontWeight: 900 }}>No pending requests</Typography>
+                <Typography sx={{ color: "#64748B", fontSize: 13 }}>New leave, correction, WFH/work, and comp-off requests will appear here for admin action.</Typography>
+              </Box>
+            ) : null}
+          </Box>
+        </Box>
+
+        <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 1fr) 430px" }, gap: 2.5, alignItems: "start" }}>
+          <Box sx={{ ...cardSx, p: 2.25 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", mb: 2, flexWrap: "wrap" }}>
+              <Box>
+                <Typography sx={{ fontWeight: 950, fontSize: 22 }}>Employees</Typography>
+                <Typography sx={{ color: "#64748B", fontSize: 13 }}>Search, review, and create employee accounts.</Typography>
+              </Box>
+              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: { xs: "stretch", sm: "flex-end" }, width: { xs: "100%", md: "auto" }, "& > *": { flexShrink: 0 } }}>
+                <Button variant="outlined" size="small" onClick={downloadStatutoryReport}>Export statutory report</Button>
+                <TextField size="small" label="Search employees" value={search} onChange={(e) => setSearch(e.target.value)} sx={{ width: { xs: "100%", sm: 280 } }} />
+              </Box>
+            </Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "repeat(auto-fit, minmax(330px, 1fr))" }, gap: 1 }}>
+              {filteredEmployees.slice(0, 10).map((employee) => (
+                <Box key={employee.id} onClick={() => openEmployeeDetail(employee)} sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5, display: "grid", gridTemplateColumns: "48px minmax(0, 1fr)", gap: 1.25, alignItems: "center", cursor: "pointer", bgcolor: "rgba(248,250,252,0.72)", transition: "transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease, background 160ms ease", "&:hover": { transform: "translateY(-2px)", borderColor: "#93C5FD", bgcolor: "#FFFFFF", boxShadow: "0 16px 40px rgba(15,23,42,0.09)" } }}>
+                  <Avatar src={employee.profilePhotoUrl || undefined} sx={{ width: 46, height: 46, border: "2px solid #FFFFFF", boxShadow: "0 10px 24px rgba(15,23,42,0.16)" }}>{employee.name[0]}</Avatar>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{employee.name}</Typography>
+                      <Chip size="small" label={employee.enabled === false ? "Disabled" : employee.status || "Active"} sx={{ borderRadius: "8px", fontWeight: 900, height: 22, bgcolor: employee.enabled === false ? "#FEE2E2" : "#E0F2FE", color: employee.enabled === false ? "#991B1B" : "#075985" }} />
+                    </Box>
+                    <Typography sx={{ color: "#64748B", fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{employee.employeeNumber} - {employee.department?.name || "No department"} - {employee.shift?.name || "No shift"}</Typography>
+                  </Box>
+                  <Box sx={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1, pt: 0.5 }}>
+                    <Button size="small" variant="outlined" startIcon={<VisibilityRoundedIcon />} onClick={(event) => { event.stopPropagation(); openEmployeeDetail(employee); }} sx={{ borderRadius: "8px", fontWeight: 900 }}>View profile</Button>
+                    <Button size="small" variant="outlined" color="error" onClick={(event) => { event.stopPropagation(); resetDeviceBinding(employee.id); }} sx={{ borderRadius: "8px", fontWeight: 900 }}>Reset device</Button>
+                  </Box>
+                </Box>
               ))}
             </Box>
-            <Box sx={{ mt: 3, p: 2, border: "1px solid rgba(15,23,42,0.08)", borderRadius: 2, bgcolor: "rgba(248,250,252,0.9)" }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
-                {wizardSteps[wizardStep].title}
-              </Typography>
-              <Typography sx={{ mt: 1, color: "text.secondary" }}>
-                {wizardSteps[wizardStep].description}
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1.25, mt: 2 }}>
-                {wizardSteps[wizardStep].tasks.map((task) => (
-                  <Box
-                    key={task.label}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      gap: 1,
-                      p: 1.25,
-                      borderRadius: 2,
-                      border: "1px solid rgba(15,23,42,0.08)",
-                      bgcolor: "rgba(255,255,255,0.8)",
-                    }}
-                  >
-                    <Typography sx={{ color: task.done ? "#16a34a" : undefined }}>
-                      {task.done ? "✓" : "•"} {task.label}
-                    </Typography>
-                    <Button size="small" variant="text" onClick={() => goToSection(task.section)}>
-                      {task.done ? "Review" : "Go"}
-                    </Button>
+            <Divider sx={{ my: 2 }} />
+            <Typography sx={{ fontWeight: 950, mb: 1 }}>Create employee</Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1 }}>
+              <TextField size="small" label="Employee #" value={employeeForm.employeeNumber} onChange={(e) => setEmployeeForm({ ...employeeForm, employeeNumber: e.target.value })} />
+              <TextField size="small" label="Name" value={employeeForm.name} onChange={(e) => setEmployeeForm({ ...employeeForm, name: e.target.value })} />
+              <TextField size="small" label="Username" value={employeeForm.username} onChange={(e) => setEmployeeForm({ ...employeeForm, username: e.target.value })} />
+              <TextField size="small" label="Password" type="password" value={employeeForm.password} onChange={(e) => setEmployeeForm({ ...employeeForm, password: e.target.value })} />
+              <TextField select size="small" label="Role" value={employeeForm.companyRoleId} onChange={(e) => setEmployeeForm({ ...employeeForm, companyRoleId: e.target.value })}>{roles.map((role) => <MenuItem key={role.id} value={role.id}>{role.name}</MenuItem>)}</TextField>
+              <TextField select size="small" label="Department" value={employeeForm.departmentId} onChange={(e) => setEmployeeForm({ ...employeeForm, departmentId: e.target.value })}>{departments.map((department) => <MenuItem key={department.id} value={department.id}>{department.name}</MenuItem>)}</TextField>
+              <TextField select size="small" label="Shift" value={employeeForm.shiftId} onChange={(e) => setEmployeeForm({ ...employeeForm, shiftId: e.target.value })}>{shifts.map((shift) => <MenuItem key={shift.id} value={shift.id}>{shift.name}</MenuItem>)}</TextField>
+              <Button onClick={() => createEmployee().catch((err) => toastError(err?.response?.data?.error || "Employee create failed"))} variant="contained" startIcon={<PersonAddAlt1RoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900 }}>Create</Button>
+            </Box>
+          </Box>
+
+          <Box sx={{ display: "grid", gap: 2.5 }}>
+            <Box sx={{ ...cardSx, p: 2.25 }}>
+              <Typography sx={{ fontWeight: 950, fontSize: 20, mb: 1.5 }}>Org setup</Typography>
+              <Box sx={{ display: "grid", gap: 1.25 }}>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) 88px" }, gap: 1 }}>
+                  <TextField size="small" label="Role" value={roleName} onChange={(e) => setRoleName(e.target.value)} />
+                  <Button variant="outlined" onClick={() => createRole().catch((err) => toastError(err?.response?.data?.error || "Role failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Add</Button>
+                </Box>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) 88px" }, gap: 1 }}>
+                  <TextField size="small" label="Department" value={departmentName} onChange={(e) => setDepartmentName(e.target.value)} />
+                  <Button variant="outlined" onClick={() => createDepartment().catch((err) => toastError(err?.response?.data?.error || "Department failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Add</Button>
+                </Box>
+                <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.25, bgcolor: "#F8FAFC" }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: 13, mb: 1 }}>Shift window</Typography>
+                  <Box sx={{ display: "grid", gap: 1 }}>
+                    <TextField size="small" label="Shift name" value={shiftName} onChange={(e) => setShiftName(e.target.value)} fullWidth />
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "minmax(0, 1fr) minmax(0, 1fr) 96px" }, gap: 1 }}>
+                      <TextField size="small" label="In" type="time" value={shiftIn} onChange={(e) => setShiftIn(e.target.value)} InputLabelProps={{ shrink: true }} />
+                      <TextField size="small" label="Out" type="time" value={shiftOut} onChange={(e) => setShiftOut(e.target.value)} InputLabelProps={{ shrink: true }} />
+                      <Button variant="outlined" onClick={() => createShift().catch((err) => toastError(err?.response?.data?.error || "Shift failed"))} sx={{ borderRadius: "8px", fontWeight: 900, minHeight: 40 }}>Add</Button>
+                    </Box>
                   </Box>
-                ))}
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, mt: 3 }}>
-                <Button size="small" variant="outlined" disabled={wizardStep === 0} onClick={() => setWizardStep(Math.max(0, wizardStep - 1))}>
-                  Previous
-                </Button>
-                <Button size="small" variant="contained" onClick={() => setWizardStep(Math.min(wizardSteps.length - 1, wizardStep + 1))}>
-                  Next
-                </Button>
+                </Box>
+                <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.25, bgcolor: "#F8FAFC" }}>
+                  <Typography sx={{ fontWeight: 900, fontSize: 13, mb: 1 }}>Manager account</Typography>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "minmax(0, 1fr) minmax(0, 1fr) 96px" }, gap: 1 }}>
+                    <TextField size="small" label="Manager email" value={managerUsername} onChange={(e) => setManagerUsername(e.target.value)} />
+                    <TextField size="small" label="Password" type="password" value={managerPassword} onChange={(e) => setManagerPassword(e.target.value)} />
+                    <Button variant="outlined" onClick={() => createManager().catch((err) => toastError(err?.response?.data?.error || "Manager failed"))} sx={{ borderRadius: "8px", fontWeight: 900, minHeight: 40 }}>Add</Button>
+                  </Box>
+                </Box>
+                <Divider sx={{ my: 0.5 }} />
+                <Box sx={{ border: "1px solid #DCE7F3", borderRadius: "8px", p: 1.5, bgcolor: "#FFFFFF" }}>
+                  <Typography sx={{ fontWeight: 950, fontSize: 14, mb: 1 }}>Office Location & Wi-Fi IP Fencing</Typography>
+                  <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1 }}>
+                    <TextField size="small" label="Office name" value={officeName} onChange={(e) => setOfficeName(e.target.value)} />
+                    <TextField size="small" label="IP whitelist optional" value={officeIp} onChange={(e) => setOfficeIp(e.target.value)} />
+                    <TextField size="small" label="Latitude" value={officeLat} onChange={(e) => setOfficeLat(e.target.value)} />
+                    <TextField size="small" label="Longitude" value={officeLng} onChange={(e) => setOfficeLng(e.target.value)} />
+                    <TextField size="small" label="Radius meters" value={officeRadius} onChange={(e) => setOfficeRadius(e.target.value)} />
+                    <Button variant="contained" onClick={() => createOffice().catch((err) => toastError(err?.response?.data?.error || "Office failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Save office</Button>
+                  </Box>
+                </Box>
               </Box>
             </Box>
-          </AppCard>
-        </div>
 
-        <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Company roles" value={roles.length} helper="Defined role profiles" icon={<BadgeIcon />} />
-          <StatCard label="Employees" value={employees.length} helper="Active accounts in system" icon={<GroupsIcon />} accent="#0f766e" />
-          <StatCard label="Holidays" value={holidays.length} helper={`Saved for ${holidayMonth}`} icon={<CalendarMonthIcon />} accent="#7c3aed" />
-          <StatCard label="Offices" value={officeLocations.length} helper={weekendDays.join(", ") || "No weekend selected"} icon={<DomainIcon />} accent="#b45309" />
-        </div>
-
-        <div id="admin-live">
-          <RealtimeBoard month={holidayMonth} />
-        </div>
-
-        <ProductionControls />
-
-        <div className="grid gap-4 md:gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-4">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>Production checklist</Typography>
-              <Box sx={{ mt: 2, display: "grid", gap: 1 }}>
-                {checklist
-                  ? Object.entries(checklist).map(([k, v]) => (
-                    <Typography key={k} sx={{ fontSize: 13 }}>
-                      <b>{k}</b>:{" "}
-                      <span style={{ color: v ? "#16a34a" : "#dc2626", fontWeight: 900 }}>
-                        {v ? "OK" : "Missing"}
-                      </span>
-                    </Typography>
-                  ))
-                  : null}
-              </Box>
-            </AppCard>
-          </div>
-          <div className="lg:col-span-4">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>Departments</Typography>
-              <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                <TextField label="Department" value={departmentName} onChange={(e) => setDepartmentName(e.target.value)} fullWidth />
-                <Button variant="contained" onClick={() => createDepartment().catch((e) => setErr(e?.response?.data?.error ?? "Create department failed"))} disabled={!departmentName.trim()}>
-                  Add
-                </Button>
-              </Box>
-              <Typography sx={{ mt: 1.5, color: "text.secondary", fontSize: 13 }}>
-                {departments.map((d) => d.name).join(", ") || "No departments"}
-              </Typography>
-            </AppCard>
-          </div>
-          <div className="lg:col-span-4">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>Shifts</Typography>
-              <Box sx={{ display: "grid", gap: 1, mt: 2 }}>
-                <TextField label="Shift name" value={shiftName} onChange={(e) => setShiftName(e.target.value)} />
-                <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: "1fr 1fr" }}>
-                  <TextField label="In" type="time" value={shiftIn} onChange={(e) => setShiftIn(e.target.value)} InputLabelProps={{ shrink: true }} />
-                  <TextField label="Out" type="time" value={shiftOut} onChange={(e) => setShiftOut(e.target.value)} InputLabelProps={{ shrink: true }} />
+            <Box sx={{ ...cardSx, p: 2.25 }}>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 1.5, mb: 1.5 }}>
+                <Box sx={{ display: "flex", gap: 1.25, alignItems: "center" }}>
+                  <Avatar sx={{ bgcolor: "#1D4ED8", borderRadius: "8px" }}><QrCode2RoundedIcon /></Avatar>
+                  <Box>
+                    <Typography sx={{ fontWeight: 950, fontSize: 20 }}>Permanent Office QR</Typography>
+                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Generate the QR employees scan for punch in/out.</Typography>
+                  </Box>
                 </Box>
-                <Button variant="contained" onClick={() => createShift().catch((e) => setErr(e?.response?.data?.error ?? "Create shift failed"))}>Add shift</Button>
-                <Typography sx={{ color: "text.secondary", fontSize: 13 }}>{shifts.map((s) => s.name).join(", ") || "No shifts"}</Typography>
+                <Chip size="small" label={officeQr?.mode || "Not generated"} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: officeQr?.token ? "#DCFCE7" : "#F1F5F9", color: officeQr?.token ? "#166534" : "#475569" }} />
               </Box>
-            </AppCard>
-          </div>
-        </div>
+              <Box sx={{ display: "grid", gap: 1.25 }}>
+                <TextField select size="small" label="Office location" value={selectedQrOfficeId} onChange={(event) => { setSelectedQrOfficeId(event.target.value); setOfficeQr(null); }}>
+                  {offices.map((office) => <MenuItem key={office.id} value={office.id}>{office.officeName || `Office #${office.id}`}</MenuItem>)}
+                </TextField>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+                  <Button disabled={qrBusy || !selectedQrOffice} variant="contained" onClick={() => generateOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR generation failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Generate QR</Button>
+                  <Button disabled={qrBusy || !selectedQrOffice} variant="outlined" onClick={() => loadLatestOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR load failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Load latest</Button>
+                </Box>
+                {officeQr?.token ? (
+                  <Box sx={{ border: "1px solid #DCE7F3", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC", display: "grid", gap: 1.25, justifyItems: "center" }}>
+                    <Box component="img" src={qrImageUrl} alt="Office attendance QR" sx={{ width: "min(100%, 240px)", aspectRatio: "1 / 1", borderRadius: "8px", border: "8px solid white", boxShadow: "0 14px 34px rgba(15,23,42,0.12)" }} />
+                    <Box sx={{ width: "100%", display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+                      <Box sx={{ bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
+                        <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Daily code</Typography>
+                        <Typography sx={{ fontWeight: 950, fontSize: 24 }}>{officeQr.dailyCode || "----"}</Typography>
+                      </Box>
+                      <Box sx={{ bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
+                        <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Office</Typography>
+                        <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{officeQr.officeName || selectedQrOffice?.officeName || "Office"}</Typography>
+                      </Box>
+                    </Box>
+                    <TextField size="small" label="QR token" value={officeQr.token} fullWidth InputProps={{ readOnly: true }} />
+                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1, width: "100%" }}>
+                      <Button variant="outlined" startIcon={<ContentCopyRoundedIcon />} onClick={() => copyOfficeQrToken().catch(() => toastError("Copy failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Copy token</Button>
+                      <Button variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open QR</Button>
+                    </Box>
+                    <Typography sx={{ color: "#64748B", fontSize: 12, textAlign: "center" }}>Print this QR and place it at the office entrance. Employees scan it from the punch screen.</Typography>
+                  </Box>
+                ) : (
+                  <Box sx={{ border: "1px dashed #CBD5E1", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC" }}>
+                    <Typography sx={{ fontWeight: 900, fontSize: 13 }}>No QR loaded</Typography>
+                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Select an office, then generate a permanent office QR.</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Box>
 
-        <Box id="admin-reports" sx={{ display: "grid", gap: 6, gridTemplateColumns: { xs: "1fr", lg: analytics ? "minmax(0,1fr) 280px" : "1fr" } }}>
-          {analytics ? (
-            <AnalyticsPanel
-              title="Dashboard analytics"
-              subtitle={`Operational summary for ${holidayMonth}`}
-              analytics={analytics}
-            />
-          ) : null}
-          <AppCard>
-            <Typography variant="h6" sx={{ fontWeight: 900 }}>Bulk employee import</Typography>
-            <Typography sx={{ mt: 0.5, color: "text.secondary", fontSize: 13 }}>
-              Upload CSV with employeeNumber, name, username, password, optional roleId.
-            </Typography>
-            <Button variant="contained" component="label" sx={{ mt: 2, width: "100%" }}>
-              Upload CSV
-              <input hidden type="file" accept=".csv,text/csv" onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) importEmployees(f).catch((err) => setErr(err?.response?.data?.error ?? "Import failed"));
-              }} />
-            </Button>
-          </AppCard>
+            <Box sx={{ ...cardSx, p: 2.25 }}>
+              <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 1.5 }}>
+                <Box>
+                  <Typography sx={{ fontWeight: 950, fontSize: 20 }}>Holidays</Typography>
+                  <Typography sx={{ color: "#64748B", fontSize: 12 }}>Create and review company holidays for payroll and attendance.</Typography>
+                </Box>
+                <Chip size="small" label={`${holidays.length} days`} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: "#FFF7ED", color: "#C2410C" }} />
+              </Box>
+              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+                <TextField size="small" label="Month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} InputLabelProps={{ shrink: true }} />
+                <TextField size="small" label="Holiday date" type="date" value={holidayDate} onChange={(e) => setHolidayDate(e.target.value)} InputLabelProps={{ shrink: true }} />
+                <TextField size="small" label="Holiday name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} sx={{ gridColumn: { xs: "auto", sm: "1 / -1" } }} />
+                <Button variant="contained" onClick={() => createHoliday().catch((err) => toastError(err?.response?.data?.error || "Holiday failed"))} sx={{ borderRadius: "8px", fontWeight: 900, gridColumn: { xs: "auto", sm: "1 / -1" } }}>Save holiday</Button>
+              </Box>
+              <Box sx={{ display: "grid", gap: 1, mt: 1.5 }}>
+                {holidays.map((holiday) => (
+                  <Box key={holiday.id} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 1, border: "1px solid #E2E8F0", borderRadius: "8px", px: 1.25, py: 1, bgcolor: "#F8FAFC" }}>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 900, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{holiday.name}</Typography>
+                      <Typography sx={{ color: "#64748B", fontSize: 12 }}>{holiday.date}</Typography>
+                    </Box>
+                    <Button size="small" color="error" onClick={() => deleteHoliday(holiday.id).catch((err) => toastError(err?.response?.data?.error || "Holiday delete failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Delete</Button>
+                  </Box>
+                ))}
+                {!holidays.length ? <Typography sx={{ color: "#64748B", fontSize: 13 }}>No holidays configured for {month}.</Typography> : null}
+              </Box>
+            </Box>
+          </Box>
         </Box>
 
-        <div id="admin-company" className="grid gap-6 lg:grid-cols-12">
-          <div className="lg:col-span-6">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Company roles
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Create roles like Developer / Manager and optionally upload a role photo.
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1.5, mt: 2 }}>
-                <TextField
-                  label="Role name"
-                  fullWidth
-                  value={roleName}
-                  onChange={(e) => setRoleName(e.target.value)}
-                />
-                <Button variant="contained" onClick={createCompanyRole} disabled={!roleName.trim()}>
-                  Create
-                </Button>
-              </Box>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: "grid", gap: 1.5 }}>
-                {roles.map((r) => (
-                  <AppCard key={r.id} contentSx={{ p: 2, "&:last-child": { pb: 2 } }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Avatar src={r.photoUrl ?? undefined} sx={{ width: 52, height: 52 }}>
-                        {r.name[0]}
-                      </Avatar>
-                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                        <Typography
-                          sx={{
-                            fontWeight: 950,
-                            lineHeight: 1.1,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {r.name}
-                        </Typography>
-                        <Typography sx={{ opacity: 0.7, fontSize: 12 }}>ID: {r.id}</Typography>
-                      </Box>
-                      <Button variant="outlined" component="label">
-                        Upload
-                        <input
-                          hidden
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) uploadRolePhoto(r.id, f);
-                          }}
-                        />
-                      </Button>
-                    </Box>
-                  </AppCard>
-                ))}
-                {!roles.length ? (
-                  <Typography sx={{ opacity: 0.7, fontSize: 13 }}>No roles yet.</Typography>
-                ) : null}
-              </Box>
-            </AppCard>
-          </div>
 
-          <div className="lg:col-span-6 grid gap-6">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Company group photo
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                One photo for all members. Employees will see this when a date has no daily photo.
-              </Typography>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mt: 2 }}>
-                <Avatar src={companyPhotoUrl ?? undefined} sx={{ width: 64, height: 64 }}>
-                  C
-                </Avatar>
-                <Button variant="outlined" component="label">
-                  Upload group photo
-                  <input
-                    hidden
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) uploadCompanyPhoto(f);
-                    }}
-                  />
-                </Button>
-              </Box>
-            </AppCard>
-
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Holidays (H)
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Add festival holidays. Holidays are purple (H) and excluded from working-day counts.
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1.5, mt: 2 }}>
-                <TextField
-                  label="Month"
-                  type="month"
-                  value={holidayMonth}
-                  onChange={(e) => setHolidayMonth(e.target.value)}
-                  InputLabelProps={{ shrink: true }}
-                  sx={{ width: 220 }}
-                />
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "1fr 1fr" }}>
-                  <TextField
-                    label="Date"
-                    type="date"
-                    value={holidayDate}
-                    onChange={(e) => setHolidayDate(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField label="Name" value={holidayName} onChange={(e) => setHolidayName(e.target.value)} />
-                </Box>
-                <Button variant="outlined" onClick={addHoliday} disabled={!holidayDate || !holidayName.trim()}>
-                  Save holiday
-                </Button>
-                <Divider />
-                <Box sx={{ display: "grid", gap: 1 }}>
-                  {holidays
-                    .slice()
-                    .sort((a, b) => a.date.localeCompare(b.date))
-                    .map((h) => (
-                      <Box
-                        key={h.id}
-                        sx={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 1.5,
-                          p: 1.2,
-                          borderRadius: 3,
-                          border: "1px solid rgba(15,23,42,0.08)",
-                          background: "rgba(255,255,255,0.6)",
-                        }}
-                      >
-                        <Typography sx={{ fontWeight: 950, color: "secondary.main", width: 18 }}>
-                          H
-                        </Typography>
-                        <Typography sx={{ fontWeight: 900, width: 110 }}>{h.date}</Typography>
-                        <Typography sx={{ flexGrow: 1, opacity: 0.9 }}>{h.name}</Typography>
-                        <Button color="error" variant="text" onClick={() => deleteHoliday(h.id)}>
-                          Delete
-                        </Button>
-                      </Box>
-                    ))}
-                  {!holidays.length ? (
-                    <Typography sx={{ opacity: 0.7, fontSize: 13 }}>No holidays for this month.</Typography>
-                  ) : null}
-                </Box>
-              </Box>
-            </AppCard>
-          </div>
-
-          <div className="lg:col-span-4">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Create HR login
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                HR marks attendance and uploads daily group photos.
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1.5, mt: 2 }}>
-                <TextField label="HR username" value={hrUsername} onChange={(e) => setHrUsername(e.target.value)} />
-                <TextField
-                  label="HR password"
-                  type="password"
-                  value={hrPassword}
-                  onChange={(e) => setHrPassword(e.target.value)}
-                />
-                <Button variant="contained" onClick={createHr} disabled={!hrUsername.trim() || !hrPassword.trim()}>
-                  Create HR
-                </Button>
-              </Box>
-            </AppCard>
-          </div>
-
-          <div className="lg:col-span-4">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Create manager login
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Managers review requests and recommend attendance updates to HR.
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1.5, mt: 2 }}>
-                <TextField label="Manager username" value={managerUsername} onChange={(e) => setManagerUsername(e.target.value)} />
-                <TextField
-                  label="Manager password"
-                  type="password"
-                  value={managerPassword}
-                  onChange={(e) => setManagerPassword(e.target.value)}
-                />
-                <Button variant="contained" onClick={createManager} disabled={!managerUsername.trim() || !managerPassword.trim()}>
-                  Create manager
-                </Button>
-              </Box>
-            </AppCard>
-          </div>
-
-          <div className="lg:col-span-8">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Office location (GPS radius)
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Create multiple office geofences. Employee punch uses their assigned office, with the latest office as fallback.
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1.5, mt: 2 }}>
-                <TextField label="Office name" value={officeName} onChange={(e) => setOfficeName(e.target.value)} />
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "1fr 1fr" }}>
-                  <TextField label="Latitude" value={officeLat} onChange={(e) => setOfficeLat(e.target.value)} />
-                  <TextField label="Longitude" value={officeLng} onChange={(e) => setOfficeLng(e.target.value)} />
-                </Box>
-                <TextField
-                  label="Radius (meters)"
-                  type="number"
-                  value={officeRadius}
-                  onChange={(e) => setOfficeRadius(e.target.value)}
-                  inputProps={{ min: 1 }}
-                />
-                <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "center" }}>
-                  <Button variant="contained" onClick={() => saveOfficeLocation().catch((e) => setErr(e?.response?.data?.error ?? "Save office failed"))}>
-                    Save office location
-                  </Button>
-                  {officeLocation ? (
-                    <Typography sx={{ opacity: 0.75, fontSize: 12 }}>
-                      Active: {officeLocation.latitude}, {officeLocation.longitude} | Radius: {Math.round(officeLocation.radiusMeters)}m
-                    </Typography>
-                  ) : (
-                    <Typography sx={{ opacity: 0.75, fontSize: 12 }}>
-                      Not configured yet.
-                    </Typography>
-                  )}
-                </Box>
-                <Divider />
-                <Box sx={{ display: "grid", gap: 1 }}>
-                  {officeLocations.map((loc) => (
-                    <Box
-                      key={loc.id}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.5,
-                        p: 1.2,
-                        borderRadius: 3,
-                        border: "1px solid rgba(15,23,42,0.08)",
-                        background: "rgba(255,255,255,0.6)",
-                      }}
-                    >
-                      <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontWeight: 900 }}>
-                          {loc.officeName || `Office ${loc.id}`}
-                        </Typography>
-                        <Typography sx={{ opacity: 0.72, fontSize: 12 }}>
-                          {loc.latitude}, {loc.longitude} | {Math.round(loc.radiusMeters)}m
-                        </Typography>
-                      </Box>
-                      <Button
-                        size="small"
-                        color="error"
-                        variant="outlined"
-                        onClick={() => deleteOfficeLocation(loc.id)}
-                      >
-                        Delete
-                      </Button>
-                      <Typography sx={{ opacity: 0.7, fontSize: 12 }}>ID: {loc.id}</Typography>
-                    </Box>
-                  ))}
-                  {!officeLocations.length ? (
-                    <Typography sx={{ opacity: 0.7, fontSize: 13 }}>No office locations yet.</Typography>
-                  ) : null}
-                </Box>
-              </Box>
-            </AppCard>
-
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Attendance defaults
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Admin sets default in/out time and weekly holidays (weekends). HR uses these defaults.
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1.5, mt: 2 }}>
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "1fr 1fr" }}>
-                  <TextField
-                    label="Default in time"
-                    type="time"
-                    value={defaultIn}
-                    onChange={(e) => setDefaultIn(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    label="Default out time"
-                    type="time"
-                    value={defaultOut}
-                    onChange={(e) => setDefaultOut(e.target.value)}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Box>
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "1fr 1fr" }}>
-                  <TextField
-                    label="Full day minutes"
-                    type="number"
-                    value={fullDayMinutes}
-                    onChange={(e) => setFullDayMinutes(Math.max(1, Number(e.target.value || 0)))}
-                    inputProps={{ min: 1 }}
-                  />
-                  <TextField
-                    label="Half day minutes"
-                    type="number"
-                    value={halfDayMinutes}
-                    onChange={(e) => setHalfDayMinutes(Math.max(1, Number(e.target.value || 0)))}
-                    inputProps={{ min: 1 }}
-                  />
-                </Box>
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: "1fr 1fr 1fr" }}>
-                  <TextField
-                    label="Late grace minutes"
-                    type="number"
-                    value={lateGraceMinutes}
-                    onChange={(e) => setLateGraceMinutes(Math.max(0, Number(e.target.value || 0)))}
-                    inputProps={{ min: 0 }}
-                  />
-                  <TextField
-                    label="Early leave grace"
-                    type="number"
-                    value={earlyLeaveGraceMinutes}
-                    onChange={(e) => setEarlyLeaveGraceMinutes(Math.max(0, Number(e.target.value || 0)))}
-                    inputProps={{ min: 0 }}
-                  />
-                  <TextField
-                    label="Overtime after minutes"
-                    type="number"
-                    value={overtimeAfterMinutes}
-                    onChange={(e) => setOvertimeAfterMinutes(Math.max(1, Number(e.target.value || 0)))}
-                    inputProps={{ min: 1 }}
-                  />
-                </Box>
-                <Typography sx={{ opacity: 0.72, fontSize: 12 }}>
-                  Example: Full day <b>480</b> = 8h, Half day <b>240</b> = 4h. Grace values control late and early-leave analytics.
-                </Typography>
-                <Divider />
-                <Box>
-                  <Typography sx={{ fontWeight: 900, fontSize: 14 }}>Payroll calculation</Typography>
-                  <Typography sx={{ opacity: 0.72, fontSize: 12, mt: 0.25 }}>
-                    Salary is prorated automatically: monthly salary divided by working days, multiplied by payable days.
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" } }}>
-                  <TextField
-                    label="Monthly salary"
-                    type="number"
-                    value={standardMonthlySalary}
-                    onChange={(e) => setStandardMonthlySalary(Math.max(0, Number(e.target.value || 0)))}
-                    inputProps={{ min: 0 }}
-                  />
-                  <TextField
-                    label="Late deduction / minute"
-                    type="number"
-                    value={lateDeductionPerMinute}
-                    onChange={(e) => setLateDeductionPerMinute(Math.max(0, Number(e.target.value || 0)))}
-                    inputProps={{ min: 0 }}
-                  />
-                  <TextField
-                    label="Overtime pay / hour"
-                    type="number"
-                    value={overtimePayPerHour}
-                    onChange={(e) => setOvertimePayPerHour(Math.max(0, Number(e.target.value || 0)))}
-                    inputProps={{ min: 0 }}
-                    helperText="Keep 0 when OT is time only"
-                  />
-                </Box>
-                <Box sx={{ display: "grid", gap: 1.25, gridTemplateColumns: { xs: "1fr", md: "repeat(3, 1fr)" } }}>
-                  {[
-                    ["Working days", payrollPreview.workingDays],
-                    ["Per day salary", `Rs ${payrollPreview.perDay.toFixed(2)}`],
-                    ["Formula", `Rs ${standardMonthlySalary} / ${payrollPreview.workingDays || 0}`],
-                  ].map(([label, value]) => (
-                    <Box key={label} sx={{ p: 1.5, border: "1px solid #e2e8f0", borderRadius: 1.5, bgcolor: "#f8fafc" }}>
-                      <Typography sx={{ fontSize: 11, color: "text.secondary", fontWeight: 800, textTransform: "uppercase" }}>{label}</Typography>
-                      <Typography sx={{ mt: 0.5, fontWeight: 900, color: "#0f172a" }}>{value}</Typography>
-                    </Box>
-                  ))}
-                </Box>
-                <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr" }, alignItems: "center" }}>
-                  <FormControlLabel
-                    control={<Switch checked={requireQrForPunch} onChange={(e) => setRequireQrForPunch(e.target.checked)} />}
-                    label="Require QR for punch"
-                  />
-                  <FormControlLabel
-                    control={<Switch checked={permanentOfficeQr} onChange={(e) => setPermanentOfficeQr(e.target.checked)} />}
-                    label="Permanent office QR"
-                  />
-                  <TextField
-                    label="QR token validity minutes"
-                    type="number"
-                    value={qrTokenValidityMinutes}
-                    onChange={(e) => setQrTokenValidityMinutes(Math.max(1, Number(e.target.value || 0)))}
-                    inputProps={{ min: 1 }}
-                    disabled={permanentOfficeQr}
-                  />
-                </Box>
-                <Autocomplete
-                  multiple
-                  options={["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"]}
-                  value={weekendDays}
-                  onChange={(_, v) => setWeekendDays(v)}
-                  renderInput={(params) => <TextField {...params} label="Weekly holidays (weekend days)" />}
-                />
-                <Box sx={{ display: "flex", gap: 1.2, flexWrap: "wrap", alignItems: "center" }}>
-                  <Button variant="contained" onClick={saveSettings}>
-                    Save defaults
-                  </Button>
-                  {attendanceSettings ? (
-                    <Typography sx={{ opacity: 0.75, fontSize: 12 }}>
-                      Current: {attendanceSettings.defaultInTime?.slice(0, 5)} {"->"}{" "}
-                      {attendanceSettings.defaultOutTime?.slice(0, 5)} (Weekend: {attendanceSettings.weekendDays}) |{" "}
-                      Full: {attendanceSettings.fullDayMinutes}m, Half: {attendanceSettings.halfDayMinutes}m | Late grace:{" "}
-                      {attendanceSettings.lateGraceMinutes}m, OT after: {attendanceSettings.overtimeAfterMinutes}m | QR:{" "}
-                      {attendanceSettings.requireQrForPunch ? "Required" : "Optional"} | Token:{" "}
-                      {attendanceSettings.permanentOfficeQr ? "Permanent" : `${attendanceSettings.qrTokenValidityMinutes}m`}
-                    </Typography>
-                  ) : null}
-                </Box>
-              </Box>
-            </AppCard>
-          </div>
-
-          <div id="admin-employees" className="lg:col-span-6">
-            <AppCard>
-              <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                Create employee
-              </Typography>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Create employee login and assign a company role.
-              </Typography>
-              <Box sx={{ display: "grid", gap: 1.5, mt: 2 }} className="sm:grid-cols-2">
-                <TextField label="Employee number" value={empNo} onChange={(e) => setEmpNo(e.target.value)} />
-                <TextField label="Employee name" value={empName} onChange={(e) => setEmpName(e.target.value)} />
-                <TextField label="Login username" value={empUsername} onChange={(e) => setEmpUsername(e.target.value)} />
-                <TextField
-                  label="Login password"
-                  type="password"
-                  value={empPassword}
-                  onChange={(e) => setEmpPassword(e.target.value)}
-                />
-                <TextField
-                  select
-                  label="Company role"
-                  value={roleSelectValue}
-                  onChange={(e) => setEmpRoleId(e.target.value === "" ? "" : Number(e.target.value))}
-                  sx={{ gridColumn: "1 / -1" }}
-                >
-                  <MenuItem value="">Select role</MenuItem>
-                  {roles.map((r) => (
-                    <MenuItem key={r.id} value={r.id}>
-                      {r.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Assigned office"
-                  value={employeeOfficeSelectValue}
-                  onChange={(e) => setEmpOfficeId(e.target.value === "" ? "" : Number(e.target.value))}
-                  sx={{ gridColumn: "1 / -1" }}
-                >
-                  <MenuItem value="">Use default active office</MenuItem>
-                  {officeLocations.map((loc) => (
-                    <MenuItem key={loc.id} value={loc.id}>
-                      {loc.officeName || `Office ${loc.id}`}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Department"
-                  value={employeeDepartmentSelectValue}
-                  onChange={(e) => setEmpDepartmentId(e.target.value === "" ? "" : Number(e.target.value))}
-                >
-                  <MenuItem value="">No department</MenuItem>
-                  {departments.map((department) => (
-                    <MenuItem key={department.id} value={department.id}>
-                      {department.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Default shift"
-                  value={employeeShiftSelectValue}
-                  onChange={(e) => setEmpShiftId(e.target.value === "" ? "" : Number(e.target.value))}
-                >
-                  <MenuItem value="">No default shift</MenuItem>
-                  {shifts.map((shift) => (
-                    <MenuItem key={shift.id} value={shift.id}>
-                      {shift.name} ({shift.inTime?.slice(0, 5)}-{shift.outTime?.slice(0, 5)})
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <Button
-                  variant="contained"
-                  onClick={createEmployee}
-                  sx={{ gridColumn: "1 / -1" }}
-                  disabled={
-                    !empNo.trim() || !empName.trim() || !empUsername.trim() || !empPassword.trim() || empRoleId === ""
-                  }
-                >
-                  Create employee
-                </Button>
-              </Box>
-            </AppCard>
-          </div>
-
-          <div id="admin-employees" className="lg:col-span-12">
-            <AppCard>
-              <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "1fr auto" }, gap: 2, alignItems: "flex-start" }}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                    Employees ({filteredEmployees.length})
-                  </Typography>
-                  <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                    Quick list of employees, lifecycle status, roles, offices, and account controls.
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "grid", gap: 1, alignItems: "center", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr", lg: "180px 180px auto auto" } }}>
-                  <TextField
-                    size="small"
-                    label="Search"
-                    value={employeeQuery}
-                    onChange={(e) => setEmployeeQuery(e.target.value)}
-                    sx={{ width: "100%" }}
-                  />
-                  <TextField
-                    size="small"
-                    label="Bulk password"
-                    type="password"
-                    value={bulkPassword}
-                    onChange={(e) => setBulkPassword(e.target.value)}
-                    sx={{ width: "100%" }}
-                  />
-                  <Button variant="outlined" onClick={() => bulkResetPasswords().catch((e) => setErr(e?.response?.data?.error ?? "Bulk reset failed"))} disabled={!bulkPassword.trim() || !employees.length}>
-                    Bulk reset
-                  </Button>
-                  <Button variant="contained" onClick={() => exportEmployeeBackup().catch((e) => setErr(e?.response?.data?.error ?? "Backup export failed"))}>
-                    Backup CSV
-                  </Button>
-                </Box>
-              </Box>
-              <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                Status changes also enable/disable accounts when needed.
-              </Typography>
-              <Box sx={{ mt: 2, display: "grid", gap: 1.5, gridTemplateColumns: { xs: "1fr", xl: "1fr 1fr" } }}>
-                <Box sx={{ p: 1.5, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#f8fafc" }}>
-                  <Typography sx={{ fontWeight: 950 }}>Bulk employee edit</Typography>
-                  <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.3 }}>
-                    Selected employees: {selectedEmployeeIds.length}
-                  </Typography>
-                  <Box sx={{ mt: 1.2, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "repeat(5,1fr)" } }}>
-                    <TextField select label="Office" value={bulkOfficeSelectValue} onChange={(e) => setBulkOfficeId(e.target.value === "" ? "" : Number(e.target.value))}>
-                      <MenuItem value="">No change</MenuItem>
-                      {officeLocations.map((loc) => <MenuItem key={loc.id} value={loc.id}>{loc.officeName || `Office ${loc.id}`}</MenuItem>)}
-                    </TextField>
-                    <TextField select label="Department" value={bulkDepartmentSelectValue} onChange={(e) => setBulkDepartmentId(e.target.value === "" ? "" : Number(e.target.value))}>
-                      <MenuItem value="">No change</MenuItem>
-                      {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
-                    </TextField>
-                    <TextField select label="Default shift" value={bulkShiftSelectValue} onChange={(e) => setBulkShiftId(e.target.value === "" ? "" : Number(e.target.value))}>
-                      <MenuItem value="">No change</MenuItem>
-                      {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
-                    </TextField>
-                    <TextField select label="Status" value={bulkStatus} onChange={(e) => setBulkStatus(e.target.value as Employee["status"] | "")}>
-                      <MenuItem value="">No change</MenuItem>
-                      {["ACTIVE", "PROBATION", "NOTICE_PERIOD", "INACTIVE", "RESIGNED"].map((status) => <MenuItem key={status} value={status}>{status.replaceAll("_", " ")}</MenuItem>)}
-                    </TextField>
-                    <Button variant="contained" onClick={() => bulkEditEmployees().catch((e) => setErr(e?.response?.data?.error ?? "Bulk edit failed"))} disabled={!selectedEmployeeIds.length}>
-                      Apply bulk edit
-                    </Button>
-                  </Box>
-                </Box>
-                <Box sx={{ p: 1.5, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#f8fafc" }}>
-                  <Typography sx={{ fontWeight: 950 }}>Shift calendar / roster</Typography>
-                  <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.3 }}>
-                    Assign an employee shift for one day or a date range. Employee dashboard uses this shift for countdown and attendance rules.
-                  </Typography>
-                  <Box sx={{ mt: 1.2, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 1fr auto" } }}>
-                    <TextField select label="Employee" value={rosterEmployeeSelectValue} onChange={(e) => setRosterEmployeeId(e.target.value === "" ? "" : Number(e.target.value))}>
-                      <MenuItem value="">Select</MenuItem>
-                      {employees.map((e) => <MenuItem key={e.id} value={e.id}>{e.name}</MenuItem>)}
-                    </TextField>
-                    <TextField select label="Shift" value={rosterShiftSelectValue} onChange={(e) => setRosterShiftId(e.target.value === "" ? "" : Number(e.target.value))}>
-                      <MenuItem value="">Select</MenuItem>
-                      {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name} ({s.inTime?.slice(0, 5)}-{s.outTime?.slice(0, 5)})</MenuItem>)}
-                    </TextField>
-                    <TextField label="From" type="date" value={rosterFrom} onChange={(e) => setRosterFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-                    <TextField label="To" type="date" value={rosterTo} onChange={(e) => setRosterTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-                    <Button variant="contained" onClick={() => assignRoster().catch((e) => setErr(e?.response?.data?.error ?? "Roster assign failed"))} disabled={rosterEmployeeId === "" || rosterShiftId === ""}>
-                      Assign
-                    </Button>
-                  </Box>
-                </Box>
-              </Box>
-              <Box sx={{ mt: 2 }}>
-                <Box sx={{ display: "grid", gap: 1.25, maxHeight: { xs: "none", xl: 720 }, overflowY: "auto", overflowX: "hidden", pr: { xl: 0.5 } }}>
-                  {filteredEmployees.map((e) => {
-                    const r = e.companyRole?.id ? roleById.get(e.companyRole.id) : e.companyRole;
-                    const assignedOfficeId =
-                      e.assignedOfficeLocation?.id && officeLocations.some((loc) => loc.id === e.assignedOfficeLocation?.id)
-                        ? e.assignedOfficeLocation.id
-                        : "";
-                    return (
-                      <Box
-                        key={e.id}
-                        sx={{
-                          display: "grid",
-                          gridTemplateColumns: { xs: "1fr", md: "1.25fr 1fr", xl: "1.35fr 1fr 1fr 0.8fr" },
-                          gap: 1.1,
-                          alignItems: "stretch",
-                          p: { xs: 1.1, sm: 1.25 },
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 1,
-                          bgcolor: "#ffffff",
-                          boxShadow: "0 8px 20px rgba(15,23,42,0.04)",
-                        }}
-                      >
-                        <Box sx={{ display: "grid", gap: 1 }}>
-                          <Box sx={{ display: "grid", gridTemplateColumns: "48px minmax(0,1fr)", gap: 1.2, alignItems: "center", minWidth: 0 }}>
-                            <Avatar src={e.profilePhotoUrl ?? r?.photoUrl ?? undefined} sx={{ width: 42, height: 42 }}>{e.name[0]}</Avatar>
-                            <Box sx={{ minWidth: 0, cursor: "pointer" }} onClick={() => setSelectedEmployee(e)}>
-                              <Typography sx={{ fontWeight: 950, fontSize: 14, lineHeight: 1.2, wordBreak: "break-word" }}>
-                                {e.name}
-                              </Typography>
-                              <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.2 }}>
-                                {e.employeeNumber} | #{e.id}
-                              </Typography>
-                              <Typography sx={{ color: "text.secondary", fontSize: 12, mt: 0.15, lineHeight: 1.25, wordBreak: "break-word" }}>
-                                {e.department?.name ?? "No department"} | {e.shift?.name ?? "No default shift"}
-                              </Typography>
-                            </Box>
-                          </Box>
-                          <Box sx={{ display: "flex", gap: 0.75, flexWrap: "wrap", alignItems: "center" }}>
-                            <Button
-                              size="small"
-                              variant={selectedEmployeeIds.includes(e.id) ? "contained" : "outlined"}
-                              onClick={() => toggleEmployeeSelection(e.id)}
-                            >
-                              {selectedEmployeeIds.includes(e.id) ? "Selected" : "Select"}
-                            </Button>
-                            <Chip size="small" label={(e.status ?? "ACTIVE").replaceAll("_", " ")} color={employeeStatusColor(e.status)} sx={{ borderRadius: 1, fontWeight: 900 }} />
-                            <Typography sx={{ color: "text.secondary", fontSize: 11.5 }}>
-                              Join {e.joinDate ?? "--"}{e.exitDate ? ` | Exit ${e.exitDate}` : ""}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Box sx={{ display: "grid", gap: 0.75 }}>
-                          <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>Role and org</Typography>
-                          <TextField
-                            select
-                            size="small"
-                            label="Role"
-                            value={e.companyRole?.id && roles.some((role) => role.id === e.companyRole?.id) ? e.companyRole.id : ""}
-                            onChange={(event) => assignEmployeeRole(e, event.target.value === "" ? "" : Number(event.target.value))}
-                          >
-                            <MenuItem value="">Select role</MenuItem>
-                            {roles.map((role) => (
-                              <MenuItem key={role.id} value={role.id}>
-                                {role.name}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                          <TextField
-                            select
-                            size="small"
-                            label="Department"
-                            value={e.department?.id && departments.some((department) => department.id === e.department?.id) ? e.department.id : ""}
-                            onChange={(event) =>
-                              updateEmployeeOrg(
-                                e,
-                                { departmentId: event.target.value === "" ? null : Number(event.target.value) },
-                                "Employee department assigned",
-                              )
-                            }
-                          >
-                            <MenuItem value="">No department</MenuItem>
-                            {departments.map((department) => (
-                              <MenuItem key={department.id} value={department.id}>
-                                {department.name}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                          <TextField
-                            select
-                            size="small"
-                            label="Default shift"
-                            value={e.shift?.id && shifts.some((shift) => shift.id === e.shift?.id) ? e.shift.id : ""}
-                            onChange={(event) =>
-                              updateEmployeeOrg(
-                                e,
-                                { shiftId: event.target.value === "" ? null : Number(event.target.value) },
-                                "Employee default shift assigned",
-                              )
-                            }
-                          >
-                            <MenuItem value="">No default shift</MenuItem>
-                            {shifts.map((shift) => (
-                              <MenuItem key={shift.id} value={shift.id}>
-                                {shift.name} ({shift.inTime?.slice(0, 5)}-{shift.outTime?.slice(0, 5)})
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                        </Box>
-
-                        <Box sx={{ display: "grid", gap: 0.75 }}>
-                          <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>Office and account</Typography>
-                          <TextField
-                            select
-                            size="small"
-                            label="Office"
-                            value={assignedOfficeId}
-                            onChange={(event) =>
-                              assignEmployeeOffice(
-                                e.id,
-                                event.target.value === "" ? "" : Number(event.target.value),
-                              )
-                            }
-                          >
-                            <MenuItem value="">Default active office</MenuItem>
-                            {officeLocations.map((loc) => (
-                              <MenuItem key={loc.id} value={loc.id}>
-                                {loc.officeName || `Office ${loc.id}`}
-                              </MenuItem>
-                            ))}
-                          </TextField>
-                          <TextField
-                            size="small"
-                            label="Username"
-                            value={usernameEdits[e.id] ?? e.username ?? ""}
-                            onChange={(event) => setUsernameEdits((prev) => ({ ...prev, [e.id]: event.target.value }))}
-                            onKeyDown={(event) => {
-                              if (event.key === "Enter") {
-                                saveEmployeeUsername(e).catch((err) => setErr(err?.response?.data?.error ?? "Username update failed"));
-                              }
-                            }}
-                          />
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => saveEmployeeUsername(e).catch((err) => setErr(err?.response?.data?.error ?? "Username update failed"))}
-                            disabled={(usernameEdits[e.id] ?? e.username ?? "").trim() === (e.username ?? "").trim()}
-                          >
-                            Save
-                          </Button>
-                        </Box>
-
-                        <Box sx={{ display: "grid", gap: 0.75 }}>
-                          <Typography sx={{ color: "text.secondary", fontSize: 11, fontWeight: 950, textTransform: "uppercase" }}>Security</Typography>
-                          <TextField
-                            size="small"
-                            label="New password"
-                            type="password"
-                            value={resetPasswords[e.id] ?? ""}
-                            onChange={(event) => setResetPasswords((prev) => ({ ...prev, [e.id]: event.target.value }))}
-                          />
-                          <Button
-                            size="small"
-                            variant="outlined"
-                            onClick={() => resetEmployeePassword(e.id)}
-                            disabled={!resetPasswords[e.id]?.trim()}
-                          >
-                            Reset
-                          </Button>
-                          <Box sx={{ display: "flex", gap: 1, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-                            <Typography sx={{ color: "text.secondary", fontSize: 12 }}>
-                              Last login: {e.lastLoginAt ? new Date(e.lastLoginAt).toLocaleDateString() : "--"}
-                            </Typography>
-                            <Button
-                              variant="outlined"
-                              color={e.enabled === false ? "success" : "error"}
-                              onClick={() => setEmployeeEnabled(e.id, !(e.enabled ?? true)).catch((err) => setErr(err?.response?.data?.error ?? "Status update failed"))}
-                            >
-                              {e.enabled === false ? "Enable" : "Disable"}
-                            </Button>
-                          </Box>
-                        </Box>
-                      </Box>
-                    );
-                  })}
-                  {!filteredEmployees.length ? (
-                    <Typography sx={{ opacity: 0.7, fontSize: 13 }}>No matching employees.</Typography>
-                  ) : null}
-                </Box>
-              </Box>
-            </AppCard>
-          </div>
-
-          <div id="admin-audit" className="lg:col-span-12">
-            <AppCard>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center" }}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                    Audit logs
-                  </Typography>
-                  <Typography sx={{ opacity: 0.72, fontSize: 13, mt: 0.5 }}>
-                    Latest security and operational activity.
-                  </Typography>
-                </Box>
-                <Button variant="outlined" onClick={() => loadAuditLogs().catch(() => { })}>
-                  Refresh
-                </Button>
-              </Box>
-              <Divider sx={{ my: 2 }} />
-              <Box sx={{ display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr 1fr 170px 170px auto" }, mb: 2 }}>
-                <TextField size="small" label="Actor" value={auditActor} onChange={(e) => setAuditActor(e.target.value)} />
-                <TextField size="small" label="Action" value={auditAction} onChange={(e) => setAuditAction(e.target.value)} />
-                <TextField size="small" label="Target" value={auditTargetType} onChange={(e) => setAuditTargetType(e.target.value)} />
-                <TextField size="small" label="From" type="date" value={auditFrom} onChange={(e) => setAuditFrom(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <TextField size="small" label="To" type="date" value={auditTo} onChange={(e) => setAuditTo(e.target.value)} InputLabelProps={{ shrink: true }} />
-                <Button variant="outlined" onClick={() => { setAuditActor(""); setAuditAction(""); setAuditTargetType(""); setAuditFrom(""); setAuditTo(""); }}>
-                  Clear
-                </Button>
-              </Box>
-              <Box sx={{ display: "grid", gap: 1 }}>
-                {auditLogs.slice(0, 12).map((log) => (
-                  <Box key={log.id} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "190px 170px 1fr" }, gap: 1.5, p: 1.25, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#f9fafb" }}>
-                    <Typography sx={{ fontWeight: 850, fontSize: 13 }}>{new Date(log.createdAt).toLocaleString()}</Typography>
-                    <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{log.action}</Typography>
-                    <Typography sx={{ color: "text.secondary", fontSize: 13 }}>
-                      {log.actorUsername} | {log.targetType}
-                      {log.targetId ? ` #${log.targetId}` : ""} {log.details ? `| ${log.details}` : ""}
-                    </Typography>
-                  </Box>
-                ))}
-                {!auditLogs.length ? <Typography sx={{ opacity: 0.7, fontSize: 13 }}>No audit logs yet.</Typography> : null}
-              </Box>
-            </AppCard>
-          </div>
-        </div>
-      </div>
-
-      <Drawer anchor="right" open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)}>
-        <Box sx={{ width: 360, p: 2.25, display: "grid", gap: 1.25 }}>
-          <Typography variant="h6" sx={{ fontWeight: 950 }}>Employee detail</Typography>
-          {selectedEmployee ? (
+        <Box sx={{ ...cardSx, p: 2.25 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap", mb: 2 }}>
+            <Box>
+              <Typography sx={{ fontWeight: 950, fontSize: 22 }}>Payroll lock and exports</Typography>
+              <Typography sx={{ color: "#64748B", fontSize: 13 }}>Freeze payroll after review and download clean operational reports for the selected month.</Typography>
+            </Box>
+            <Chip icon={payrollLock?.locked ? <LockRoundedIcon /> : <LockOpenRoundedIcon />} label={payrollLock?.locked ? `Locked by ${payrollLock.updatedBy || "admin"}` : "Payroll open"} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: payrollLock?.locked ? "#FEE2E2" : "#DCFCE7", color: payrollLock?.locked ? "#991B1B" : "#166534" }} />
+          </Box>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1 }}>
+            <Button disabled={reportBusy} onClick={() => exportEmployeesCsv().catch((err) => toastError(err?.response?.data?.error || "Employee export failed"))} variant="outlined" startIcon={<FileDownloadRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900 }}>Employees CSV</Button>
+            <Button disabled={reportBusy} onClick={() => exportPayrollCsv().catch((err) => toastError(err?.response?.data?.error || "Payroll export failed"))} variant="outlined" startIcon={<FileDownloadRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900 }}>Payroll CSV</Button>
+            <Button disabled={payrollLock?.locked} onClick={() => setAdminPayrollLocked(true).catch((err) => toastError(err?.response?.data?.error || "Payroll lock failed"))} variant="contained" startIcon={<LockRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: "#0F172A" }}>Lock month</Button>
+            <Button disabled={!payrollLock?.locked} onClick={() => setAdminPayrollLocked(false).catch((err) => toastError(err?.response?.data?.error || "Payroll unlock failed"))} variant="outlined" startIcon={<LockOpenRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900 }}>Unlock month</Button>
+          </Box>
+        </Box>
+        {settings && (
+          <Box sx={{ ...cardSx, p: 2.25 }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap", mb: 2 }}><Box><Typography sx={{ fontWeight: 950, fontSize: 22 }}>Attendance policy</Typography><Typography sx={{ color: "#64748B", fontSize: 13 }}>Admin settings used by employee, HR, manager, payroll, and reports.</Typography></Box><Button onClick={() => saveSettings().catch((err) => toastError(err?.response?.data?.error || "Settings failed"))} variant="contained" startIcon={<SaveRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900 }}>Save policy</Button></Box>
+            <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))", lg: "repeat(4, minmax(0, 1fr))" }, gap: 1 }}>
+              <TextField size="small" label="Default in" value={timeOnly(settings.defaultInTime)} onChange={(e) => setSettings({ ...settings, defaultInTime: e.target.value })} />
+              <TextField size="small" label="Default out" value={timeOnly(settings.defaultOutTime, "17:30")} onChange={(e) => setSettings({ ...settings, defaultOutTime: e.target.value })} />
+              <TextField size="small" label="Full day (min)" type="number" value={settings.fullDayMinutes} onChange={(e) => setSettings({ ...settings, fullDayMinutes: Number(e.target.value) })} />
+              <TextField size="small" label="Overtime start (min)" type="number" value={settings.overtimeAfterMinutes} onChange={(e) => setSettings({ ...settings, overtimeAfterMinutes: Number(e.target.value) })} />
+              <TextField size="small" label="Overtime pay/hr (Rs)" type="number" value={settings.overtimePayPerHour} onChange={(e) => setSettings({ ...settings, overtimePayPerHour: Number(e.target.value) })} />
+              <TextField size="small" label="Base Salary (Rs)" type="number" value={settings.standardMonthlySalary} onChange={(e) => setSettings({ ...settings, standardMonthlySalary: Number(e.target.value) })} />
+              <TextField size="small" label="Weekend days" value={settings.weekendDays} onChange={(e) => setSettings({ ...settings, weekendDays: e.target.value })} />
+              <TextField size="small" label="QR validity minutes" type="number" value={settings.qrTokenValidityMinutes} onChange={(e) => setSettings({ ...settings, qrTokenValidityMinutes: Number(e.target.value) })} />
+              <FormControlLabel control={<Switch checked={settings.requireQrForPunch} onChange={(e) => setSettings({ ...settings, requireQrForPunch: e.target.checked })} />} label="Require QR" />
+              <FormControlLabel control={<Switch checked={settings.permanentOfficeQr} onChange={(e) => setSettings({ ...settings, permanentOfficeQr: e.target.checked })} />} label="Permanent office QR" />
+            </Box>
+          </Box>
+        )}
+      </MotionBox>
+      <Drawer anchor="right" open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2.5 } }}>
+        <Box sx={{ display: "grid", gap: 2 }}>
+          <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+            <Avatar src={selectedEmployee?.profilePhotoUrl || undefined} sx={{ width: 58, height: 58 }}>{selectedEmployee?.name?.[0]}</Avatar>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography sx={{ fontWeight: 950, fontSize: 22 }}>{selectedEmployee?.name || "Employee"}</Typography>
+              <Typography sx={{ color: "#64748B", fontSize: 13 }}>{selectedEmployee?.employeeNumber} - {selectedEmployee?.department?.name || "No department"}</Typography>
+            </Box>
+          </Box>
+          {detailBusy ? <LinearProgress /> : null}
+          {employeeDetail ? (
             <>
-              <Box sx={{ display: "grid", gridTemplateColumns: "56px 1fr", gap: 1.2, alignItems: "center" }}>
-                <Avatar src={selectedEmployee.profilePhotoUrl ?? selectedEmployee.companyRole?.photoUrl ?? undefined} sx={{ width: 56, height: 56 }}>{selectedEmployee.name[0]}</Avatar>
-                <Box>
-                  <Typography sx={{ fontWeight: 950 }}>{selectedEmployee.name}</Typography>
-                  <Typography sx={{ color: "text.secondary", fontSize: 13 }}>
-                    {selectedEmployee.employeeNumber} | {selectedEmployee.companyRole?.name ?? "No role"}
-                  </Typography>
+              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 1 }}>
+                {[
+                  ["Present", employeeDetail.summary.presentDays, "#DCFCE7", "#166534"],
+                  ["Half", employeeDetail.summary.halfDays, "#FEF3C7", "#92400E"],
+                  ["Leave", employeeDetail.summary.leaveDays, "#DBEAFE", "#1D4ED8"],
+                  ["Absent", employeeDetail.summary.absentDays, "#FEE2E2", "#991B1B"],
+                ].map(([label, value, bg, color]) => <Box key={String(label)} sx={{ borderRadius: "8px", bgcolor: String(bg), p: 1.25 }}><Typography sx={{ color: String(color), fontWeight: 900, fontSize: 11 }}>{label}</Typography><Typography sx={{ color: String(color), fontWeight: 950, fontSize: 22 }}>{value}</Typography></Box>)}
+              </Box>
+              <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5 }}>
+                <Typography sx={{ fontWeight: 950, mb: 1 }}>Profile and assignment</Typography>
+                <Typography sx={{ color: "#475569", fontSize: 13 }}>Username: {employeeDetail.employee.username || "--"}</Typography>
+                <Typography sx={{ color: "#475569", fontSize: 13 }}>Role: {employeeDetail.employee.companyRole?.name || "Unassigned"}</Typography>
+                <Typography sx={{ color: "#475569", fontSize: 13 }}>Shift: {employeeDetail.employee.shift?.name || "Unassigned"}</Typography>
+                <Typography sx={{ color: "#475569", fontSize: 13 }}>Office: {employeeDetail.employee.assignedOfficeLocation?.officeName || "Default office"}</Typography>
+                <Typography sx={{ color: "#475569", fontSize: 13 }}>Manager: {employeeDetail.managers.map((m) => m.username).join(", ") || "Not assigned"}</Typography>
+              </Box>
+              <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5 }}>
+                <Typography sx={{ fontWeight: 950, mb: 1 }}>Manager assignment</Typography>
+                <Box sx={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 1 }}>
+                  <TextField select size="small" label="Manager" value={selectedManagerId} onChange={(event) => setSelectedManagerId(event.target.value)}>
+                    <MenuItem value="">No manager</MenuItem>
+                    {managers.map((manager) => <MenuItem key={manager.id} value={manager.id}>{manager.username}</MenuItem>)}
+                  </TextField>
+                  <Button onClick={() => assignSelectedManager().catch((err) => toastError(err?.response?.data?.error || "Manager assignment failed"))} variant="contained" sx={{ borderRadius: "8px", fontWeight: 900 }}>Assign</Button>
                 </Box>
               </Box>
-              <Divider />
-              <Typography sx={{ fontSize: 13 }}><b>Status:</b> {(selectedEmployee.status ?? "ACTIVE").replaceAll("_", " ")}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Username:</b> {selectedEmployee.username ?? "--"}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Department:</b> {selectedEmployee.department?.name ?? "--"}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Shift:</b> {selectedEmployee.shift?.name ?? "--"}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Office:</b> {selectedEmployee.assignedOfficeLocation?.officeName ?? "Default office"}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Join date:</b> {selectedEmployee.joinDate ?? "--"}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Exit date:</b> {selectedEmployee.exitDate ?? "--"}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Last login:</b> {selectedEmployee.lastLoginAt ? new Date(selectedEmployee.lastLoginAt).toLocaleString() : "--"}</Typography>
-              <Typography sx={{ fontSize: 13 }}><b>Last IP:</b> {selectedEmployee.lastLoginIp ?? "--"}</Typography>
+              <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5 }}>
+                <Typography sx={{ fontWeight: 950, mb: 1 }}>Leave wallet</Typography>
+                <Box sx={{ display: "grid", gap: 0.75 }}>
+                  {employeeDetail.leaveBalances.length ? employeeDetail.leaveBalances.map((balance) => <Box key={balance.id} sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}><Typography sx={{ fontSize: 13, fontWeight: 800 }}>{balance.leaveType.replaceAll("_", " ")}</Typography><Typography sx={{ fontSize: 13, color: "#475569" }}>{balance.remainingDays} left / {balance.allocatedDays}</Typography></Box>) : <Typography sx={{ color: "#64748B", fontSize: 13 }}>No leave balances configured.</Typography>}
+                </Box>                <Divider sx={{ my: 1.25 }} />
+                <Typography sx={{ fontWeight: 900, fontSize: 13, mb: 1 }}>Edit balance</Typography>
+                <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 90px 90px auto" }, gap: 1 }}>
+                  <TextField select size="small" label="Type" value={leaveBalanceForm.leaveType} onChange={(event) => setLeaveBalanceForm({ ...leaveBalanceForm, leaveType: event.target.value })}>
+                    {["CASUAL_LEAVE", "SICK_LEAVE", "EARNED_LEAVE", "UNPAID_LEAVE"].map((item) => <MenuItem key={item} value={item}>{item.replaceAll("_", " ")}</MenuItem>)}
+                  </TextField>
+                  <TextField size="small" label="Alloc" type="number" value={leaveBalanceForm.allocatedDays} onChange={(event) => setLeaveBalanceForm({ ...leaveBalanceForm, allocatedDays: Number(event.target.value) })} />
+                  <TextField size="small" label="Used" type="number" value={leaveBalanceForm.usedDays} onChange={(event) => setLeaveBalanceForm({ ...leaveBalanceForm, usedDays: Number(event.target.value) })} />
+                  <Button onClick={() => saveSelectedLeaveBalance().catch((err) => toastError(err?.response?.data?.error || "Leave balance failed"))} variant="contained" sx={{ borderRadius: "8px", fontWeight: 900 }}>Save</Button>
+                </Box>              </Box>
+              <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5 }}>
+                <Typography sx={{ fontWeight: 950, mb: 1 }}>Recent attendance</Typography>
+                <Box sx={{ display: "grid", gap: 0.75, maxHeight: 220, overflow: "auto" }}>
+                  {employeeDetail.attendance.slice(-10).reverse().map((row) => <Box key={row.id} sx={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 1, alignItems: "center" }}><Typography sx={{ fontSize: 13, fontWeight: 800 }}>{row.date}</Typography><Chip size="small" label={`${row.status} ${row.inTime || "--"}-${row.outTime || "--"}`} sx={{ borderRadius: "8px", fontWeight: 800 }} /></Box>)}
+                  {!employeeDetail.attendance.length ? <Typography sx={{ color: "#64748B", fontSize: 13 }}>No attendance rows for {month}.</Typography> : null}
+                </Box>
+              </Box>
+              <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5 }}>
+                <Typography sx={{ fontWeight: 950, mb: 1 }}>Latest requests</Typography>
+                <Box sx={{ display: "grid", gap: 0.75 }}>
+                  {employeeDetail.requests.length ? employeeDetail.requests.map((request) => <Box key={`${request.type}-${request.id}`} sx={{ display: "flex", justifyContent: "space-between", gap: 1 }}><Typography sx={{ fontSize: 13, fontWeight: 800 }}>{request.type} - {request.title}</Typography><Chip size="small" label={request.status} sx={{ borderRadius: "8px", fontWeight: 800 }} /></Box>) : <Typography sx={{ color: "#64748B", fontSize: 13 }}>No recent requests.</Typography>}
+                </Box>
+              </Box>
             </>
-          ) : null}
+          ) : !detailBusy ? <Typography sx={{ color: "#64748B", fontSize: 13 }}>Open an employee to load detail.</Typography> : null}
         </Box>
       </Drawer>
-    </Layout>
+    </Box>
   );
 }
 
-function employeeStatusColor(status: Employee["status"]): "default" | "success" | "warning" | "error" | "info" {
-  if (status === "ACTIVE") return "success";
-  if (status === "PROBATION") return "info";
-  if (status === "NOTICE_PERIOD") return "warning";
-  if (status === "RESIGNED" || status === "INACTIVE") return "error";
-  return "default";
-}
+
+
+
+
+
+

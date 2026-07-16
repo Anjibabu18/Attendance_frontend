@@ -34,3 +34,6 @@ dist/
 node_modules/
 
 
+
+# Local deployment env exports with secrets
+deploy-env/*.env

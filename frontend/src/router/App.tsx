@@ -1,5 +1,6 @@
 import { lazy, Suspense } from "react";
 import { Box, CircularProgress, Typography } from "@mui/material";
+import { motion } from "framer-motion";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { getAuth } from "../auth/auth";
 
@@ -81,3 +82,4 @@ function RouteLoading() {
     </Box>
   );
 }
+

@@ -13,22 +13,22 @@ Make sure Windows Git is logged in as `Anjibabu18`, then run:
 powershell -ExecutionPolicy Bypass -File .\scripts\push-split-repos.ps1
 ```
 
-## Render backend
+## Render backend (Node.js)
 
-Use the backend repo. Render can read `render.yaml` or you can create a Docker web service manually.
+Use the `backend-node` folder. Render can build it via the `Dockerfile`.
 
 Set these Render environment variables:
 
-- `DB_URL=jdbc:mysql://mysql-3bafb0f2-anushamilktrading-4564.b.aivencloud.com:26783/attendance?useSSL=true&requireSSL=true&verifyServerCertificate=false&serverTimezone=Asia/Kolkata`
-- `DB_USER=avnadmin`
-- `DB_PASS=your-db-password`
+- `DATABASE_URL=mysql://avnadmin:your-db-password@mysql-3bafb0f2-anushamilktrading-4564.b.aivencloud.com:26783/attendance`
+- `PORT=8081`
 - `JWT_SECRET` (auto-generated or set your custom string)
 - `CORS_ALLOWED_ORIGINS=https://your-vercel-domain.vercel.app`
 - `CLOUDINARY_CLOUD_NAME`
 - `CLOUDINARY_API_KEY`
 - `CLOUDINARY_API_SECRET`
-- `FACE_SERVICE_ENABLED=false`
-- `MAIL_ENABLED=false`
+- `MAIL_HOST`
+- `MAIL_USERNAME`
+- `MAIL_PASSWORD`
 
 Add GitHub secret `RENDER_DEPLOY_HOOK_URL` in the backend repo if you want GitHub Actions to trigger Render redeploys.
 

@@ -61,6 +61,19 @@ type WorkRequest = {
   attachmentName?: string | null;
 };
 
+type TeamAttendance = {
+  employeeId: number;
+  employeeName: string;
+  employeeNumber: string;
+  office?: string | null;
+  todayStatus: string;
+  inTime?: string | null;
+  outTime?: string | null;
+  presentDays: number;
+  halfDayDays: number;
+  leaveDays: number;
+  workingDays: number;
+};
 type QueueItem =
   | {
       kind: "CORRECTION";
@@ -92,6 +105,8 @@ export default function ManagerPage() {
   const [team, setTeam] = useState<Employee[]>([]);
   const [pendingCorrections, setPendingCorrections] = useState<RegularizationRequest[]>([]);
   const [pendingWorkRequests, setPendingWorkRequests] = useState<WorkRequest[]>([]);
+  const [teamAttendance, setTeamAttendance] = useState<TeamAttendance[]>([]);
+  const [month, setMonth] = useState(dayjs().format('YYYY-MM'));
   const [remarks, setRemarks] = useState<Record<number, string>>({});
   const [queueTab, setQueueTab] = useState<"ALL" | "CORRECTION" | "WORK">("ALL");
   const [search, setSearch] = useState("");
@@ -115,19 +130,21 @@ export default function ManagerPage() {
   }, [ok, toastSuccess]);
 
   async function refresh() {
-    const [teamRes, correctionsRes, workRes] = await Promise.all([
+    const [teamRes, correctionsRes, workRes, attendanceRes] = await Promise.all([
       api.get<Employee[]>("/api/manager/team"),
       api.get<RegularizationRequest[]>("/api/manager/regularization-requests/pending"),
-      api.get<WorkRequest[]>("/api/manager/work-requests/pending"),
+      api.get<WorkRequest[]>('/api/manager/work-requests/pending'),
+      api.get<TeamAttendance[]>('/api/manager/team/attendance', { params: { month } }),
     ]);
     setTeam(teamRes.data);
     setPendingCorrections(correctionsRes.data);
     setPendingWorkRequests(workRes.data);
+    setTeamAttendance(attendanceRes.data);
   }
 
   useEffect(() => {
     refresh().catch((e: any) => setErr(e?.response?.data?.error ?? "Failed to load manager dashboard"));
-  }, []);
+  }, [month]);
 
   async function recommendCorrection(id: number) {
     setErr(null);
@@ -216,6 +233,18 @@ export default function ManagerPage() {
   }, [search, team]);
 
   const recommendedToday = pendingCorrections.filter((item) => item.date === dayjs().format("YYYY-MM-DD")).length;
+  const attendanceTotals = useMemo(() => {
+    return teamAttendance.reduce((acc, row) => {
+      acc.present += row.presentDays;
+      acc.half += row.halfDayDays;
+      acc.leave += row.leaveDays;
+      acc.working += row.workingDays;
+      if (row.todayStatus === "PRESENT") acc.presentToday += 1;
+      if (row.todayStatus === "HALF_DAY") acc.halfToday += 1;
+      if (row.todayStatus === "LEAVE" || row.todayStatus === "ABSENT") acc.outToday += 1;
+      return acc;
+    }, { present: 0, half: 0, leave: 0, working: 0, presentToday: 0, halfToday: 0, outToday: 0 });
+  }, [teamAttendance]);
 
   return (
     <Layout title="Manager Dashboard">
@@ -407,6 +436,55 @@ export default function ManagerPage() {
         </Box>
 
         <AppCard>
+          <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 900 }}>Team attendance</Typography>
+              <Typography sx={{ opacity: 0.72, mt: 0.75, fontSize: 13 }}>Today status with monthly attendance progress.</Typography>
+            </Box>
+            <TextField size="small" type="month" label="Month" value={month} onChange={(e) => setMonth(e.target.value)} InputLabelProps={{ shrink: true }} />
+          </Box>
+          <Divider sx={{ my: 2 }} />
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(4, 1fr)" }, gap: 1.25, mb: 2 }}>
+            {[
+              ["Present today", attendanceTotals.presentToday, "#DCFCE7", "#166534"],
+              ["Half day", attendanceTotals.halfToday, "#FEF3C7", "#92400E"],
+              ["Out / leave", attendanceTotals.outToday, "#FEE2E2", "#991B1B"],
+              ["Month coverage", attendanceTotals.working ? `${Math.round(((attendanceTotals.present + attendanceTotals.half * 0.5) / attendanceTotals.working) * 100)}%` : "0%", "#DBEAFE", "#1D4ED8"],
+            ].map(([label, value, bg, color]) => (
+              <Box key={String(label)} sx={{ borderRadius: 1.5, bgcolor: String(bg), p: 1.5, border: `1px solid ${String(color)}22` }}>
+                <Typography sx={{ color: String(color), fontSize: 11, fontWeight: 900 }}>{label}</Typography>
+                <Typography sx={{ color: String(color), fontSize: 24, fontWeight: 950 }}>{value}</Typography>
+              </Box>
+            ))}
+          </Box>
+          <Box sx={{ display: "grid", gap: 1 }}>
+            {teamAttendance.map((row) => {
+              const presentPct = row.workingDays ? Math.min(100, Math.round((row.presentDays / row.workingDays) * 100)) : 0;
+              const halfPct = row.workingDays ? Math.min(100 - presentPct, Math.round((row.halfDayDays / row.workingDays) * 100)) : 0;
+              const leavePct = row.workingDays ? Math.min(100 - presentPct - halfPct, Math.round((row.leaveDays / row.workingDays) * 100)) : 0;
+              return (
+                <Box key={row.employeeId} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1.2fr 120px 140px 1.2fr" }, gap: 1.25, alignItems: "center", p: 1.25, borderRadius: 1.5, border: "1px solid rgba(15,23,42,0.08)", bgcolor: "#fff" }}>
+                  <Box>
+                    <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{row.employeeName}</Typography>
+                    <Typography sx={{ opacity: 0.7, fontSize: 12 }}>{row.employeeNumber} | {row.office || "Default office"}</Typography>
+                  </Box>
+                  <Chip size="small" label={row.todayStatus.replaceAll("_", " ")} color={row.todayStatus === "PRESENT" ? "success" : row.todayStatus === "HALF_DAY" ? "warning" : "error"} sx={{ borderRadius: 1, fontWeight: 900, justifySelf: "start" }} />
+                  <Typography sx={{ fontSize: 12, color: "text.secondary" }}>{row.inTime ?? "--"} - {row.outTime ?? "--"}</Typography>
+                  <Box>
+                    <Box sx={{ height: 8, borderRadius: 99, overflow: "hidden", bgcolor: "#F1F5F9", display: "flex", mb: 0.65 }}>
+                      <Box sx={{ width: `${presentPct}%`, bgcolor: "#22C55E" }} />
+                      <Box sx={{ width: `${halfPct}%`, bgcolor: "#F59E0B" }} />
+                      <Box sx={{ width: `${leavePct}%`, bgcolor: "#EF4444" }} />
+                    </Box>
+                    <Typography sx={{ fontSize: 12, color: "text.secondary" }}>P {row.presentDays} | HD {row.halfDayDays} | L {row.leaveDays} / {row.workingDays}</Typography>
+                  </Box>
+                </Box>
+              );
+            })}
+            {!teamAttendance.length ? <Typography sx={{ opacity: 0.72, fontSize: 13 }}>No team attendance available.</Typography> : null}
+          </Box>
+        </AppCard>
+        <AppCard>
           <Typography variant="h6" sx={{ fontWeight: 900 }}>
             Manager action notes
           </Typography>
@@ -539,3 +617,6 @@ export default function ManagerPage() {
     </Layout>
   );
 }
+
+
+

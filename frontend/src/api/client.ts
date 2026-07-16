@@ -16,9 +16,9 @@ const resolvedBaseUrl = (() => {
   // with `VITE_API_URL=...` and restart `npm run dev`.
   // eslint-disable-next-line no-console
   console.warn(
-    "[api] VITE_API_URL is not set; falling back to http://localhost:8081. Create frontend/.env and restart Vite.",
+    "[api] VITE_API_URL is not set; falling back to http://localhost:3000. Create frontend/.env and restart Vite.",
   );
-  return "http://localhost:8081";
+  return "http://localhost:3000";
 })();
 
 export const api = axios.create({
@@ -135,3 +135,4 @@ export function clearLastAuthError() {
     // ignore
   }
 }
+

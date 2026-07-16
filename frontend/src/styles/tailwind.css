@@ -1,6 +1,4 @@
-/* ─────────────────────────────────────────────────────────
-   GOOGLE FONTS — must be FIRST before @tailwind
-───────────────────────────────────────────────────────── */
+/* Google Fonts: keep before Tailwind */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @tailwind base;
@@ -33,7 +31,7 @@
     scroll-behavior: smooth;
   }
 
-  /* ── PREMIUM BODY BACKGROUND ── */
+  
   body {
     min-height: 100vh;
     margin: 0;
@@ -46,7 +44,7 @@
     background-attachment: fixed;
   }
 
-  /* ── APP SHELL — animated mesh grid ── */
+  
   .app-shell {
     min-height: 100vh;
     position: relative;
@@ -58,7 +56,7 @@
     background-size: auto, 48px 48px, 48px 48px, auto;
   }
 
-  /* ── CUSTOM SCROLLBAR ── */
+  
   *::-webkit-scrollbar { width: 8px; height: 8px; }
   *::-webkit-scrollbar-track { background: rgba(226,232,240,0.5); border-radius: 99px; }
   *::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #94a3b8, #cbd5e1); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
@@ -75,9 +73,7 @@
 
   ::selection { background: rgba(99, 102, 241, 0.18); color: #0f172a; }
 
-  /* ─────────────────────────────────────────────────────
-     KEYFRAME ANIMATIONS — GLOBAL LIBRARY
-  ───────────────────────────────────────────────────────── */
+  
 
   /* Page entrance */
   @keyframes attendancePageIn {
@@ -177,9 +173,7 @@
     to { stroke-dashoffset: 0; }
   }
 
-  /* ─────────────────────────────────────────────────────
-     UTILITY CLASSES
-  ───────────────────────────────────────────────────────── */
+  
 
   /* Staggered card animations */
   .stat-card-anim { animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
@@ -247,18 +241,14 @@
     box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14) !important;
   }
 
-  /* ─────────────────────────────────────────────────────
-     RESPONSIVE
-  ───────────────────────────────────────────────────────── */
+  
   @media (max-width: 640px) {
     body { background-attachment: scroll; }
     .MuiButton-root { min-height: 42px; }
     .MuiDialog-paper { margin: 10px; width: calc(100% - 20px); }
   }
 
-  /* ─────────────────────────────────────────────────────
-     REDUCED MOTION
-  ───────────────────────────────────────────────────────── */
+  
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -268,3 +258,4 @@
     }
   }
 }
+

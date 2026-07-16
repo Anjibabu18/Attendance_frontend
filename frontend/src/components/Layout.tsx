@@ -41,10 +41,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
     const promises: Promise<any>[] = [
       api.get<CompanyProfile>("/api/company").then((r) => setCompany(r.data)).catch(() => { }),
       api.get<Notification[]>("/api/notifications").then((r) => {
-        setNotifications(r.data.map((n) => ({ ...n, read: true })));
-        if (r.data.some((n) => !n.read)) {
-          api.post("/api/notifications/read").catch(() => { });
-        }
+        setNotifications(r.data);
         setNotificationsReady(true);
       }).catch(() => setNotificationsReady(true)),
     ];
@@ -348,7 +345,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
                 <Chip size="small" icon={<ShieldOutlinedIcon />} label={roleLabel} sx={{ display: { xs: "none", sm: "inline-flex" }, height: 24, bgcolor: "#eef2ff", color: "#1d4ed8" }} />
               </Box>
               <Typography sx={{ display: { xs: "none", sm: "block" }, fontSize: 12, color: "text.secondary", lineHeight: 1.2, mt: 0.35 }}>
-                {auth?.name ? auth.name : "Attendance Management"} | {activeLabel} {activeTimeText}
+                {auth?.name ? auth.name : "Attendance Management"} - {activeLabel} {activeTimeText}
               </Typography>
             </Box>
           </Box>
@@ -392,7 +389,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
           </Tooltip>
           <Chip
             size="small"
-            label={`⏱ ${activeTimeText}`}
+            label={activeTimeText}
             sx={{
               display: { xs: "none", lg: "inline-flex" },
               height: 34,
@@ -505,7 +502,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
         <DialogContent sx={{ display: "grid", gap: 1.25, pt: 1 }}>
           {notifications.length ? (
             <Box sx={{ p: 1.5, borderRadius: 2.5, background: "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(37,99,235,0.04))", border: "1px solid rgba(99,102,241,0.12)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: 14 }}>📬 Inbox</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: 14 }}>Inbox</Typography>
               <Chip size="small" label={`${notifications.length} total`} sx={{ bgcolor: "rgba(99,102,241,0.12)", color: "#4f46e5", fontWeight: 700 }} />
             </Box>
           ) : null}
@@ -537,3 +534,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
     </div>
   );
 }
+
+
+
+
