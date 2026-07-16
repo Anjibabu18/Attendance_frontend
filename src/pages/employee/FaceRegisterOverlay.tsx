@@ -1,5 +1,4 @@
 import React, { useRef, useState, useEffect } from 'react';
-import * as faceapi from '@vladmandic/face-api';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
@@ -7,6 +6,7 @@ import { api } from '../../api/client';
 
 export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const faceApiRef = useRef<any>(null);
   const [loadingMsg, setLoadingMsg] = useState('Initializing camera...');
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -18,7 +18,9 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
     const init = async () => {
       try {
         setLoadingMsg('Loading Face AI Models (might take a moment)...');
-        // Load models from CDN
+        // Load models from CDN only when the employee opens Face AI setup.
+        const faceapi = await import('@vladmandic/face-api');
+        faceApiRef.current = faceapi;
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -53,6 +55,8 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
     if (!modelsLoaded || !videoRef.current) return;
     setLoadingMsg('Analyzing face...');
     try {
+      const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
+      faceApiRef.current = faceapi;
       const detection = await faceapi.detectSingleFace(videoRef.current)
         .withFaceLandmarks()
         .withFaceDescriptor();

@@ -8,7 +8,6 @@ import { useEmployee } from './EmployeeContext';
 import dayjs from 'dayjs';
 import jsQR from 'jsqr';
 import 'leaflet/dist/leaflet.css';
-import * as faceapi from '@vladmandic/face-api';
 
 export function PunchOverlay({ 
   open, 
@@ -40,6 +39,7 @@ export function PunchOverlay({
   const [officeLocation, setOfficeLocation] = useState<{ lat: number; lng: number; radius: number } | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
+  const faceApiRef = useRef<any>(null);
 
 
   // Render leaflet map when error occurs and we have location data
@@ -239,6 +239,8 @@ export function PunchOverlay({
     if (!faceModelsLoaded) {
       setBusy(true);
       try {
+        const faceapi = await import('@vladmandic/face-api');
+        faceApiRef.current = faceapi;
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         await Promise.all([
           faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
@@ -292,6 +294,8 @@ export function PunchOverlay({
 
       setBusy(true);
       // Run Face Recognition
+      const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
+      faceApiRef.current = faceapi;
       const detection = await faceapi.detectSingleFace(v).withFaceLandmarks().withFaceDescriptor();
       if (detection) {
         const descriptorArray = Array.from(detection.descriptor);

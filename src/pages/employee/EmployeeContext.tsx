@@ -70,10 +70,12 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
 
   const refreshToday = async () => {
     try {
-      const { data } = await api.get<Attendance | null>('/api/employee/punch/today');
-      setTodayEntry(data);
-      const breaksData = await api.get<BreakEntry[]>('/api/employee/breaks/today');
-      setBreaks(breaksData.data);
+      const [todayRes, breaksRes] = await Promise.allSettled([
+        api.get<Attendance | null>('/api/employee/punch/today'),
+        api.get<BreakEntry[]>('/api/employee/breaks/today')
+      ]);
+      if (todayRes.status === 'fulfilled') setTodayEntry(todayRes.value.data);
+      if (breaksRes.status === 'fulfilled') setBreaks(breaksRes.value.data);
     } catch (e) {
       console.error(e);
     }
@@ -110,8 +112,7 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
       api.get<DailyGroupPhoto[]>('/api/daily-group-photos', { params: { month } }),
       api.get<Payslip>('/api/employee/attendance/payslip', { params: { month } }),
       api.get<DeviceStatus>('/api/account/devices/current', { params: { deviceId: getDeviceId() } }),
-      api.get<LeaveBalance[]>('/api/employee/leave-balances', { params: { year } }),
-      new Promise(res => setTimeout(res, 2000))
+      api.get<LeaveBalance[]>('/api/employee/leave-balances', { params: { year } })
     ]);
 
     const [prof, att, sum, set, hol, dPhotos, ps, dev, balances] = requests;
@@ -132,10 +133,8 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
     if (errors.length && prof.status !== 'fulfilled' && att.status !== 'fulfilled') {
       setError(errors[0]);
     }
-
-    await refreshToday();
-    await refreshRequests();
     setLoading(false);
+    void Promise.allSettled([refreshToday(), refreshRequests()]);
   };
 
   useEffect(() => {
