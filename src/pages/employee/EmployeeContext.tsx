@@ -110,7 +110,8 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
       api.get<DailyGroupPhoto[]>('/api/daily-group-photos', { params: { month } }),
       api.get<Payslip>('/api/employee/attendance/payslip', { params: { month } }),
       api.get<DeviceStatus>('/api/account/devices/current', { params: { deviceId: getDeviceId() } }),
-      api.get<LeaveBalance[]>('/api/employee/leave-balances', { params: { year } })
+      api.get<LeaveBalance[]>('/api/employee/leave-balances', { params: { year } }),
+      new Promise(res => setTimeout(res, 2000))
     ]);
 
     const [prof, att, sum, set, hol, dPhotos, ps, dev, balances] = requests;

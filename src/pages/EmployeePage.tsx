@@ -43,13 +43,35 @@ function EmployeeContent() {
 
   if (loading) {
     return (
-      <Box sx={{ minHeight: '100vh', bgcolor: '#F6F8FB', display: 'grid', placeItems: 'center', p: 3 }}>
-        <Box component={motion.div} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} sx={{ width: 'min(420px, 100%)', bgcolor: 'white', border: '1px solid #E3E8F0', borderRadius: '8px', p: 4, textAlign: 'center', boxShadow: '0 24px 70px rgba(15, 23, 42, 0.12)' }}>
-          <Box component={motion.div} animate={{ rotate: 360 }} transition={{ duration: 1.4, repeat: Infinity, ease: 'linear' }} sx={{ display: 'inline-flex' }}>
-            <CircularProgress size={42} thickness={4} sx={{ color: '#2563EB', mb: 2 }} />
+      <Box sx={{ minHeight: '100vh', bgcolor: '#F5F7FB', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: 64, bgcolor: 'white', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', px: 3, justifyContent: 'space-between' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }} sx={{ width: 42, height: 42, borderRadius: '8px', bgcolor: '#E2E8F0' }} />
+            <Box>
+              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.1 }} sx={{ width: 120, height: 16, borderRadius: '4px', bgcolor: '#E2E8F0', mb: 1 }} />
+              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }} sx={{ width: 80, height: 12, borderRadius: '4px', bgcolor: '#E2E8F0' }} />
+            </Box>
           </Box>
-          <Typography sx={{ fontWeight: 900, color: '#102033', mb: 0.5 }}>Loading employee workspace</Typography>
-          <Typography sx={{ color: '#64748B', fontSize: 14 }}>Syncing attendance, requests, holidays, and reports.</Typography>
+          <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }} sx={{ width: 40, height: 40, borderRadius: '20px', bgcolor: '#E2E8F0' }} />
+        </Box>
+        <Box sx={{ maxWidth: 1220, mx: 'auto', w: '100%', px: { xs: 2, sm: 3 }, py: 4, display: 'grid', gridTemplateColumns: { md: '280px 1fr' }, gap: 3, flex: 1 }}>
+          <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', gap: 2 }}>
+            {[1, 2, 3, 4].map(i => (
+              <Box key={i} component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }} sx={{ width: '100%', height: 48, borderRadius: '8px', bgcolor: '#E2E8F0' }} />
+            ))}
+          </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }} sx={{ width: 200, height: 32, borderRadius: '8px', bgcolor: '#E2E8F0' }} />
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
+              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }} sx={{ height: 160, borderRadius: '8px', bgcolor: 'white', border: '1px solid #E2E8F0' }} />
+              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }} sx={{ height: 160, borderRadius: '8px', bgcolor: 'white', border: '1px solid #E2E8F0' }} />
+            </Box>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+              {[1, 2, 3, 4].map(i => (
+                <Box key={i} component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.4 + i * 0.1 }} sx={{ height: 100, borderRadius: '8px', bgcolor: 'white', border: '1px solid #E2E8F0' }} />
+              ))}
+            </Box>
+          </Box>
         </Box>
       </Box>
     );
