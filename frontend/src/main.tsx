@@ -8,6 +8,12 @@ window.addEventListener('error', (e) => {
     window.location.reload();
   }
 });
+window.addEventListener('unhandledrejection', (e) => {
+  if (e.reason && e.reason.message && e.reason.message.includes('Failed to fetch dynamically imported module')) {
+    console.warn('Chunk load error detected (promise), reloading page to fetch new chunks...');
+    window.location.reload();
+  }
+});
 
 import { CssBaseline } from "@mui/material";
 import "./styles/tailwind.css";
