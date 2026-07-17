@@ -30,7 +30,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const [passwordOk, setPasswordOk] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [booting, setBooting] = useState(true);
+  const [booting, setBooting] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileActionsAnchor, setMobileActionsAnchor] = useState<null | HTMLElement>(null);
   const [sessionNow, setSessionNow] = useState(() => Date.now());
@@ -38,20 +38,23 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const [notificationsReady, setNotificationsReady] = useState(false);
 
   useEffect(() => {
-    const promises: Promise<any>[] = [
-      api.get<CompanyProfile>("/api/company").then((r) => setCompany(r.data)).catch(() => { }),
-      api.get<Notification[]>("/api/notifications").then((r) => {
-        setNotifications(r.data);
-        setNotificationsReady(true);
-      }).catch(() => setNotificationsReady(true)),
-    ];
-    if (auth?.role === "ROLE_EMPLOYEE") {
-      promises.push(
-        api.get<any>("/api/employee/punch/today").then((r) => setTodayPunch(r.data)).catch(() => { })
-      );
+    if (!auth) return;
+    setBooting(true);
+    api.get<CompanyProfile>("/api/company")
+      .then((r) => setCompany(r.data))
+      .catch(() => { });
+    api.get<Notification[]>("/api/notifications")
+      .then((r) => setNotifications(r.data))
+      .catch(() => { })
+      .finally(() => setNotificationsReady(true));
+    if (auth.role === "ROLE_EMPLOYEE") {
+      api.get<any>("/api/employee/punch/today")
+        .then((r) => setTodayPunch(r.data))
+        .catch(() => { });
     }
-    Promise.all(promises).finally(() => setBooting(false));
-  }, []);
+    const timer = window.setTimeout(() => setBooting(false), 250);
+    return () => window.clearTimeout(timer);
+  }, [auth?.role]);
 
   const { showToast } = useToast();
   const [toastedIds] = useState<Set<number>>(() => {
@@ -109,7 +112,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
           .then((r) => setTodayPunch(r.data))
           .catch(() => { });
       }
-    }, 5000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [auth]);
 
