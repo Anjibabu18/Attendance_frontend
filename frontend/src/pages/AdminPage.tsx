@@ -84,21 +84,6 @@ type ApprovalItem = {
   createdAt?: string | null;
   attachmentUrl?: string | null;
 };
-type AuditEvent = {
-  type: string;
-  id: number;
-  employeeId?: number | null;
-  employeeName?: string | null;
-  employeeNumber?: string | null;
-  status?: string | null;
-  action?: string | null;
-  stage?: string | null;
-  reason?: string | null;
-  officeLocationId?: number | null;
-  faceScore?: number | null;
-  faceVerified?: boolean | null;
-  createdAt: string;
-};
 type AttendanceSettings = {
   defaultInTime: string;
   defaultOutTime: string;
@@ -137,17 +122,6 @@ const timePayload = (value: string) => `1970-01-01T${value.length === 5 ? `${val
 const dateOnly = (value?: string | Date | null) => value ? new Date(value).toISOString().slice(0, 10) : "--";
 const displayTime = (value?: string | Date | null) => value ? timeOnly(String(value), "--") : "--";
 
-const parseOfficeCoordinates = (latInput: string, lngInput: string) => {
-  const latRaw = latInput.trim();
-  const lngRaw = lngInput.trim();
-  const combined = `${latRaw} ${lngRaw}`.trim();
-  const mapMatch = combined.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || combined.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
-  const lat = mapMatch ? Number(mapMatch[1]) : Number(latRaw);
-  const lng = mapMatch ? Number(mapMatch[2]) : Number(lngRaw);
-  if (!Number.isFinite(lat) || lat < -90 || lat > 90) throw new Error("Latitude must be a number between -90 and 90. Example: 17.4931753");
-  if (!Number.isFinite(lng) || lng < -180 || lng > 180) throw new Error("Longitude must be a number between -180 and 180. Example: 78.4132323");
-  return { lat, lng };
-};
 const requestTone = (kind: ApprovalKind) => {
   if (kind === "leave") return { bg: "#EFF6FF", color: "#1D4ED8", label: "Leave" };
   if (kind === "correction") return { bg: "#F0FDFA", color: "#0F766E", label: "Correction" };
@@ -168,7 +142,6 @@ export default function AdminPage() {
   const [analytics, setAnalytics] = useState<Record<string, any> | null>(null);
   const [payrollLock, setPayrollLock] = useState<PayrollLock | null>(null);
   const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([]);
-  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [approvalFilter, setApprovalFilter] = useState<ApprovalKind | "all">("all");
   const [approvalRemarks, setApprovalRemarks] = useState<Record<string, string>>({});
   const [approvalBusyId, setApprovalBusyId] = useState<string | null>(null);
@@ -200,13 +173,14 @@ export default function AdminPage() {
   const [officeLng, setOfficeLng] = useState("");
   const [officeRadius, setOfficeRadius] = useState("100");
   const [officeIp, setOfficeIp] = useState("");
+  const [editOfficeId, setEditOfficeId] = useState<number | null>(null);
 
   const [employeeForm, setEmployeeForm] = useState({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
 
   async function refresh() {
     setBusy(true);
     try {
-      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes, auditRes] = await Promise.allSettled([
+      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes] = await Promise.allSettled([
         api.get<Employee[]>("/api/admin/employees"),
         api.get<CompanyRole[]>("/api/admin/company-roles"),
         api.get<Department[]>("/api/admin/departments"),
@@ -221,7 +195,6 @@ export default function AdminPage() {
         api.get<any[]>("/api/hr/regularization-requests/pending"),
         api.get<any[]>("/api/hr/work-requests/pending"),
         api.get<any[]>("/api/hr/comp-off-requests/pending"),
-        api.get<AuditEvent[]>("/api/admin/audit-logs", { params: { limit: 60 } }),
       ]);
       if (employeeRes.status === "fulfilled") setEmployees(employeeRes.value.data);
       if (roleRes.status === "fulfilled") setRoles(roleRes.value.data);
@@ -233,7 +206,6 @@ export default function AdminPage() {
       if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.data);
       if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value.data);
       if (payrollLockRes.status === "fulfilled") setPayrollLock(payrollLockRes.value.data);
-      if (auditRes.status === "fulfilled") setAuditEvents(auditRes.value.data);
       const approvalRows: ApprovalItem[] = [];
       if (leaveReqRes.status === "fulfilled") {
         approvalRows.push(...leaveReqRes.value.data.map((item: any) => ({
@@ -310,7 +282,6 @@ export default function AdminPage() {
         { label: "Corrections", result: correctionReqRes },
         { label: "Work requests", result: workReqRes },
         { label: "Comp-off requests", result: compOffReqRes },
-        { label: "Audit events", result: auditRes },
       ];
       const rejected = requestResults.filter((item): item is { label: string; result: PromiseRejectedResult } => item.result.status === "rejected");
       const failedList = rejected.map((item) => `${item.label} (${item.result.reason?.response?.status || "network"})`).join(", ");
@@ -371,7 +342,7 @@ export default function AdminPage() {
   }
 
   const selectedQrOffice = offices.find((office) => String(office.id) === selectedQrOfficeId) || offices[0];
-  const qrImageUrl = officeQr?.token ? `https://api.qrserver.com/v1/create-qr-code/?size=720x720&margin=24&data=${encodeURIComponent(officeQr.token)}` : "";
+  const qrImageUrl = officeQr?.token ? `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(officeQr.token)}` : "";
 
   async function loadLatestOfficeQr(officeId = selectedQrOffice?.id) {
     if (!officeId) return;
@@ -446,23 +417,36 @@ export default function AdminPage() {
   }
 
   async function createOffice() {
-    if (!officeLat.trim()) return toastError("Enter latitude, or paste a Google Maps link in Latitude.");
-    const coords = parseOfficeCoordinates(officeLat, officeLng);
+    if (!officeLat.trim() || !officeLng.trim()) return;
     const radius = Number(officeRadius);
     if (!Number.isFinite(radius) || radius <= 0) return toastError("Radius must be a positive number in meters.");
-    await api.post("/api/admin/office-location/active", {
-      officeName: officeName.trim(),
-      latitude: coords.lat,
-      longitude: coords.lng,
-      radiusMeters: radius,
-      officeIpAddress: officeIp.trim() || undefined,
-    });
+    
+    if (editOfficeId) {
+      await api.put(`/api/admin/office-location/${editOfficeId}`, {
+        officeName: officeName.trim(),
+        latitude: Number(officeLat),
+        longitude: Number(officeLng),
+        radiusMeters: radius,
+        officeIpAddress: officeIp.trim() || undefined,
+      });
+      toastSuccess("Office updated successfully");
+    } else {
+      await api.post("/api/admin/office-location/active", {
+        officeName: officeName.trim(),
+        latitude: Number(officeLat),
+        longitude: Number(officeLng),
+        radiusMeters: radius,
+        officeIpAddress: officeIp.trim() || undefined,
+      });
+      toastSuccess("Office saved successfully");
+    }
+    
     setOfficeName("");
     setOfficeLat("");
     setOfficeLng("");
     setOfficeRadius("100");
     setOfficeIp("");
-    toastSuccess("Office saved");
+    setEditOfficeId(null);
     await refresh();
   }
 
@@ -585,22 +569,6 @@ export default function AdminPage() {
     }
   }
 
-
-  async function exportAuditCsv() {
-    setReportBusy(true);
-    try {
-      const res = await api.get<Blob>("/api/admin/audit-logs.csv", { responseType: "blob" });
-      downloadBlob(res.data, `attendance-audit-${month}.csv`);
-    } finally {
-      setReportBusy(false);
-    }
-  }
-
-  async function scanMissingCheckoutsNow() {
-    const response = await api.post<{ openEntries: number; createdExceptions: number }>("/api/hr/exceptions/scan-missing-checkouts");
-    toastSuccess(`Missing checkout scan complete: ${response.data.createdExceptions} new exceptions`);
-    await refresh();
-  }
   async function setAdminPayrollLocked(locked: boolean) {
     const res = await api.post<PayrollLock>("/api/hr/payroll-lock", null, { params: { month, locked } });
     setPayrollLock(res.data);
@@ -724,38 +692,6 @@ export default function AdminPage() {
           </Box>
         </Box>
 
-
-        <Box sx={{ ...cardSx, p: 2.25 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, flexWrap: "wrap", mb: 2 }}>
-            <Box>
-              <Typography sx={{ fontWeight: 950, fontSize: 22 }}>Production audit trail</Typography>
-              <Typography sx={{ color: "#64748B", fontSize: 13 }}>Review punch attempts, QR scans, face verification, and missing-checkout exceptions.</Typography>
-            </Box>
-            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-              <Button disabled={reportBusy} onClick={() => scanMissingCheckoutsNow().catch((err) => toastError(err?.response?.data?.error || "Missing checkout scan failed"))} variant="outlined" sx={{ borderRadius: "8px", fontWeight: 900 }}>Scan missing checkout</Button>
-              <Button disabled={reportBusy} onClick={() => exportAuditCsv().catch((err) => toastError(err?.response?.data?.error || "Audit export failed"))} variant="contained" startIcon={<FileDownloadRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900 }}>Audit CSV</Button>
-            </Box>
-          </Box>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(3, minmax(0, 1fr))" }, gap: 1 }}>
-            {auditEvents.slice(0, 9).map((event) => (
-              <Box key={`${event.type}-${event.id}`} sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.25, bgcolor: "#FFFFFF", minWidth: 0 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb: 0.75 }}>
-                  <Chip size="small" label={event.type.replaceAll("_", " ")} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: event.status === "ACCEPTED" || event.status === "VERIFIED" ? "#DCFCE7" : event.status === "REJECTED" || event.status === "FAILED" ? "#FEE2E2" : "#E0F2FE", color: event.status === "ACCEPTED" || event.status === "VERIFIED" ? "#166534" : event.status === "REJECTED" || event.status === "FAILED" ? "#991B1B" : "#075985" }} />
-                  <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 800 }}>{dateOnly(event.createdAt)}</Typography>
-                </Box>
-                <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.employeeName || "System event"}</Typography>
-                <Typography sx={{ color: "#475569", fontSize: 12 }}>{event.action || event.stage || "Audit"} - {event.status || "--"}</Typography>
-                <Typography sx={{ color: "#64748B", fontSize: 12, mt: 0.5, minHeight: 34, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{event.reason || (event.faceScore !== null && event.faceScore !== undefined ? `Face score ${Number(event.faceScore).toFixed(2)}` : "No issue recorded")}</Typography>
-              </Box>
-            ))}
-            {!auditEvents.length ? (
-              <Box sx={{ border: "1px dashed #CBD5E1", borderRadius: "8px", p: 2, bgcolor: "#F8FAFC", gridColumn: "1 / -1" }}>
-                <Typography sx={{ fontWeight: 900 }}>No audit events yet</Typography>
-                <Typography sx={{ color: "#64748B", fontSize: 13 }}>After importing the audit SQL, QR scans and punch attempts will appear here automatically.</Typography>
-              </Box>
-            ) : null}
-          </Box>
-        </Box>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 1fr) 430px" }, gap: 2.5, alignItems: "start" }}>
           <Box sx={{ ...cardSx, p: 2.25 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", mb: 2, flexWrap: "wrap" }}>
@@ -837,11 +773,40 @@ export default function AdminPage() {
                   <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1 }}>
                     <TextField size="small" label="Office name" value={officeName} onChange={(e) => setOfficeName(e.target.value)} />
                     <TextField size="small" label="IP whitelist optional" value={officeIp} onChange={(e) => setOfficeIp(e.target.value)} />
-                    <TextField size="small" label="Latitude or Google Maps link" value={officeLat} onChange={(e) => setOfficeLat(e.target.value)} helperText="Example: 17.4931753 or paste Maps URL" />
-                    <TextField size="small" label="Longitude" value={officeLng} onChange={(e) => setOfficeLng(e.target.value)} helperText="Example: 78.4132323" />
+                    <TextField size="small" label="Latitude" value={officeLat} onChange={(e) => setOfficeLat(e.target.value)} />
+                    <TextField size="small" label="Longitude" value={officeLng} onChange={(e) => setOfficeLng(e.target.value)} />
                     <TextField size="small" label="Radius meters" value={officeRadius} onChange={(e) => setOfficeRadius(e.target.value)} />
-                    <Button variant="contained" onClick={() => createOffice().catch((err) => toastError(err?.response?.data?.error || "Office failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Save office</Button>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Button variant="contained" onClick={() => createOffice().catch((err) => toastError(err?.response?.data?.error || "Office failed"))} sx={{ borderRadius: "8px", fontWeight: 900, flex: 1 }}>
+                        {editOfficeId ? "Update office" : "Save office"}
+                      </Button>
+                      {editOfficeId && (
+                        <Button variant="outlined" onClick={() => { setEditOfficeId(null); setOfficeName(""); setOfficeLat(""); setOfficeLng(""); setOfficeRadius("100"); setOfficeIp(""); }} sx={{ borderRadius: "8px", fontWeight: 900 }}>
+                          Cancel
+                        </Button>
+                      )}
+                    </Box>
                   </Box>
+                  {offices.length > 0 && (
+                    <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {offices.map((off) => (
+                        <Box key={off.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                          <Box>
+                            <Typography sx={{ fontWeight: 800, fontSize: 13 }}>{off.officeName || `Office #${off.id}`}</Typography>
+                            <Typography sx={{ color: '#64748B', fontSize: 12 }}>Radius: {off.radiusMeters}m | IP: {off.officeIpAddress || 'None'}</Typography>
+                          </Box>
+                          <Button size="small" variant="outlined" onClick={() => {
+                            setEditOfficeId(off.id);
+                            setOfficeName(off.officeName || "");
+                            setOfficeLat(String(off.latitude));
+                            setOfficeLng(String(off.longitude));
+                            setOfficeRadius(String(off.radiusMeters));
+                            setOfficeIp(off.officeIpAddress || "");
+                          }}>Edit</Button>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
                 </Box>
               </Box>
             </Box>
@@ -867,15 +832,12 @@ export default function AdminPage() {
                 </Box>
                 {officeQr?.token ? (
                   <Box sx={{ border: "1px solid #DCE7F3", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC", display: "grid", gap: 1.25, justifyItems: "center" }}>
-                    <Box component="img" src={qrImageUrl} alt="Office attendance QR" sx={{ width: "min(100%, 340px)", aspectRatio: "1 / 1", borderRadius: "8px", border: "12px solid white", boxShadow: "0 14px 34px rgba(15,23,42,0.12)" }} />
+                    <Box component="img" src={qrImageUrl} alt="Office attendance QR" sx={{ width: "min(100%, 240px)", aspectRatio: "1 / 1", borderRadius: "8px", border: "8px solid white", boxShadow: "0 14px 34px rgba(15,23,42,0.12)" }} />
                     <Box sx={{ width: "100%", bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
                       <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Office</Typography>
                       <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{officeQr.officeName || selectedQrOffice?.officeName || "Office"}</Typography>
                     </Box>
-                    <Box sx={{ width: "100%", display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
-                      <Button fullWidth variant="outlined" startIcon={<ContentCopyRoundedIcon />} onClick={() => copyOfficeQrToken().catch(() => toastError("Copy failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Copy token</Button>
-                      <Button fullWidth variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open printable QR</Button>
-                    </Box>
+                    <Button fullWidth variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open printable QR</Button>
                     <Typography sx={{ color: "#64748B", fontSize: 12, textAlign: "center" }}>This same QR stays valid. Print it once and keep it at the office entrance for daily punch scans.</Typography>
                   </Box>
                 ) : (
@@ -1023,14 +985,6 @@ export default function AdminPage() {
     </Box>
   );
 }
-
-
-
-
-
-
-
-
 
 
 
