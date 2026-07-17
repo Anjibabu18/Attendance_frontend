@@ -114,6 +114,14 @@ export function PunchOverlay({
     return () => stopCamera();
   }, [open]);
 
+  // Ensure video element receives the stream even if it remounts during step transitions
+  useEffect(() => {
+    if (videoRef.current && streamRef.current && videoRef.current.srcObject !== streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  });
+
   const stopCamera = () => {
     qrScanActiveRef.current = false;
     streamRef.current?.getTracks().forEach(t => t.stop());
@@ -281,6 +289,14 @@ export function PunchOverlay({
     setBusy(true);
     setError(null);
     try {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        if (v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) break;
+        await new Promise(r => setTimeout(r, 150));
+      }
+      if (v.videoWidth === 0 || v.videoHeight === 0) {
+        throw new Error("Camera frame is not ready. Please wait a second and try again.");
+      }
+      
       const c = document.createElement('canvas');
       c.width = v.videoWidth; 
       c.height = v.videoHeight;
