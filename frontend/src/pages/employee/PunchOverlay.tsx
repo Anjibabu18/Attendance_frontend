@@ -123,8 +123,13 @@ export function PunchOverlay({
   const stopCamera = () => {
     qrScanActiveRef.current = false;
     setCameraActive(false);
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   };
 
   // ----- QR Scanning -----
