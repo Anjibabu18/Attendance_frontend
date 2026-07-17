@@ -30,6 +30,7 @@ export function PunchOverlay({
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
   const [faceRegisteredThisSession, setFaceRegisteredThisSession] = useState(false);
   const [showFaceRegister, setShowFaceRegister] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -117,6 +118,7 @@ export function PunchOverlay({
 
   const stopCamera = () => {
     qrScanActiveRef.current = false;
+    setCameraActive(false);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
   };
@@ -247,11 +249,12 @@ export function PunchOverlay({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        setCameraActive(true);
         videoRef.current.play().catch(err => console.warn("Auto-play prevented", err));
       }
     } catch (e: any) {
       console.warn("Camera unavailable", e);
-      setError("Camera unavailable for selfie. Please check permissions.");
+      setError("Camera unavailable for selfie. Please check permissions or tap 'Start Camera'.");
     }
 
     if (!faceModelsLoaded) {
@@ -408,9 +411,15 @@ export function PunchOverlay({
             <Box sx={{ flex: 1, position: 'relative', borderRadius: '50%', overflow: 'hidden', border: '4px solid #0052FF', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
               <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </Box>
-            <Button variant="contained" onClick={handleCaptureAndPunch} disabled={busy} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 2, fontSize: 18, fontWeight: 700 }}>
-              {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Capture & Punch'}
-            </Button>
+            {cameraActive ? (
+              <Button variant="contained" onClick={handleCaptureAndPunch} disabled={busy} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 2, fontSize: 18, fontWeight: 700 }}>
+                {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Capture & Punch'}
+              </Button>
+            ) : (
+              <Button variant="contained" onClick={() => startSelfieCamera(true)} disabled={busy} sx={{ bgcolor: '#10B981', borderRadius: 8, py: 2, fontSize: 18, fontWeight: 700 }}>
+                {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Start Camera'}
+              </Button>
+            )}
           </Box>
         )}
 
