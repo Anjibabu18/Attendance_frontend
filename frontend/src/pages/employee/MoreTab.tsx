@@ -10,8 +10,12 @@ import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsAct
 import ArrowForwardIosRoundedIcon from '@mui/icons-material/ArrowForwardIosRounded';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
+
+import { useThemeContext } from '../../theme/ThemeContext';
 
 import { api } from '../../api/client';
 import { clearAuth } from '../../auth/auth';
@@ -23,20 +27,22 @@ import { FaceRegisterOverlay } from './FaceRegisterOverlay';
 const MotionBox = motion.create(Box);
 
 const cardSx = {
-  bgcolor: '#FFFFFF',
-  border: '1px solid #E3E8F0',
+  bgcolor: 'background.paper',
+  border: '1px solid',
+  borderColor: 'divider',
   borderRadius: '8px',
   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.05)',
   transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
   '&:hover': {
     transform: 'translateY(-2px)',
     boxShadow: '0 18px 44px rgba(15, 23, 42, 0.09)',
-    borderColor: '#C7D2FE',
+    borderColor: 'primary.light',
   },
 };
 
 export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 'work' | 'regularization') => void }) {
   const { profile, month, leaveBalances, monthSummary, payslip, deviceStatus } = useEmployee();
+  const { mode, toggleColorMode } = useThemeContext();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
@@ -95,7 +101,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
 
   const handleLogout = () => {
     clearAuth();
-    window.location.href = '/';
+    window.location.replace('/login');
   };
 
   const totalLeave = leaveBalances.reduce((sum, item) => sum + item.remainingDays, 0);
@@ -157,8 +163,8 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
               ['Worked', `${Math.floor((monthSummary?.totalWorkedMinutes || 0) / 60)}h`],
               ['Net pay', payslip ? `Rs ${Math.round(payslip.netPay)}` : '--'],
             ].map(([label, value]) => (
-              <Box key={label} sx={{ bgcolor: '#F8FAFC', borderRadius: '8px', p: 1.25 }}>
-                <Typography sx={{ color: '#64748B', fontSize: 12, fontWeight: 800 }}>{label}</Typography>
+              <Box key={label} sx={{ bgcolor: 'background.default', borderRadius: '8px', p: 1.25 }}>
+                <Typography sx={{ color: 'text.secondary', fontSize: 12, fontWeight: 800 }}>{label}</Typography>
                 <Typography sx={{ fontWeight: 900 }}>{value}</Typography>
               </Box>
             ))}
@@ -170,14 +176,14 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
         <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 1.5 }}>Leave balance</Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 1 }}>
           {leaveBalances.length ? leaveBalances.map((item) => (
-            <Box key={item.id} sx={{ border: '1px solid #EEF2F7', borderRadius: '8px', p: 1.5, display: 'flex', justifyContent: 'space-between', gap: 1.5, alignItems: 'center' }}>
+            <Box key={item.id} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '8px', p: 1.5, display: 'flex', justifyContent: 'space-between', gap: 1.5, alignItems: 'center' }}>
               <Box>
                 <Typography sx={{ fontWeight: 900 }}>{item.leaveType.replaceAll('_', ' ')}</Typography>
-                <Typography sx={{ color: '#64748B', fontSize: 13 }}>{item.usedDays} used of {item.allocatedDays} in {item.year}</Typography>
+                <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>{item.usedDays} used of {item.allocatedDays} in {item.year}</Typography>
               </Box>
-              <Typography sx={{ fontWeight: 900, fontSize: 22, color: item.remainingDays > 0 ? '#15803D' : '#B91C1C' }}>{item.remainingDays}d</Typography>
+              <Typography sx={{ fontWeight: 900, fontSize: 22, color: item.remainingDays > 0 ? 'success.main' : 'error.main' }}>{item.remainingDays}d</Typography>
             </Box>
-          )) : <Typography sx={{ color: '#64748B' }}>No leave balances assigned yet.</Typography>}
+          )) : <Typography sx={{ color: 'text.secondary' }}>No leave balances assigned yet.</Typography>}
         </Box>
       </Box>
 
@@ -191,53 +197,62 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
           ].map((item) => (
             <React.Fragment key={item.primary}>
               <ListItemButton sx={{ py: 1.4 }}>
-                <ListItemIcon sx={{ color: '#2563EB', minWidth: 44 }}>{item.icon}</ListItemIcon>
-                <ListItemText primary={item.primary} secondary={item.secondary} primaryTypographyProps={{ fontWeight: 900 }} secondaryTypographyProps={{ color: '#64748B', fontSize: 13 }} />
-                <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: '#CBD5E1' }} />
+                <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.primary} secondary={item.secondary} primaryTypographyProps={{ fontWeight: 900 }} secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }} />
+                <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.5 }} />
               </ListItemButton>
               <Divider />
             </React.Fragment>
           ))}
 
+          <ListItemButton onClick={toggleColorMode} sx={{ py: 1.4 }}>
+            <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>
+              {mode === 'dark' ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />}
+            </ListItemIcon>
+            <ListItemText primary="Appearance" secondary={mode === 'dark' ? 'Dark Mode' : 'Light Mode'} primaryTypographyProps={{ fontWeight: 900 }} secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }} />
+            <Switch checked={mode === 'dark'} color="primary" />
+          </ListItemButton>
+          <Divider />
+
           <ListItemButton sx={{ py: 1.4 }}>
-            <ListItemIcon sx={{ color: '#2563EB', minWidth: 44 }}><NotificationsActiveRoundedIcon /></ListItemIcon>
-            <ListItemText primary="Push Notifications" secondary="Check-in, checkout, and approval alerts" primaryTypographyProps={{ fontWeight: 900 }} secondaryTypographyProps={{ color: '#64748B', fontSize: 13 }} />
+            <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}><NotificationsActiveRoundedIcon /></ListItemIcon>
+            <ListItemText primary="Push Notifications" secondary="Check-in, checkout, and approval alerts" primaryTypographyProps={{ fontWeight: 900 }} secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }} />
             <Switch checked={pushEnabled} onChange={handleTogglePush} color="primary" disabled={pushLoading} />
           </ListItemButton>
           {pushEnabled && (
             <ListItemButton onClick={() => sendTestNotification().catch((err) => alert(err.message))} sx={{ py: 1.2, pl: 7 }}>
-              <ListItemText primary="Test notification" primaryTypographyProps={{ color: '#2563EB', fontWeight: 900 }} />
+              <ListItemText primary="Test notification" primaryTypographyProps={{ color: 'primary.main', fontWeight: 900 }} />
             </ListItemButton>
           )}
           <Divider />
           {biometricSupported && (
             <>
               <ListItemButton onClick={handleRegisterBiometric} disabled={biometricLoading} sx={{ py: 1.4 }}>
-                <ListItemIcon sx={{ color: '#2563EB', minWidth: 44 }}>
-                  <span style={{ fontSize: 22 }}>ðŸ”</span>
+                <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>
+                  <SettingsRoundedIcon />
                 </ListItemIcon>
                 <ListItemText
                   primary={biometricLoading ? "Registering..." : "Setup Biometric Login"}
                   secondary="Enable FaceID or Fingerprint for this device"
                   primaryTypographyProps={{ fontWeight: 900 }}
-                  secondaryTypographyProps={{ color: '#64748B', fontSize: 13 }}
+                  secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }}
                 />
-                <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: '#CBD5E1' }} />
+                <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.5 }} />
               </ListItemButton>
               <Divider />
             </>
           )}
           <ListItemButton onClick={() => setShowFaceRegister(true)} sx={{ py: 1.4 }}>
-            <ListItemIcon sx={{ color: '#2563EB', minWidth: 44 }}>
-              <span style={{ fontSize: 22 }}>📷</span>
+            <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>
+              <PersonRoundedIcon />
             </ListItemIcon>
             <ListItemText
               primary="Register Face AI"
               secondary="Set up facial recognition for punching in"
               primaryTypographyProps={{ fontWeight: 900 }}
-              secondaryTypographyProps={{ color: '#64748B', fontSize: 13 }}
+              secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }}
             />
-            <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: '#CBD5E1' }} />
+            <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.5 }} />
           </ListItemButton>
           <Divider />
 
@@ -254,4 +269,8 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
     </MotionBox>
   );
 }
+
+
+
+
 

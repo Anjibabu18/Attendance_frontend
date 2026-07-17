@@ -56,6 +56,7 @@ public class HrController {
   private final ProductionFeatureService productionFeatureService;
   private final CompOffService compOffService;
   private final PayrollService payrollService;
+  private final com.attendance.service.PayrollLockService payrollLockService;
 
   public HrController(
       EmployeeRepository employeeRepository,
@@ -68,7 +69,8 @@ public class HrController {
       WorkRequestService workRequestService,
       ProductionFeatureService productionFeatureService,
       CompOffService compOffService,
-      PayrollService payrollService) {
+      PayrollService payrollService,
+      com.attendance.service.PayrollLockService payrollLockService) {
     this.employeeRepository = employeeRepository;
     this.attendanceService = attendanceService;
     this.leaveRequestService = leaveRequestService;
@@ -80,6 +82,7 @@ public class HrController {
     this.productionFeatureService = productionFeatureService;
     this.compOffService = compOffService;
     this.payrollService = payrollService;
+    this.payrollLockService = payrollLockService;
   }
 
   @GetMapping("/employees")
@@ -92,6 +95,26 @@ public class HrController {
     return analyticsService.month(YearMonth.parse(month));
   }
 
+  @GetMapping("/payroll-lock")
+  public Map<String, Object> payrollLock(@RequestParam("month") String month) {
+    return payrollLockService.view(YearMonth.parse(month));
+  }
+
+  @PostMapping("/payroll-lock")
+  public Map<String, Object> setPayrollLock(@RequestParam("month") String month, @RequestParam("locked") boolean locked) {
+    String username = (String) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    payrollLockService.setLocked(YearMonth.parse(month), locked, username);
+    return payrollLockService.view(YearMonth.parse(month));
+  }
+
+  @GetMapping("/payroll/export")
+  public ResponseEntity<String> payrollExport(@RequestParam("month") String month) {
+    YearMonth ym = YearMonth.parse(month);
+    return ResponseEntity.ok()
+        .contentType(new MediaType("text", "csv"))
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"payroll-" + ym + ".csv\"")
+        .body(payrollService.monthlyRegisterCsv(ym));
+  }
   @GetMapping("/payroll")
   public List<Map<String, Object>> payroll(@RequestParam("month") String month) {
     return payrollService.monthlyRegister(YearMonth.parse(month));
@@ -321,6 +344,10 @@ public class HrController {
     return toDeviceResponse(productionFeatureService.approveDevice(id, false, username));
   }
 
+  @PostMapping("/exceptions/scan-missing-checkouts")
+  public Map<String, Object> scanMissingCheckouts() {
+    return productionFeatureService.scanMissingCheckouts();
+  }
   @GetMapping("/exceptions")
   @Transactional(readOnly = true)
   public List<Map<String, Object>> exceptions() {
@@ -468,3 +495,5 @@ public class HrController {
     return map;
   }
 }
+
+

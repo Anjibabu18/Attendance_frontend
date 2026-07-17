@@ -96,7 +96,7 @@ export default function LoginPage() {
       const data = await loginWithBiometric(username);
       const token = data.token;
       if (!token || token.split(".").length < 3) { setError("Biometric login failed: no valid token."); return; }
-      setAuth({ token, role: data.role as Role, name: data.name ?? undefined, loggedInAt: new Date().toISOString() });
+      setAuth({ token, refreshToken: data.refreshToken, role: data.role as Role, name: data.name ?? undefined, loggedInAt: new Date().toISOString() });
       nav(nextPathForRole(data.role as Role), { replace: true });
     } catch (err: unknown) {
       const anyErr = err as any;

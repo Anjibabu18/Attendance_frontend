@@ -82,6 +82,39 @@ public class PayrollService {
         .toList();
   }
 
+  public String monthlyRegisterCsv(YearMonth month) {
+    StringBuilder out = new StringBuilder();
+    out.append("Employee Number,Employee Name,Month,Working Days,Present Days,Half Days,Leave Days,Payable Days,Late Minutes,Overtime Minutes,Base Salary,Daily Rate,Earned Salary,Late Deduction,Unpaid Leave Deduction,Overtime Pay,Gross Pay,Total Deductions,Net Pay\n");
+    for (Map<String, Object> row : monthlyRegister(month)) {
+      out.append(csv(row.get("employeeNumber"))).append(',')
+          .append(csv(row.get("employeeName"))).append(',')
+          .append(csv(row.get("month"))).append(',')
+          .append(csv(row.get("workingDays"))).append(',')
+          .append(csv(row.get("presentDays"))).append(',')
+          .append(csv(row.get("halfDays"))).append(',')
+          .append(csv(row.get("leaveDays"))).append(',')
+          .append(csv(row.get("payableDays"))).append(',')
+          .append(csv(row.get("lateMinutes"))).append(',')
+          .append(csv(row.get("overtimeMinutes"))).append(',')
+          .append(csv(row.get("baseSalary"))).append(',')
+          .append(csv(row.get("dailyRate"))).append(',')
+          .append(csv(row.get("earnedSalary"))).append(',')
+          .append(csv(row.get("lateDeduction"))).append(',')
+          .append(csv(row.get("unpaidLeaveDeduction"))).append(',')
+          .append(csv(row.get("overtimePay"))).append(',')
+          .append(csv(row.get("grossPay"))).append(',')
+          .append(csv(row.get("totalDeductions"))).append(',')
+          .append(csv(row.get("netPay"))).append('\n');
+    }
+    return out.toString();
+  }
+  private static String csv(Object value) {
+    if (value == null) return "";
+    String s = String.valueOf(value);
+    boolean quote = s.contains(",") || s.contains("\"") || s.contains("\n") || s.contains("\r");
+    s = s.replace("\"", "\"\"");
+    return quote ? "\"" + s + "\"" : s;
+  }
   private static double round(double value) {
     return Math.round(value * 100d) / 100d;
   }
@@ -90,3 +123,5 @@ public class PayrollService {
     return value == null || value <= 0 ? DEFAULT_MONTHLY_SALARY : value;
   }
 }
+
+

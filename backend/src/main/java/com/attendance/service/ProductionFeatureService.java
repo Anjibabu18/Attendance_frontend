@@ -34,12 +34,14 @@ public class ProductionFeatureService {
   private final AttendanceSettingsService settingsService;
   private final AuditLogService auditLogService;
   private final MailService mailService;
+  private final AttendanceRepository attendanceRepo;
 
   public ProductionFeatureService(DeviceRegistrationRepository deviceRepo, OfficeQrTokenRepository qrRepo,
       OfficeLocationRepository officeRepo, LeaveBalanceRepository balanceRepo, EmployeeRepository employeeRepo,
       AttendancePolicyVersionRepository policyRepo, UserSessionRecordRepository sessionRepo,
       AttendanceExceptionRepository exceptionRepo, LocationHolidayRepository locationHolidayRepo,
-      UserRepository userRepo, AttendanceSettingsService settingsService, AuditLogService auditLogService, MailService mailService) {
+      UserRepository userRepo, AttendanceSettingsService settingsService, AuditLogService auditLogService, MailService mailService,
+      AttendanceRepository attendanceRepo) {
     this.deviceRepo = deviceRepo;
     this.qrRepo = qrRepo;
     this.officeRepo = officeRepo;
@@ -53,6 +55,7 @@ public class ProductionFeatureService {
     this.settingsService = settingsService;
     this.auditLogService = auditLogService;
     this.mailService = mailService;
+    this.attendanceRepo = attendanceRepo;
   }
 
   @Transactional
@@ -311,6 +314,21 @@ public class ProductionFeatureService {
     return exceptionRepo.findTop100ByResolvedFalseOrderByCreatedAtDesc();
   }
 
+  @Transactional
+  public Map<String, Object> scanMissingCheckouts() {
+    java.util.List<AttendanceEntry> entries = attendanceRepo.findAllByInTimeIsNotNullAndOutTimeIsNullAndDateBefore(AttendanceClock.today());
+    int created = 0;
+    for (AttendanceEntry entry : entries) {
+      Employee employee = entry.getEmployee();
+      if (employee == null) continue;
+      String message = "Checked in on " + entry.getDate() + " at " + entry.getInTime() + " but checkout is still missing";
+      if (exceptionRepo.existsByEmployee_IdAndTypeAndMessageAndResolvedFalse(employee.getId(), "MISSING_CHECKOUT", message)) continue;
+      createException(employee, "MISSING_CHECKOUT", message);
+      created++;
+      mailService.notifyUser(employee.getUser().getUsername(), "Missing checkout reminder", message + ". Please submit an attendance correction if needed.");
+    }
+    return Map.of("openEntries", entries.size(), "createdExceptions", created);
+  }
   public java.util.List<UserSessionRecord> sessions() {
     return sessionRepo.findTop100ByOrderByLoginAtDesc();
   }
@@ -362,3 +380,5 @@ public class ProductionFeatureService {
     return exceptionRepo.save(e);
   }
 }
+
+

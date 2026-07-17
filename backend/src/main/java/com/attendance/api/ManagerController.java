@@ -5,6 +5,8 @@ import com.attendance.api.dto.WorkRequestDtos;
 import com.attendance.repo.EmployeeRepository;
 import com.attendance.service.RegularizationRequestService;
 import com.attendance.service.WorkRequestService;
+import java.time.YearMonth;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,18 +20,45 @@ public class ManagerController {
   private final EmployeeRepository employeeRepository;
   private final RegularizationRequestService regularizationRequestService;
   private final WorkRequestService workRequestService;
+  private final com.attendance.service.AttendanceService attendanceService;
 
   public ManagerController(
       EmployeeRepository employeeRepository,
       RegularizationRequestService regularizationRequestService,
-      WorkRequestService workRequestService) {
+      WorkRequestService workRequestService,
+      com.attendance.service.AttendanceService attendanceService) {
     this.employeeRepository = employeeRepository;
     this.regularizationRequestService = regularizationRequestService;
     this.workRequestService = workRequestService;
+    this.attendanceService = attendanceService;
   }
 
   @GetMapping("/team")
   public Object team() { return employeeRepository.findAll(); }
+  @GetMapping("/team/attendance")
+  public List<Map<String, Object>> teamAttendance(@RequestParam("month") String month) {
+    YearMonth ym = YearMonth.parse(month);
+    return employeeRepository.findAll().stream().map(employee -> {
+      var summary = attendanceService.monthSummary(employee.getId(), ym);
+      var today = attendanceService.listForMonth(employee.getId(), ym).stream()
+          .filter(entry -> entry.getDate().equals(com.attendance.service.AttendanceClock.today()))
+          .findFirst()
+          .orElse(null);
+      Map<String, Object> row = new LinkedHashMap<>();
+      row.put("employeeId", employee.getId());
+      row.put("employeeName", employee.getName());
+      row.put("employeeNumber", employee.getEmployeeNumber());
+      row.put("office", employee.getAssignedOfficeLocation() == null ? "Default office" : employee.getAssignedOfficeLocation().getOfficeName());
+      row.put("todayStatus", today == null ? "ABSENT" : today.getStatus().name());
+      row.put("inTime", today == null ? null : today.getInTime());
+      row.put("outTime", today == null ? null : today.getOutTime());
+      row.put("presentDays", summary.presentDays());
+      row.put("halfDayDays", summary.halfDayDays());
+      row.put("leaveDays", summary.leaveDays());
+      row.put("workingDays", summary.workingDays());
+      return row;
+    }).toList();
+  }
   @GetMapping("/regularization-requests/pending")
   public Object pendingCorrections() { return regularizationRequestService.listPending(); }
   @PostMapping("/regularization-requests/{id}/recommend")
@@ -63,3 +92,6 @@ public class ManagerController {
         r.getId(), e.getId(), e.getName(), e.getEmployeeNumber(), r.getType(), r.getFromDate(), r.getToDate(), r.getReason(), r.getStatus(), r.getCreatedAt(), r.getDecidedAt(), decidedBy, r.getRemarks(), r.getAttachmentUrl(), r.getAttachmentName());
   }
 }
+
+
+

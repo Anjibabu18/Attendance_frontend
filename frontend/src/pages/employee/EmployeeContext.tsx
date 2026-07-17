@@ -70,10 +70,12 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
 
   const refreshToday = async () => {
     try {
-      const { data } = await api.get<Attendance | null>('/api/employee/punch/today');
-      setTodayEntry(data);
-      const breaksData = await api.get<BreakEntry[]>('/api/employee/breaks/today');
-      setBreaks(breaksData.data);
+      const [todayRes, breaksRes] = await Promise.allSettled([
+        api.get<Attendance | null>('/api/employee/punch/today'),
+        api.get<BreakEntry[]>('/api/employee/breaks/today')
+      ]);
+      if (todayRes.status === 'fulfilled') setTodayEntry(todayRes.value.data);
+      if (breaksRes.status === 'fulfilled') setBreaks(breaksRes.value.data);
     } catch (e) {
       console.error(e);
     }
@@ -131,10 +133,8 @@ export function EmployeeProvider({ children }: { children: React.ReactNode }) {
     if (errors.length && prof.status !== 'fulfilled' && att.status !== 'fulfilled') {
       setError(errors[0]);
     }
-
-    await refreshToday();
-    await refreshRequests();
     setLoading(false);
+    void Promise.allSettled([refreshToday(), refreshRequests()]);
   };
 
   useEffect(() => {

@@ -21,15 +21,16 @@ const MotionBox = motion.create(Box);
 const MotionButton = motion.create(Button);
 
 const cardSx = {
-  bgcolor: '#FFFFFF',
-  border: '1px solid #E3E8F0',
+  bgcolor: 'background.paper',
+  border: '1px solid',
+  borderColor: 'divider',
   borderRadius: '8px',
   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.05)',
   transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
   '&:hover': {
     transform: 'translateY(-2px)',
     boxShadow: '0 18px 44px rgba(15, 23, 42, 0.09)',
-    borderColor: '#C7D2FE',
+    borderColor: 'primary.light',
   },
 };
 
@@ -161,12 +162,12 @@ export function DashboardTab() {
   return (
     <MotionBox variants={containerVariants} initial="hidden" animate="visible" sx={{ display: 'grid', gap: 2.5 }}>
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.35fr 0.65fr' }, gap: 2.5 }}>
-        <Box sx={{ ...cardSx, p: { xs: 2, md: 3 }, bgcolor: '#12315B', color: 'white', borderColor: '#12315B' }}>
+        <Box sx={{ ...cardSx, p: { xs: 2, md: 3 }, bgcolor: 'primary.dark', color: 'white', borderColor: 'primary.dark' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mb: 3 }}>
             <Box>
-              <Typography sx={{ color: '#BFD7FF', fontWeight: 800, fontSize: 13, mb: 0.75 }}>TODAY SHIFT</Typography>
+              <Typography sx={{ color: 'primary.light', fontWeight: 800, fontSize: 13, mb: 0.75 }}>TODAY SHIFT</Typography>
               <Typography sx={{ fontWeight: 900, fontSize: { xs: 26, md: 36 }, lineHeight: 1.05 }}>Good day, {greetingName}</Typography>
-              <Typography sx={{ color: '#D7E6FF', mt: 1 }}>{dayjs().format('dddd, DD MMMM YYYY')}</Typography>
+              <Typography sx={{ color: 'primary.light', mt: 1 }}>{dayjs().format('dddd, DD MMMM YYYY')}</Typography>
             </Box>
             <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 54, height: 54, border: '3px solid rgba(255,255,255,0.28)' }} />
           </Box>
@@ -183,8 +184,8 @@ export function DashboardTab() {
                 {todayEntry?.inTime ? secondsLabel(elapsedSeconds) : '0h 0m 0s'}
               </Typography>
               <Box sx={{ mt: 2 }}>
-                <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: '8px', bgcolor: 'rgba(255,255,255,0.18)', '& .MuiLinearProgress-bar': { bgcolor: '#60A5FA' } }} />
-                <Typography sx={{ mt: 0.75, color: '#D7E6FF', fontSize: 13 }}>Target {targetMinutes ? minutesLabel(targetMinutes) : '--'} - {progress}% complete</Typography>
+                <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: '8px', bgcolor: 'rgba(255,255,255,0.18)', '& .MuiLinearProgress-bar': { bgcolor: 'primary.light' } }} />
+                <Typography sx={{ mt: 0.75, color: 'primary.light', fontSize: 13 }}>Target {targetMinutes ? minutesLabel(targetMinutes) : '--'} - {progress}% complete</Typography>
               </Box>
             </Box>
 
@@ -223,12 +224,12 @@ export function DashboardTab() {
             ['Late', minutesLabel(todayEntry?.lateMinutes)],
             ['Overtime', minutesLabel(todayEntry?.overtimeMinutes)],
           ].map(([label, value]) => (
-            <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #EEF2F7', pb: 1 }}>
-              <Typography sx={{ color: '#64748B', fontWeight: 700, fontSize: 13 }}>{label}</Typography>
+            <Box key={label} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider', pb: 1 }}>
+              <Typography sx={{ color: 'text.secondary', fontWeight: 700, fontSize: 13 }}>{label}</Typography>
               <Typography sx={{ fontWeight: 900 }}>{value}</Typography>
             </Box>
           ))}
-          <Chip icon={<AccessTimeRoundedIcon />} label={activeBreak ? 'Break is active' : 'No active break'} sx={{ justifyContent: 'flex-start', bgcolor: activeBreak ? '#FEF3C7' : '#F1F5F9', color: activeBreak ? '#92400E' : '#475569', fontWeight: 800, borderRadius: '8px' }} />
+          <Chip icon={<AccessTimeRoundedIcon />} label={activeBreak ? 'Break is active' : 'No active break'} sx={{ justifyContent: 'flex-start', bgcolor: activeBreak ? 'warning.light' : 'action.hover', color: activeBreak ? 'warning.dark' : 'text.secondary', fontWeight: 800, borderRadius: '8px' }} />
         </Box>
       </MotionBox>
 
@@ -236,11 +237,11 @@ export function DashboardTab() {
         {stats.map((item) => (
           <Box key={item.label} sx={{ ...cardSx, p: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, alignItems: 'center', mb: 1.5 }}>
-              <Typography sx={{ color: '#64748B', fontWeight: 800, fontSize: 13 }}>{item.label}</Typography>
-              <Box sx={{ color: '#2563EB', display: 'flex' }}>{item.icon}</Box>
+              <Typography sx={{ color: 'text.secondary', fontWeight: 800, fontSize: 13 }}>{item.label}</Typography>
+              <Box sx={{ color: 'primary.main', display: 'flex' }}>{item.icon}</Box>
             </Box>
             <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, md: 24 } }}>{item.value}</Typography>
-            <Typography sx={{ color: '#64748B', fontSize: 12, mt: 0.5 }}>{item.helper}</Typography>
+            <Typography sx={{ color: 'text.secondary', fontSize: 12, mt: 0.5 }}>{item.helper}</Typography>
           </Box>
         ))}
       </MotionBox>
@@ -252,16 +253,16 @@ export function DashboardTab() {
             {leaveBalances.length ? leaveBalances.slice(0, 4).map((item) => {
               const percent = item.allocatedDays ? Math.min(100, Math.round((item.remainingDays / item.allocatedDays) * 100)) : 0;
               return (
-                <Box key={item.id} sx={{ border: '1px solid #EEF2F7', borderRadius: '8px', p: 1.5 }}>
+                <Box key={item.id} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: '8px', p: 1.5 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, mb: 1 }}>
                     <Typography sx={{ fontWeight: 900 }}>{item.leaveType.replaceAll('_', ' ')}</Typography>
-                    <Typography sx={{ fontWeight: 900, color: item.remainingDays > 0 ? '#15803D' : '#B91C1C' }}>{item.remainingDays}d</Typography>
+                    <Typography sx={{ fontWeight: 900, color: item.remainingDays > 0 ? 'success.main' : 'error.main' }}>{item.remainingDays}d</Typography>
                   </Box>
-                  <LinearProgress variant="determinate" value={percent} sx={{ height: 7, borderRadius: '8px', bgcolor: '#F1F5F9', '& .MuiLinearProgress-bar': { bgcolor: '#2563EB' } }} />
-                  <Typography sx={{ color: '#64748B', fontSize: 12, mt: 0.75 }}>{item.usedDays} used of {item.allocatedDays}</Typography>
+                  <LinearProgress variant="determinate" value={percent} sx={{ height: 7, borderRadius: '8px', bgcolor: 'action.hover', '& .MuiLinearProgress-bar': { bgcolor: 'primary.main' } }} />
+                  <Typography sx={{ color: 'text.secondary', fontSize: 12, mt: 0.75 }}>{item.usedDays} used of {item.allocatedDays}</Typography>
                 </Box>
               );
-            }) : <Typography sx={{ color: '#64748B', fontSize: 14 }}>No leave balances assigned yet.</Typography>}
+            }) : <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>No leave balances assigned yet.</Typography>}
           </Box>
         </Box>
 
@@ -275,20 +276,21 @@ export function DashboardTab() {
           >
             <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 1.5 }}>Streaks & Badges</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, mb: 2 }}>
-              <Box sx={{ bgcolor: '#FFF7ED', borderRadius: '8px', p: 1.5, textAlign: 'center' }}>
+              <Box sx={{ bgcolor: 'warning.main', opacity: 0.1, position: 'absolute', inset: 0, borderRadius: '8px' }} />
+              <Box sx={{ position: 'relative', bgcolor: 'transparent', borderRadius: '8px', p: 1.5, textAlign: 'center', border: '1px solid', borderColor: 'warning.light' }}>
                 <Typography sx={{ fontSize: 28 }}>🔥</Typography>
-                <Typography sx={{ fontWeight: 900, fontSize: 22, color: '#C2410C' }}>{streaks.currentStreak}</Typography>
-                <Typography sx={{ color: '#9A3412', fontSize: 12, fontWeight: 700 }}>Day Streak</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 22, color: 'warning.dark' }}>{streaks.currentStreak}</Typography>
+                <Typography sx={{ color: 'warning.main', fontSize: 12, fontWeight: 700 }}>Day Streak</Typography>
               </Box>
-              <Box sx={{ bgcolor: '#EFF6FF', borderRadius: '8px', p: 1.5, textAlign: 'center' }}>
+              <Box sx={{ position: 'relative', bgcolor: 'transparent', borderRadius: '8px', p: 1.5, textAlign: 'center', border: '1px solid', borderColor: 'primary.light' }}>
                 <Typography sx={{ fontSize: 28 }}>🏆</Typography>
-                <Typography sx={{ fontWeight: 900, fontSize: 22, color: '#1D4ED8' }}>{streaks.longestStreak}</Typography>
-                <Typography sx={{ color: '#1E40AF', fontSize: 12, fontWeight: 700 }}>Best Streak</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 22, color: 'primary.dark' }}>{streaks.longestStreak}</Typography>
+                <Typography sx={{ color: 'primary.main', fontSize: 12, fontWeight: 700 }}>Best Streak</Typography>
               </Box>
-              <Box sx={{ bgcolor: '#F0FDF4', borderRadius: '8px', p: 1.5, textAlign: 'center' }}>
+              <Box sx={{ position: 'relative', bgcolor: 'transparent', borderRadius: '8px', p: 1.5, textAlign: 'center', border: '1px solid', borderColor: 'success.light' }}>
                 <Typography sx={{ fontSize: 28 }}>🎯</Typography>
-                <Typography sx={{ fontWeight: 900, fontSize: 22, color: '#15803D' }}>{streaks.punctualityScore}%</Typography>
-                <Typography sx={{ color: '#166534', fontSize: 12, fontWeight: 700 }}>On-Time Rate</Typography>
+                <Typography sx={{ fontWeight: 900, fontSize: 22, color: 'success.dark' }}>{streaks.punctualityScore}%</Typography>
+                <Typography sx={{ color: 'success.main', fontSize: 12, fontWeight: 700 }}>On-Time Rate</Typography>
               </Box>
             </Box>
             {streaks.badges.length > 0 && (
@@ -304,21 +306,21 @@ export function DashboardTab() {
         <Box sx={{ ...cardSx, p: 2.25 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
             <Typography sx={{ fontWeight: 900, fontSize: 18 }}>Recent attendance</Typography>
-            <Typography sx={{ color: '#64748B', fontSize: 12, fontWeight: 800 }}>Late {minutesLabel(totalLate)}</Typography>
+            <Typography sx={{ color: 'text.secondary', fontSize: 12, fontWeight: 800 }}>Late {minutesLabel(totalLate)}</Typography>
           </Box>
           <Box sx={{ display: 'grid', gap: 1 }}>
             {recentEntries.length ? recentEntries.map((item) => (
-              <Box key={item.id} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr auto' }, gap: 1, p: 1.5, border: '1px solid #EEF2F7', borderRadius: '8px', alignItems: 'center' }}>
+              <Box key={item.id} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr auto' }, gap: 1, p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: '8px', alignItems: 'center' }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900 }}>{dayjs(item.date).format('ddd, DD MMM')}</Typography>
-                  <Typography sx={{ color: '#64748B', fontSize: 13 }}>{timeLabel(item.inTime)} to {timeLabel(item.outTime)}</Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>{timeLabel(item.inTime)} to {timeLabel(item.outTime)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: { sm: 'flex-end' } }}>
-                  <Chip size="small" label={item.status.replace('_', ' ')} sx={{ borderRadius: '8px', fontWeight: 800, bgcolor: item.status === 'PRESENT' ? '#DCFCE7' : item.status === 'HALF_DAY' ? '#FEF3C7' : '#FEE2E2', color: item.status === 'PRESENT' ? '#166534' : item.status === 'HALF_DAY' ? '#92400E' : '#991B1B' }} />
+                  <Chip size="small" label={item.status.replace('_', ' ')} sx={{ borderRadius: '8px', fontWeight: 800, bgcolor: item.status === 'PRESENT' ? 'success.light' : item.status === 'HALF_DAY' ? 'warning.light' : 'error.light', color: item.status === 'PRESENT' ? 'success.dark' : item.status === 'HALF_DAY' ? 'warning.dark' : 'error.dark' }} />
                   <Typography sx={{ fontWeight: 900, minWidth: 58, textAlign: 'right' }}>{minutesLabel(item.workedMinutes)}</Typography>
                 </Box>
               </Box>
-            )) : <Typography sx={{ color: '#64748B', fontSize: 14 }}>No attendance entries for this month yet.</Typography>}
+            )) : <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>No attendance entries for this month yet.</Typography>}
           </Box>
         </Box>
       </MotionBox>

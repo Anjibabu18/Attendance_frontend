@@ -84,6 +84,21 @@ type ApprovalItem = {
   createdAt?: string | null;
   attachmentUrl?: string | null;
 };
+type AuditEvent = {
+  type: string;
+  id: number;
+  employeeId?: number | null;
+  employeeName?: string | null;
+  employeeNumber?: string | null;
+  status?: string | null;
+  action?: string | null;
+  stage?: string | null;
+  reason?: string | null;
+  officeLocationId?: number | null;
+  faceScore?: number | null;
+  faceVerified?: boolean | null;
+  createdAt: string;
+};
 type AttendanceSettings = {
   defaultInTime: string;
   defaultOutTime: string;
@@ -142,6 +157,7 @@ export default function AdminPage() {
   const [analytics, setAnalytics] = useState<Record<string, any> | null>(null);
   const [payrollLock, setPayrollLock] = useState<PayrollLock | null>(null);
   const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([]);
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [approvalFilter, setApprovalFilter] = useState<ApprovalKind | "all">("all");
   const [approvalRemarks, setApprovalRemarks] = useState<Record<string, string>>({});
   const [approvalBusyId, setApprovalBusyId] = useState<string | null>(null);
@@ -179,7 +195,7 @@ export default function AdminPage() {
   async function refresh() {
     setBusy(true);
     try {
-      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes] = await Promise.allSettled([
+      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes, auditRes] = await Promise.allSettled([
         api.get<Employee[]>("/api/admin/employees"),
         api.get<CompanyRole[]>("/api/admin/company-roles"),
         api.get<Department[]>("/api/admin/departments"),
@@ -194,6 +210,7 @@ export default function AdminPage() {
         api.get<any[]>("/api/hr/regularization-requests/pending"),
         api.get<any[]>("/api/hr/work-requests/pending"),
         api.get<any[]>("/api/hr/comp-off-requests/pending"),
+        api.get<AuditEvent[]>("/api/admin/audit-logs", { params: { limit: 60 } }),
       ]);
       if (employeeRes.status === "fulfilled") setEmployees(employeeRes.value.data);
       if (roleRes.status === "fulfilled") setRoles(roleRes.value.data);
@@ -205,6 +222,7 @@ export default function AdminPage() {
       if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.data);
       if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value.data);
       if (payrollLockRes.status === "fulfilled") setPayrollLock(payrollLockRes.value.data);
+      if (auditRes.status === "fulfilled") setAuditEvents(auditRes.value.data);
       const approvalRows: ApprovalItem[] = [];
       if (leaveReqRes.status === "fulfilled") {
         approvalRows.push(...leaveReqRes.value.data.map((item: any) => ({
@@ -266,14 +284,33 @@ export default function AdminPage() {
           attachmentUrl: item.attachmentUrl,
         })));
       }
-      const rejected = [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes]
-        .filter((result): result is PromiseRejectedResult => result.status === "rejected");
-      const unauthorized = rejected.find((result) => result.reason?.response?.status === 401 || result.reason?.response?.status === 403);
-      const notFound = rejected.find((result) => result.reason?.response?.status === 404);
-      const serverError = rejected.find((result) => result.reason?.response?.status >= 500);
-      if (unauthorized) setAdminLoadError("Admin session expired or this account is not ROLE_ADMIN. Login again as admin.");
-      else if (notFound) setAdminLoadError("Backend is missing some admin routes. Redeploy the latest backend code.");
-      else if (serverError) setAdminLoadError(serverError.reason?.response?.data?.error || "Backend server error. Check deployed backend logs.");
+      const requestResults = [
+        { label: "Employees", result: employeeRes },
+        { label: "Roles", result: roleRes },
+        { label: "Departments", result: departmentRes },
+        { label: "Shifts", result: shiftRes },
+        { label: "Managers", result: managerRes },
+        { label: "Office locations", result: officeRes },
+        { label: "Holidays", result: holidayRes },
+        { label: "Attendance settings", result: settingsRes },
+        { label: "Analytics", result: analyticsRes },
+        { label: "Payroll lock", result: payrollLockRes },
+        { label: "Leave approvals", result: leaveReqRes },
+        { label: "Corrections", result: correctionReqRes },
+        { label: "Work requests", result: workReqRes },
+        { label: "Comp-off requests", result: compOffReqRes },
+        { label: "Audit events", result: auditRes },
+      ];
+      const rejected = requestResults.filter((item): item is { label: string; result: PromiseRejectedResult } => item.result.status === "rejected");
+      const failedList = rejected.map((item) => `${item.label} (${item.result.reason?.response?.status || "network"})`).join(", ");
+      const unauthorized = rejected.find((item) => item.result.reason?.response?.status === 401 || item.result.reason?.response?.status === 403);
+      const notFound = rejected.find((item) => item.result.reason?.response?.status === 404);
+      const serverError = rejected.find((item) => item.result.reason?.response?.status >= 500);
+      if (!rejected.length) setAdminLoadError(null);
+      else if (unauthorized) setAdminLoadError(`Admin access failed for: ${failedList}. Login again as ROLE_ADMIN.`);
+      else if (notFound) setAdminLoadError(`Backend is not on the latest Node build. Missing routes: ${failedList}. Redeploy Attendance_Backend_Nodejs main.`);
+      else if (serverError) setAdminLoadError(`${serverError.label} failed: ${serverError.result.reason?.response?.data?.error || "Backend server error. Check deployed backend logs."}`);
+      else setAdminLoadError(`Some admin data could not load: ${failedList}`);
       setApprovalItems(approvalRows.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
     } catch (err: any) {
       toastError(err?.response?.data?.error || "Failed to load admin dashboard");
@@ -346,7 +383,7 @@ export default function AdminPage() {
     try {
       const response = await api.post<OfficeQr>("/api/admin/production/qr", { officeId });
       setOfficeQr(response.data);
-      toastSuccess("Office QR generated");
+      toastSuccess("Permanent office QR ready");
     } finally {
       setQrBusy(false);
     }
@@ -361,6 +398,10 @@ export default function AdminPage() {
   useEffect(() => {
     if (!selectedQrOfficeId && offices.length) setSelectedQrOfficeId(String(offices[0].id));
   }, [offices, selectedQrOfficeId]);
+
+  useEffect(() => {
+    if (selectedQrOfficeId) loadLatestOfficeQr(Number(selectedQrOfficeId)).catch(() => undefined);
+  }, [selectedQrOfficeId]);
 
   async function createRole() {
     if (!roleName.trim()) return;
@@ -530,6 +571,22 @@ export default function AdminPage() {
     }
   }
 
+
+  async function exportAuditCsv() {
+    setReportBusy(true);
+    try {
+      const res = await api.get<Blob>("/api/admin/audit-logs.csv", { responseType: "blob" });
+      downloadBlob(res.data, `attendance-audit-${month}.csv`);
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
+  async function scanMissingCheckoutsNow() {
+    const response = await api.post<{ openEntries: number; createdExceptions: number }>("/api/hr/exceptions/scan-missing-checkouts");
+    toastSuccess(`Missing checkout scan complete: ${response.data.createdExceptions} new exceptions`);
+    await refresh();
+  }
   async function setAdminPayrollLocked(locked: boolean) {
     const res = await api.post<PayrollLock>("/api/hr/payroll-lock", null, { params: { month, locked } });
     setPayrollLock(res.data);
@@ -653,6 +710,38 @@ export default function AdminPage() {
           </Box>
         </Box>
 
+
+        <Box sx={{ ...cardSx, p: 2.25 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2, flexWrap: "wrap", mb: 2 }}>
+            <Box>
+              <Typography sx={{ fontWeight: 950, fontSize: 22 }}>Production audit trail</Typography>
+              <Typography sx={{ color: "#64748B", fontSize: 13 }}>Review punch attempts, QR scans, face verification, and missing-checkout exceptions.</Typography>
+            </Box>
+            <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+              <Button disabled={reportBusy} onClick={() => scanMissingCheckoutsNow().catch((err) => toastError(err?.response?.data?.error || "Missing checkout scan failed"))} variant="outlined" sx={{ borderRadius: "8px", fontWeight: 900 }}>Scan missing checkout</Button>
+              <Button disabled={reportBusy} onClick={() => exportAuditCsv().catch((err) => toastError(err?.response?.data?.error || "Audit export failed"))} variant="contained" startIcon={<FileDownloadRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 900 }}>Audit CSV</Button>
+            </Box>
+          </Box>
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(3, minmax(0, 1fr))" }, gap: 1 }}>
+            {auditEvents.slice(0, 9).map((event) => (
+              <Box key={`${event.type}-${event.id}`} sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.25, bgcolor: "#FFFFFF", minWidth: 0 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb: 0.75 }}>
+                  <Chip size="small" label={event.type.replaceAll("_", " ")} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: event.status === "ACCEPTED" || event.status === "VERIFIED" ? "#DCFCE7" : event.status === "REJECTED" || event.status === "FAILED" ? "#FEE2E2" : "#E0F2FE", color: event.status === "ACCEPTED" || event.status === "VERIFIED" ? "#166534" : event.status === "REJECTED" || event.status === "FAILED" ? "#991B1B" : "#075985" }} />
+                  <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 800 }}>{dateOnly(event.createdAt)}</Typography>
+                </Box>
+                <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{event.employeeName || "System event"}</Typography>
+                <Typography sx={{ color: "#475569", fontSize: 12 }}>{event.action || event.stage || "Audit"} - {event.status || "--"}</Typography>
+                <Typography sx={{ color: "#64748B", fontSize: 12, mt: 0.5, minHeight: 34, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{event.reason || (event.faceScore !== null && event.faceScore !== undefined ? `Face score ${Number(event.faceScore).toFixed(2)}` : "No issue recorded")}</Typography>
+              </Box>
+            ))}
+            {!auditEvents.length ? (
+              <Box sx={{ border: "1px dashed #CBD5E1", borderRadius: "8px", p: 2, bgcolor: "#F8FAFC", gridColumn: "1 / -1" }}>
+                <Typography sx={{ fontWeight: 900 }}>No audit events yet</Typography>
+                <Typography sx={{ color: "#64748B", fontSize: 13 }}>After importing the audit SQL, QR scans and punch attempts will appear here automatically.</Typography>
+              </Box>
+            ) : null}
+          </Box>
+        </Box>
         <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", xl: "minmax(0, 1fr) 430px" }, gap: 2.5, alignItems: "start" }}>
           <Box sx={{ ...cardSx, p: 2.25 }}>
             <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", mb: 2, flexWrap: "wrap" }}>
@@ -749,43 +838,33 @@ export default function AdminPage() {
                   <Avatar sx={{ bgcolor: "#1D4ED8", borderRadius: "8px" }}><QrCode2RoundedIcon /></Avatar>
                   <Box>
                     <Typography sx={{ fontWeight: 950, fontSize: 20 }}>Permanent Office QR</Typography>
-                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Generate the QR employees scan for punch in/out.</Typography>
+                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>One permanent office QR employees scan every day for punch in/out.</Typography>
                   </Box>
                 </Box>
-                <Chip size="small" label={officeQr?.mode || "Not generated"} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: officeQr?.token ? "#DCFCE7" : "#F1F5F9", color: officeQr?.token ? "#166534" : "#475569" }} />
+                <Chip size="small" label={officeQr?.token ? "Permanent" : "Not created"} sx={{ borderRadius: "8px", fontWeight: 900, bgcolor: officeQr?.token ? "#DCFCE7" : "#F1F5F9", color: officeQr?.token ? "#166534" : "#475569" }} />
               </Box>
               <Box sx={{ display: "grid", gap: 1.25 }}>
                 <TextField select size="small" label="Office location" value={selectedQrOfficeId} onChange={(event) => { setSelectedQrOfficeId(event.target.value); setOfficeQr(null); }}>
                   {offices.map((office) => <MenuItem key={office.id} value={office.id}>{office.officeName || `Office #${office.id}`}</MenuItem>)}
                 </TextField>
                 <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
-                  <Button disabled={qrBusy || !selectedQrOffice} variant="contained" onClick={() => generateOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR generation failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Generate QR</Button>
-                  <Button disabled={qrBusy || !selectedQrOffice} variant="outlined" onClick={() => loadLatestOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR load failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Load latest</Button>
+                  <Button disabled={qrBusy || !selectedQrOffice} variant="contained" onClick={() => generateOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR generation failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>{officeQr?.token ? "Show permanent QR" : "Create permanent QR"}</Button>
+                  <Button disabled={qrBusy || !selectedQrOffice} variant="outlined" onClick={() => loadLatestOfficeQr().catch((err) => toastError(err?.response?.data?.error || "QR load failed"))} sx={{ borderRadius: "8px", fontWeight: 950 }}>Refresh QR</Button>
                 </Box>
                 {officeQr?.token ? (
                   <Box sx={{ border: "1px solid #DCE7F3", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC", display: "grid", gap: 1.25, justifyItems: "center" }}>
                     <Box component="img" src={qrImageUrl} alt="Office attendance QR" sx={{ width: "min(100%, 240px)", aspectRatio: "1 / 1", borderRadius: "8px", border: "8px solid white", boxShadow: "0 14px 34px rgba(15,23,42,0.12)" }} />
-                    <Box sx={{ width: "100%", display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
-                      <Box sx={{ bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
-                        <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Daily code</Typography>
-                        <Typography sx={{ fontWeight: 950, fontSize: 24 }}>{officeQr.dailyCode || "----"}</Typography>
-                      </Box>
-                      <Box sx={{ bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
-                        <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Office</Typography>
-                        <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{officeQr.officeName || selectedQrOffice?.officeName || "Office"}</Typography>
-                      </Box>
+                    <Box sx={{ width: "100%", bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
+                      <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Office</Typography>
+                      <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{officeQr.officeName || selectedQrOffice?.officeName || "Office"}</Typography>
                     </Box>
-                    <TextField size="small" label="QR token" value={officeQr.token} fullWidth InputProps={{ readOnly: true }} />
-                    <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1, width: "100%" }}>
-                      <Button variant="outlined" startIcon={<ContentCopyRoundedIcon />} onClick={() => copyOfficeQrToken().catch(() => toastError("Copy failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Copy token</Button>
-                      <Button variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open QR</Button>
-                    </Box>
-                    <Typography sx={{ color: "#64748B", fontSize: 12, textAlign: "center" }}>Print this QR and place it at the office entrance. Employees scan it from the punch screen.</Typography>
+                    <Button fullWidth variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open printable QR</Button>
+                    <Typography sx={{ color: "#64748B", fontSize: 12, textAlign: "center" }}>This same QR stays valid. Print it once and keep it at the office entrance for daily punch scans.</Typography>
                   </Box>
                 ) : (
                   <Box sx={{ border: "1px dashed #CBD5E1", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC" }}>
                     <Typography sx={{ fontWeight: 900, fontSize: 13 }}>No QR loaded</Typography>
-                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Select an office, then generate a permanent office QR.</Typography>
+                    <Typography sx={{ color: "#64748B", fontSize: 12 }}>Select an office. Existing permanent QR will load automatically, or create it once.</Typography>
                   </Box>
                 )}
               </Box>
@@ -927,6 +1006,10 @@ export default function AdminPage() {
     </Box>
   );
 }
+
+
+
+
 
 
 

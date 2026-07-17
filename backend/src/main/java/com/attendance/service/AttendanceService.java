@@ -29,18 +29,21 @@ public class AttendanceService {
   private final AppConfig appConfig;
   private final HolidayRepository holidayRepository;
   private final AttendanceSettingsService attendanceSettingsService;
+  private final PayrollLockService payrollLockService;
 
   public AttendanceService(
       AttendanceRepository attendanceRepository,
       EmployeeRepository employeeRepository,
       AppConfig appConfig,
       HolidayRepository holidayRepository,
-      AttendanceSettingsService attendanceSettingsService) {
+      AttendanceSettingsService attendanceSettingsService,
+      PayrollLockService payrollLockService) {
     this.attendanceRepository = attendanceRepository;
     this.employeeRepository = employeeRepository;
     this.appConfig = appConfig;
     this.holidayRepository = holidayRepository;
     this.attendanceSettingsService = attendanceSettingsService;
+    this.payrollLockService = payrollLockService;
   }
 
   @Transactional
@@ -80,6 +83,7 @@ public class AttendanceService {
     if (!allowFutureDates && date.isAfter(today)) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Attendance cannot be marked for future dates");
     }
+    payrollLockService.assertUnlocked(YearMonth.from(date));
 
     AttendanceEntry entry =
         attendanceRepository
@@ -363,3 +367,5 @@ public class AttendanceService {
       int leaveDays,
       int totalWorkedMinutes) {}
 }
+
+

@@ -15,15 +15,16 @@ import { useEmployee } from './EmployeeContext';
 const MotionBox = motion.create(Box);
 
 const cardSx = {
-  bgcolor: '#FFFFFF',
-  border: '1px solid #E3E8F0',
+  bgcolor: 'background.paper',
+  border: '1px solid',
+  borderColor: 'divider',
   borderRadius: '8px',
   boxShadow: '0 12px 32px rgba(15, 23, 42, 0.05)',
   transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
   '&:hover': {
     transform: 'translateY(-2px)',
     boxShadow: '0 18px 44px rgba(15, 23, 42, 0.09)',
-    borderColor: '#C7D2FE',
+    borderColor: 'primary.light',
   },
 };
 
@@ -50,11 +51,11 @@ const requestModes: Array<{ mode: RequestMode; label: string }> = [
 ];
 
 function statusStyle(status: RequestStatus) {
-  if (status === 'APPROVED') return { bg: '#DCFCE7', color: '#166534', label: 'Approved' };
-  if (status === 'REJECTED' || status === 'CANCELLED') return { bg: '#FEE2E2', color: '#991B1B', label: status === 'CANCELLED' ? 'Cancelled' : 'Rejected' };
-  if (status === 'MANAGER_RECOMMENDED') return { bg: '#E0F2FE', color: '#075985', label: 'Manager OK' };
-  if (status === 'CANCELLATION_REQUESTED') return { bg: '#FEF3C7', color: '#92400E', label: 'Cancel requested' };
-  return { bg: '#FEF3C7', color: '#92400E', label: 'Pending' };
+  if (status === 'APPROVED') return { bg: 'success.light', color: 'success.dark', label: 'Approved' };
+  if (status === 'REJECTED' || status === 'CANCELLED') return { bg: 'error.light', color: 'error.dark', label: status === 'CANCELLED' ? 'Cancelled' : 'Rejected' };
+  if (status === 'MANAGER_RECOMMENDED') return { bg: 'info.light', color: 'info.dark', label: 'Manager OK' };
+  if (status === 'CANCELLATION_REQUESTED') return { bg: 'warning.light', color: 'warning.dark', label: 'Cancel requested' };
+  return { bg: 'warning.light', color: 'warning.dark', label: 'Pending' };
 }
 
 function daysBetween(from: string, to: string) {
@@ -257,18 +258,18 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
       <Box sx={{ ...cardSx, p: { xs: 2, md: 2.5 }, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr auto' }, gap: 2, alignItems: 'center' }}>
         <Box>
           <Typography sx={{ fontWeight: 900, fontSize: { xs: 22, md: 26 } }}>Request center</Typography>
-          <Typography sx={{ color: '#64748B', mt: 0.5 }}>Track leave, work-from-home, comp-off, and attendance corrections in one place.</Typography>
+          <Typography sx={{ color: 'text.secondary', mt: 0.5 }}>Track leave, work-from-home, comp-off, and attendance corrections in one place.</Typography>
         </Box>
-        <Button onClick={() => openRequestDialog('leave')} variant="contained" startIcon={<AddRoundedIcon />} sx={{ bgcolor: '#2563EB', borderRadius: '8px', textTransform: 'none', fontWeight: 900, px: 2.25, py: 1.15, '&:hover': { bgcolor: '#1D4ED8' } }}>
+        <Button onClick={() => openRequestDialog('leave')} variant="contained" startIcon={<AddRoundedIcon />} sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 900, px: 2.25, py: 1.15 }}>
           New request
         </Button>
       </Box>
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3, 1fr)', md: 'repeat(3, 180px)' }, gap: 1.5 }}>
         {[
-          ['Pending', pendingCount, '#FEF3C7', '#92400E'],
-          ['Approved', approvedCount, '#DCFCE7', '#166534'],
-          ['Rejected', rejectedCount, '#FEE2E2', '#991B1B'],
+          ['Pending', pendingCount, 'warning.light', 'warning.dark'],
+          ['Approved', approvedCount, 'success.light', 'success.dark'],
+          ['Rejected', rejectedCount, 'error.light', 'error.dark'],
         ].map(([label, value, bg, color]) => (
           <Box key={label as string} sx={{ ...cardSx, p: 1.75, bgcolor: bg as string, borderColor: bg as string }}>
             <Typography sx={{ color: color as string, fontWeight: 800, fontSize: 12 }}>{label}</Typography>
@@ -279,13 +280,13 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
 
       <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 0.25, '&::-webkit-scrollbar': { display: 'none' } }}>
         {filters.map((item) => (
-          <Chip key={item} label={item} onClick={() => setFilter(item)} sx={{ borderRadius: '8px', fontWeight: 900, px: 0.5, bgcolor: filter === item ? '#2563EB' : '#FFFFFF', color: filter === item ? 'white' : '#475569', border: '1px solid', borderColor: filter === item ? '#2563EB' : '#E2E8F0' }} />
+          <Chip key={item} label={item} onClick={() => setFilter(item)} sx={{ borderRadius: '8px', fontWeight: 900, px: 0.5, bgcolor: filter === item ? 'primary.main' : 'background.paper', color: filter === item ? 'primary.contrastText' : 'text.secondary', border: '1px solid', borderColor: filter === item ? 'primary.main' : 'divider' }} />
         ))}
       </Box>
 
       <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 0.25, '&::-webkit-scrollbar': { display: 'none' } }}>
         {requestModes.map((item) => (
-          <Button key={item.mode} onClick={() => openRequestDialog(item.mode)} variant="outlined" size="small" sx={{ flexShrink: 0, borderRadius: '8px', borderColor: '#CBD5E1', color: '#0F172A', textTransform: 'none', fontWeight: 900 }}>
+          <Button key={item.mode} onClick={() => openRequestDialog(item.mode)} variant="outlined" size="small" sx={{ flexShrink: 0, borderRadius: '8px', borderColor: 'divider', color: 'text.primary', textTransform: 'none', fontWeight: 900 }}>
             {item.label}
           </Button>
         ))}
@@ -296,14 +297,14 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
           const tone = statusStyle(item.status);
           return (
             <MotionBox key={item.id} variants={{ hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } }} sx={{ ...cardSx, p: 2, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '44px 1fr auto' }, gap: 1.5, alignItems: 'center' }}>
-              <Box sx={{ width: 44, height: 44, borderRadius: '8px', bgcolor: '#EFF6FF', color: '#2563EB', display: { xs: 'none', sm: 'grid' }, placeItems: 'center' }}>{item.icon}</Box>
+              <Box sx={{ width: 44, height: 44, borderRadius: '8px', bgcolor: 'primary.light', color: 'primary.dark', display: { xs: 'none', sm: 'grid' }, placeItems: 'center' }}>{item.icon}</Box>
               <Box sx={{ minWidth: 0 }}>
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', mb: 0.5 }}>
                   <Typography sx={{ fontWeight: 900 }}>{item.title}</Typography>
-                  <Chip size="small" label={item.type} sx={{ bgcolor: '#F1F5F9', color: '#475569', borderRadius: '8px', fontWeight: 800 }} />
+                  <Chip size="small" label={item.type} sx={{ bgcolor: 'action.hover', color: 'text.secondary', borderRadius: '8px', fontWeight: 800 }} />
                 </Box>
-                <Typography sx={{ color: '#64748B', fontSize: 13, fontWeight: 700 }}>{item.date} - {item.detail}</Typography>
-                <Typography sx={{ color: '#334155', fontSize: 13, mt: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.reason}</Typography>
+                <Typography sx={{ color: 'text.secondary', fontSize: 13, fontWeight: 700 }}>{item.date} - {item.detail}</Typography>
+                <Typography sx={{ color: 'text.primary', fontSize: 13, mt: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.reason}</Typography>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}>
                 <Chip label={tone.label} sx={{ bgcolor: tone.bg, color: tone.color, borderRadius: '8px', fontWeight: 900 }} />
@@ -313,7 +314,7 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
         }) : (
           <Box sx={{ ...cardSx, p: 4, textAlign: 'center' }}>
             <Typography sx={{ fontWeight: 900, mb: 0.75 }}>No requests found</Typography>
-            <Typography sx={{ color: '#64748B' }}>When you submit a request, its approval status will appear here.</Typography>
+            <Typography sx={{ color: 'text.secondary' }}>When you submit a request, its approval status will appear here.</Typography>
           </Box>
         )}
       </MotionBox>
@@ -371,10 +372,10 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
           )}
 
           <TextField label="Reason" value={form.reason} onChange={(event) => setForm({ ...form, reason: event.target.value })} multiline minRows={3} size="small" />
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, border: '1px dashed #CBD5E1', borderRadius: '8px', p: 1.25, bgcolor: '#F8FAFC' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, border: '1px dashed', borderColor: 'divider', borderRadius: '8px', p: 1.25, bgcolor: 'background.default' }}>
             <Box sx={{ minWidth: 0 }}>
               <Typography sx={{ fontWeight: 900, fontSize: 13 }}>Supporting document</Typography>
-              <Typography sx={{ color: '#64748B', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachmentFile ? attachmentFile.name : 'Optional PDF, image, or document proof'}</Typography>
+              <Typography sx={{ color: 'text.secondary', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{attachmentFile ? attachmentFile.name : 'Optional PDF, image, or document proof'}</Typography>
             </Box>
             <Button component="label" size="small" variant="outlined" startIcon={<AttachFileRoundedIcon />} sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 900, flexShrink: 0 }}>
               Attach
@@ -385,7 +386,7 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2.5 }}>
           <Button onClick={() => setDialogOpen(false)} sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 800 }}>Cancel</Button>
-          <Button onClick={submitRequest} disabled={submitting} variant="contained" sx={{ bgcolor: '#2563EB', borderRadius: '8px', textTransform: 'none', fontWeight: 900 }}>
+          <Button onClick={submitRequest} disabled={submitting} variant="contained" sx={{ borderRadius: '8px', textTransform: 'none', fontWeight: 900 }}>
             {submitting ? 'Submitting...' : 'Submit request'}
           </Button>
         </DialogActions>
