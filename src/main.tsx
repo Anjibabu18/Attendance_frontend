@@ -1,6 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+
+window.addEventListener('error', (e) => {
+  if (e.message && e.message.includes('Failed to fetch dynamically imported module')) {
+    console.warn('Chunk load error detected, reloading page to fetch new chunks...');
+    window.location.reload();
+  }
+});
+
 import { alpha, CssBaseline, ThemeProvider, createTheme } from "@mui/material";
 import "./styles/tailwind.css";
 import App from "./router/App";
