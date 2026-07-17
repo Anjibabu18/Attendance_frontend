@@ -96,10 +96,10 @@ export function PunchOverlay({
       // Check if QR is required
       if (settings?.requireQrForPunch) {
         setStep(1);
-        startQrCamera();
+        setTimeout(() => startQrCamera(), 100);
       } else {
         setStep(3);
-        startSelfieCamera();
+        setTimeout(() => startSelfieCamera(false), 100);
       }
     } catch (e: any) {
       setError(e?.response?.data?.error || e.message || 'Location verification failed');
@@ -203,7 +203,7 @@ export function PunchOverlay({
       setQrToken(token);
       setQrMode(res.data.mode || "PERMANENT_OFFICE_QR_AUTO_CODE");
       setStep(3);
-      startSelfieCamera();
+      setTimeout(() => startSelfieCamera(false), 100);
     } catch (e: any) {
       setError(e?.response?.data?.error || "Invalid QR Code");
       setTimeout(() => startQrCamera(), 500);
@@ -379,7 +379,7 @@ export function PunchOverlay({
             <Typography sx={{ color: '#CBD5E1', mb: 3, fontSize: 13 }}>Keep the QR flat, bright, and inside the blue frame.</Typography>
             {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
             <Box sx={{ flex: 1, position: 'relative', borderRadius: 4, overflow: 'hidden', border: '4px solid #0052FF', mb: 2, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
-              <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </Box>
             <TextField size="small" placeholder="Paste QR token or QR link if camera cannot scan" value={manualQr} onChange={(event) => setManualQr(event.target.value)} sx={{ bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2, mb: 1, input: { color: 'white' } }} />
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
@@ -395,7 +395,7 @@ export function PunchOverlay({
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Take a Selfie</Typography>
             {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
             <Box sx={{ flex: 1, position: 'relative', borderRadius: '50%', overflow: 'hidden', border: '4px solid #0052FF', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
-              <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </Box>
             <Button variant="contained" onClick={handleCaptureAndPunch} disabled={busy} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 2, fontSize: 18, fontWeight: 700 }}>
               {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Capture & Punch'}
