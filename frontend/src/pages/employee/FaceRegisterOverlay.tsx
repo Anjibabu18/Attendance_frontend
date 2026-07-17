@@ -4,6 +4,7 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { api } from '../../api/client';
+import { detectReliableFace, loadFaceModels } from '../../utils/faceDetection';
 
 export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => void; onRegistered?: () => void }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -22,20 +23,16 @@ export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => 
         // Load models from CDN only when the employee opens Face AI setup.
         const faceapi = await import('@vladmandic/face-api');
         faceApiRef.current = faceapi;
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
+        await loadFaceModels(faceapi);
 
         if (!isMounted) return;
         setModelsLoaded(true);
         setLoadingMsg('Starting camera...');
 
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } } });
         if (videoRef.current && isMounted) {
           videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
         }
       } catch (err: any) {
         if (isMounted) setLoadingMsg(`Error: ${err.message}`);
@@ -58,12 +55,10 @@ export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => 
     try {
       const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
       faceApiRef.current = faceapi;
-      const detection = await faceapi.detectSingleFace(videoRef.current)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      const detection = await detectReliableFace(faceapi, videoRef.current);
 
       if (!detection) {
-        setLoadingMsg('No face detected! Please look directly at the camera and try again.');
+        setLoadingMsg('No face detected. Move the phone slightly away, keep your full face inside the dotted box, and try again.');
         return;
       }
 
@@ -92,7 +87,7 @@ export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => 
         <Box sx={{ p: 3, textAlign: 'center' }}>
           <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>Register Face AI</Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: 14, mb: 3 }}>
-            Position your face clearly in the frame. This data never leaves the system and is stored as a mathematical hash.
+            Keep your full face inside the dotted box, hold the phone slightly away, and use good light. Only the mathematical face descriptor is stored.
           </Typography>
 
           <Box sx={{ position: 'relative', aspectRatio: '3/4', width: '100%', borderRadius: 3, overflow: 'hidden', bgcolor: 'black', mb: 3 }}>
@@ -143,3 +138,4 @@ export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => 
     </Box>
   );
 };
+

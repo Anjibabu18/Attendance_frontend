@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import jsQR from 'jsqr';
 import 'leaflet/dist/leaflet.css';
 import { FaceRegisterOverlay } from './FaceRegisterOverlay';
+import { detectReliableFace, loadFaceModels } from '../../utils/faceDetection';
 
 export function PunchOverlay({ 
   open, 
@@ -223,7 +224,7 @@ export function PunchOverlay({
 
     try {
       stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -238,12 +239,7 @@ export function PunchOverlay({
       try {
         const faceapi = await import('@vladmandic/face-api');
         faceApiRef.current = faceapi;
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
+        await loadFaceModels(faceapi);
         setFaceModelsLoaded(true);
       } catch (err) {
         setError("Failed to load Face AI Models");
@@ -290,12 +286,12 @@ export function PunchOverlay({
       // Run Face Recognition
       const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
       faceApiRef.current = faceapi;
-      const detection = await faceapi.detectSingleFace(v).withFaceLandmarks().withFaceDescriptor();
+      const detection = await detectReliableFace(faceapi, v);
       if (detection) {
         const descriptorArray = Array.from(detection.descriptor);
         fd.append("faceDescriptor", JSON.stringify(descriptorArray));
       } else {
-        throw new Error("No face detected! Please ensure your face is clearly visible.");
+        throw new Error("No face detected. Move the phone slightly away, keep your full face in frame, and try again.");
       }
 
       await api.post(`/api/employee/punch/${kind}`, fd, { 
@@ -427,6 +423,7 @@ export function PunchOverlay({
     </Dialog>
   );
 }
+
 
 
 
