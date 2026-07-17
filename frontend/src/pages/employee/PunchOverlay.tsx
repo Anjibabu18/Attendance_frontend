@@ -247,10 +247,11 @@ export function PunchOverlay({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        videoRef.current.play().catch(err => console.warn("Auto-play prevented", err));
       }
     } catch (e: any) {
-      setError("Camera unavailable for selfie");
+      console.warn("Camera unavailable", e);
+      setError("Camera unavailable for selfie. Please check permissions.");
     }
 
     if (!faceModelsLoaded) {
