@@ -271,9 +271,19 @@ export function PunchOverlay({
   const handleCaptureAndPunch = async () => {
     const v = videoRef.current;
     if (!v) return;
+    if (!streamRef.current) {
+      setError("Camera is not active. Please grant permissions and restart.");
+      return;
+    }
     setBusy(true);
     setError(null);
     try {
+      if (v.paused) {
+        await v.play().catch(() => {});
+        // Wait a bit for the video frame to appear
+        await new Promise(r => setTimeout(r, 300));
+      }
+
       const c = document.createElement('canvas');
       c.width = v.videoWidth; 
       c.height = v.videoHeight;
