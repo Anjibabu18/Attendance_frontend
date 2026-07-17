@@ -34,6 +34,7 @@ export function PunchOverlay({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
   const qrScanActiveRef = useRef(false);
+  const lastQrScanRef = useRef(0);
   const qrFileInputRef = useRef<HTMLInputElement>(null);
   const [location, setLocation] = useState<{lat: number, lng: number}|null>(null);
 
@@ -137,20 +138,38 @@ export function PunchOverlay({
     }
   };
 
+  const decodeQrFromCanvas = (canvas: HTMLCanvasElement) => {
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    const full = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const fullCode = jsQR(full.data, full.width, full.height, { inversionAttempts: "attemptBoth" });
+    if (fullCode?.data?.trim()) return fullCode;
+
+    const side = Math.floor(Math.min(canvas.width, canvas.height) * 0.82);
+    const sx = Math.floor((canvas.width - side) / 2);
+    const sy = Math.floor((canvas.height - side) / 2);
+    const cropped = ctx.getImageData(sx, sy, side, side);
+    return jsQR(cropped.data, cropped.width, cropped.height, { inversionAttempts: "attemptBoth" });
+  };
+
   const scanQrLoop = () => {
     if (!videoRef.current || !qrScanActiveRef.current) return;
     const v = videoRef.current;
-    if (v.readyState === v.HAVE_ENOUGH_DATA) {
+    if (v.readyState === v.HAVE_ENOUGH_DATA && v.videoWidth > 0 && v.videoHeight > 0) {
       const c = document.createElement("canvas");
       c.width = v.videoWidth;
       c.height = v.videoHeight;
-      const ctx = c.getContext("2d");
+      const ctx = c.getContext("2d", { willReadFrequently: true });
       if (ctx) {
         ctx.drawImage(v, 0, 0, c.width, c.height);
-        const imgData = ctx.getImageData(0, 0, c.width, c.height);
-        const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
-        if (code) {
-          handleQrScanned(code.data);
+        const code = decodeQrFromCanvas(c);
+        const data = code?.data?.trim() || "";
+        if (data) {
+          const now = Date.now();
+          if (now - lastQrScanRef.current > 1200) {
+            lastQrScanRef.current = now;
+            void handleQrScanned(data);
+          }
           return;
         }
       }
@@ -163,7 +182,7 @@ export function PunchOverlay({
     if (!raw) return "";
     try {
       const parsed = new URL(raw);
-      return parsed.searchParams.get('punchQr') || parsed.searchParams.get('qrToken') || parsed.searchParams.get('token') || raw;
+      return parsed.searchParams.get('punchQr') || parsed.searchParams.get('qrToken') || parsed.searchParams.get('token') || parsed.searchParams.get('data') || raw;
     } catch {
       const match = raw.match(/(?:punchQr|qrToken|token)=([^&\s]+)/i);
       return match ? decodeURIComponent(match[1]) : raw;
@@ -173,7 +192,8 @@ export function PunchOverlay({
   const handleQrScanned = async (value: string) => {
     const token = extractQrToken(value);
     if (!token) {
-      setError("QR code is empty");
+      setError("No QR token found. Keep only the QR code inside the frame, or paste the token from admin.");
+      if (qrScanActiveRef.current) requestAnimationFrame(scanQrLoop);
       return;
     }
     stopCamera();
@@ -207,9 +227,8 @@ export function PunchOverlay({
     if (!ctx) throw new Error("Cannot scan QR image");
     ctx.drawImage(image, 0, 0);
     URL.revokeObjectURL(image.src);
-    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
-    if (!code) throw new Error("No QR found in image");
+    const code = decodeQrFromCanvas(canvas);
+    if (!code?.data?.trim()) throw new Error("No QR token found in image. Crop the image so only the QR code is visible.");
     await handleQrScanned(code.data);
   };
 
@@ -362,7 +381,7 @@ export function PunchOverlay({
             <Box sx={{ flex: 1, position: 'relative', borderRadius: 4, overflow: 'hidden', border: '4px solid #0052FF', mb: 2, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
               <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </Box>
-            <TextField size="small" placeholder="Paste QR token if camera cannot scan" value={manualQr} onChange={(event) => setManualQr(event.target.value)} sx={{ bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2, mb: 1, input: { color: 'white' } }} />
+            <TextField size="small" placeholder="Paste QR token or QR link if camera cannot scan" value={manualQr} onChange={(event) => setManualQr(event.target.value)} sx={{ bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2, mb: 1, input: { color: 'white' } }} />
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
               <Button variant="outlined" sx={{ borderColor: '#60A5FA', color: '#BFDBFE' }} onClick={() => handleQrScanned(manualQr)}>Use token</Button>
               <Button variant="outlined" sx={{ borderColor: '#60A5FA', color: '#BFDBFE' }} onClick={() => qrFileInputRef.current?.click()}>Upload QR</Button>
@@ -423,6 +442,9 @@ export function PunchOverlay({
     </Dialog>
   );
 }
+
+
+
 
 
 

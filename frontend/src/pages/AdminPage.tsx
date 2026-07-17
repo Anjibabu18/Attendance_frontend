@@ -371,7 +371,7 @@ export default function AdminPage() {
   }
 
   const selectedQrOffice = offices.find((office) => String(office.id) === selectedQrOfficeId) || offices[0];
-  const qrImageUrl = officeQr?.token ? `https://api.qrserver.com/v1/create-qr-code/?size=360x360&data=${encodeURIComponent(officeQr.token)}` : "";
+  const qrImageUrl = officeQr?.token ? `https://api.qrserver.com/v1/create-qr-code/?size=720x720&margin=24&data=${encodeURIComponent(officeQr.token)}` : "";
 
   async function loadLatestOfficeQr(officeId = selectedQrOffice?.id) {
     if (!officeId) return;
@@ -867,12 +867,15 @@ export default function AdminPage() {
                 </Box>
                 {officeQr?.token ? (
                   <Box sx={{ border: "1px solid #DCE7F3", borderRadius: "8px", p: 1.5, bgcolor: "#F8FAFC", display: "grid", gap: 1.25, justifyItems: "center" }}>
-                    <Box component="img" src={qrImageUrl} alt="Office attendance QR" sx={{ width: "min(100%, 240px)", aspectRatio: "1 / 1", borderRadius: "8px", border: "8px solid white", boxShadow: "0 14px 34px rgba(15,23,42,0.12)" }} />
+                    <Box component="img" src={qrImageUrl} alt="Office attendance QR" sx={{ width: "min(100%, 340px)", aspectRatio: "1 / 1", borderRadius: "8px", border: "12px solid white", boxShadow: "0 14px 34px rgba(15,23,42,0.12)" }} />
                     <Box sx={{ width: "100%", bgcolor: "#FFFFFF", border: "1px solid #E2E8F0", borderRadius: "8px", p: 1 }}>
                       <Typography sx={{ color: "#64748B", fontSize: 11, fontWeight: 900 }}>Office</Typography>
                       <Typography sx={{ fontWeight: 950, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{officeQr.officeName || selectedQrOffice?.officeName || "Office"}</Typography>
                     </Box>
-                    <Button fullWidth variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open printable QR</Button>
+                    <Box sx={{ width: "100%", display: "grid", gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" }, gap: 1 }}>
+                      <Button fullWidth variant="outlined" startIcon={<ContentCopyRoundedIcon />} onClick={() => copyOfficeQrToken().catch(() => toastError("Copy failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Copy token</Button>
+                      <Button fullWidth variant="outlined" startIcon={<OpenInNewRoundedIcon />} onClick={() => window.open(qrImageUrl, "_blank")} sx={{ borderRadius: "8px", fontWeight: 900 }}>Open printable QR</Button>
+                    </Box>
                     <Typography sx={{ color: "#64748B", fontSize: 12, textAlign: "center" }}>This same QR stays valid. Print it once and keep it at the office entrance for daily punch scans.</Typography>
                   </Box>
                 ) : (
@@ -1020,6 +1023,8 @@ export default function AdminPage() {
     </Box>
   );
 }
+
+
 
 
 
