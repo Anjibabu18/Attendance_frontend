@@ -1,10 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Box, Typography, Button, IconButton } from '@mui/material';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { api } from '../../api/client';
+import { detectReliableFace, loadFaceModels } from '../../utils/faceDetection';
 
-export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
+export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => void; onRegistered?: () => void }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const faceApiRef = useRef<any>(null);
   const [loadingMsg, setLoadingMsg] = useState('Initializing camera...');
@@ -21,20 +23,16 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
         // Load models from CDN only when the employee opens Face AI setup.
         const faceapi = await import('@vladmandic/face-api');
         faceApiRef.current = faceapi;
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
+        await loadFaceModels(faceapi);
 
         if (!isMounted) return;
         setModelsLoaded(true);
         setLoadingMsg('Starting camera...');
 
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } } });
         if (videoRef.current && isMounted) {
           videoRef.current.srcObject = stream;
+          await videoRef.current.play().catch(() => undefined);
         }
       } catch (err: any) {
         if (isMounted) setLoadingMsg(`Error: ${err.message}`);
@@ -57,12 +55,10 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
     try {
       const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
       faceApiRef.current = faceapi;
-      const detection = await faceapi.detectSingleFace(videoRef.current)
-        .withFaceLandmarks()
-        .withFaceDescriptor();
+      const detection = await detectReliableFace(faceapi, videoRef.current);
 
       if (!detection) {
-        setLoadingMsg('No face detected! Please look directly at the camera and try again.');
+        setLoadingMsg('No face detected. Move the phone slightly away, keep your full face inside the dotted box, and try again.');
         return;
       }
 
@@ -71,6 +67,7 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
       
       await api.post('/api/employee/face-register', { descriptor: descriptorArray });
       setSuccess(true);
+      onRegistered?.();
       setTimeout(() => onClose(), 2000);
     } catch (err: any) {
       setLoadingMsg(`Failed: ${err.message}`);
@@ -78,64 +75,67 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col items-center justify-center p-4">
-      <div className="bg-slate-900 w-full max-w-sm rounded-2xl overflow-hidden shadow-2xl relative border border-slate-700">
-        <button 
+    <Box sx={{ position: 'fixed', inset: 0, bgcolor: 'rgba(0,0,0,0.8)', zIndex: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', p: 2 }}>
+      <Box sx={{ bgcolor: 'background.paper', width: '100%', maxWidth: 384, borderRadius: 4, overflow: 'hidden', boxShadow: 24, position: 'relative', border: '1px solid', borderColor: 'divider' }}>
+        <IconButton 
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 p-2 bg-black/50 text-white rounded-full hover:bg-black/70"
+          sx={{ position: 'absolute', top: 16, right: 16, zIndex: 10, bgcolor: 'rgba(0,0,0,0.5)', color: 'white', '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' } }}
         >
           <CloseRoundedIcon sx={{ width: 24, height: 24 }} />
-        </button>
+        </IconButton>
 
-        <div className="p-6 text-center">
-          <h2 className="text-xl font-semibold text-white mb-2">Register Face AI</h2>
-          <p className="text-slate-400 text-sm mb-6">
-            Position your face clearly in the frame. This data never leaves the system and is stored as a mathematical hash.
-          </p>
+        <Box sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>Register Face AI</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 14, mb: 3 }}>
+            Keep your full face inside the dotted box, hold the phone slightly away, and use good light. Only the mathematical face descriptor is stored.
+          </Typography>
 
-          <div className="relative aspect-[3/4] w-full rounded-xl overflow-hidden bg-black mb-6">
+          <Box sx={{ position: 'relative', aspectRatio: '3/4', width: '100%', borderRadius: 3, overflow: 'hidden', bgcolor: 'black', mb: 3 }}>
             {!modelsLoaded ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+              <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}>
                 <AccountCircleRoundedIcon sx={{ width: 64, height: 64, mb: 2, opacity: 0.5, animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }} />
-                <p className="text-sm px-4 text-center">{loadingMsg}</p>
-              </div>
+                <Typography sx={{ fontSize: 14, px: 2, textAlign: 'center' }}>{loadingMsg}</Typography>
+              </Box>
             ) : success ? (
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-emerald-400 bg-emerald-950">
+              <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'success.light', bgcolor: 'success.dark' }}>
                 <CheckCircleRoundedIcon sx={{ width: 80, height: 80, mb: 2 }} />
-                <p className="font-medium">Face Registered!</p>
-              </div>
+                <Typography sx={{ fontWeight: 500 }}>Face Registered!</Typography>
+              </Box>
             ) : (
               <video 
                 ref={videoRef}
                 autoPlay 
                 playsInline 
                 muted
-                className="absolute inset-0 w-full h-full object-cover"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
               />
             )}
 
             {modelsLoaded && !success && (
-              <div className="absolute inset-0 border-2 border-dashed border-emerald-500/50 rounded-xl m-8 pointer-events-none"></div>
+              <Box sx={{ position: 'absolute', inset: 0, border: '2px dashed', borderColor: 'success.main', opacity: 0.5, borderRadius: 3, m: 4, pointerEvents: 'none' }}></Box>
             )}
-          </div>
+          </Box>
 
-          <button
+          <Button
             onClick={handleRegister}
             disabled={!modelsLoaded || success}
-            className={`w-full py-4 rounded-xl font-bold text-lg transition-all
-              ${(!modelsLoaded || success) 
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-emerald-500 text-white hover:bg-emerald-400 hover:shadow-lg hover:shadow-emerald-500/20 active:scale-95'
-              }`}
+            variant="contained"
+            sx={{
+              width: '100%', py: 2, borderRadius: 3, fontWeight: 700, fontSize: 16,
+              bgcolor: (!modelsLoaded || success) ? 'action.disabledBackground' : 'success.main',
+              color: (!modelsLoaded || success) ? 'text.disabled' : 'success.contrastText',
+              '&:hover': { bgcolor: 'success.light' },
+            }}
           >
             {success ? 'Success!' : 'Capture Face'}
-          </button>
+          </Button>
           
           {loadingMsg && modelsLoaded && !success && (
-            <p className="text-xs text-amber-400 mt-4">{loadingMsg}</p>
+            <Typography sx={{ fontSize: 12, color: 'warning.main', mt: 2 }}>{loadingMsg}</Typography>
           )}
-        </div>
-      </div>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
 };
+

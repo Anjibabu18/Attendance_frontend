@@ -87,6 +87,11 @@ export function PunchOverlay({
         throw new Error(`Outside office radius (${Math.round(res.data.distanceMeters)}m)`);
       }
 
+      if (deviceStatus && !deviceStatus.approved) {
+        setStep(6);
+        return;
+      }
+
       // Check if QR is required
       if (settings?.requireQrForPunch) {
         setStep(1);
@@ -255,6 +260,21 @@ export function PunchOverlay({
     }
   };
 
+  const registerDevice = async () => {
+    setBusy(true);
+    try {
+      const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
+      const label = window.navigator.userAgent;
+      await api.post('/api/account/devices/register', { deviceId, label });
+      await refreshData();
+      startFlow();
+    } catch (e: any) {
+      setError(e?.response?.data?.error || "Registration failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleCaptureAndPunch = async () => {
     const v = videoRef.current;
     if (!v) return;
@@ -273,9 +293,6 @@ export function PunchOverlay({
       const file = new File([blob], `${kind}.jpg`, { type: 'image/jpeg' });
       stopCamera();
 
-      if (deviceStatus && !deviceStatus.approved) {
-        throw new Error("Device not approved. Register device first.");
-      }
       const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
 
       const fd = new FormData();
@@ -421,7 +438,30 @@ export function PunchOverlay({
             </Button>
           </Box>
         )}
+
+        {step === 6 && (
+          <Box sx={{ m: 'auto', width: '100%', maxWidth: 420 }}>
+            {deviceStatus?.registered ? (
+              <>
+                <CircularProgress sx={{ color: '#F59E0B', mb: 3 }} size={60} thickness={4} />
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#F59E0B' }}>Pending Approval</Typography>
+                <Typography sx={{ color: '#94A3B8', mb: 2 }}>Your device has been submitted for approval. Please wait for an Admin/HR to approve it.</Typography>
+                <Button variant="outlined" onClick={startFlow} sx={{ borderColor: '#60A5FA', color: '#BFDBFE' }}>Check Again</Button>
+              </>
+            ) : (
+              <>
+                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#EF4444' }}>Unrecognized Device</Typography>
+                <Typography sx={{ color: '#94A3B8', mb: 2 }}>You are trying to punch in from a new device that is not bound to your account.</Typography>
+                {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
+                <Button variant="contained" onClick={registerDevice} disabled={busy} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 1.5, px: 6, fontWeight: 700 }}>
+                  {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Register This Device'}
+                </Button>
+              </>
+            )}
+          </Box>
+        )}
       </Box>
     </Dialog>
   );
 }
+

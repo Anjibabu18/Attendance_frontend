@@ -173,6 +173,7 @@ export default function AdminPage() {
   const [officeLng, setOfficeLng] = useState("");
   const [officeRadius, setOfficeRadius] = useState("100");
   const [officeIp, setOfficeIp] = useState("");
+  const [editOfficeId, setEditOfficeId] = useState<number | null>(null);
 
   const [employeeForm, setEmployeeForm] = useState({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
 
@@ -200,7 +201,18 @@ export default function AdminPage() {
       if (departmentRes.status === "fulfilled") setDepartments(departmentRes.value.data);
       if (shiftRes.status === "fulfilled") setShifts(shiftRes.value.data);
       if (managerRes.status === "fulfilled") setManagers(managerRes.value.data);
-      if (officeRes.status === "fulfilled") setOffices(officeRes.value.data);
+      if (officeRes.status === "fulfilled") {
+        setOffices(officeRes.value.data);
+        if (officeRes.value.data.length > 0 && !editOfficeId && !officeLat) {
+          const off = officeRes.value.data[0];
+          setEditOfficeId(off.id);
+          setOfficeName(off.officeName || "");
+          setOfficeLat(String(off.latitude));
+          setOfficeLng(String(off.longitude));
+          setOfficeRadius(String(off.radiusMeters));
+          setOfficeIp(off.officeIpAddress || "");
+        }
+      }
       if (holidayRes.status === "fulfilled") setHolidays(holidayRes.value.data);
       if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.data);
       if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value.data);
@@ -417,19 +429,35 @@ export default function AdminPage() {
 
   async function createOffice() {
     if (!officeLat.trim() || !officeLng.trim()) return;
-    await api.post("/api/admin/office-location/active", {
-      officeName: officeName.trim(),
-      latitude: Number(officeLat),
-      longitude: Number(officeLng),
-      radiusMeters: Number(officeRadius),
-      officeIpAddress: officeIp.trim() || undefined,
-    });
+    const radius = Number(officeRadius);
+    if (!Number.isFinite(radius) || radius <= 0) return toastError("Radius must be a positive number in meters.");
+    
+    if (editOfficeId) {
+      await api.put(`/api/admin/office-location/${editOfficeId}`, {
+        officeName: officeName.trim(),
+        latitude: Number(officeLat),
+        longitude: Number(officeLng),
+        radiusMeters: radius,
+        officeIpAddress: officeIp.trim() || undefined,
+      });
+      toastSuccess("Office updated successfully");
+    } else {
+      await api.post("/api/admin/office-location/active", {
+        officeName: officeName.trim(),
+        latitude: Number(officeLat),
+        longitude: Number(officeLng),
+        radiusMeters: radius,
+        officeIpAddress: officeIp.trim() || undefined,
+      });
+      toastSuccess("Office saved successfully");
+    }
+    
     setOfficeName("");
     setOfficeLat("");
     setOfficeLng("");
     setOfficeRadius("100");
     setOfficeIp("");
-    toastSuccess("Office saved");
+    setEditOfficeId(null);
     await refresh();
   }
 
@@ -759,8 +787,37 @@ export default function AdminPage() {
                     <TextField size="small" label="Latitude" value={officeLat} onChange={(e) => setOfficeLat(e.target.value)} />
                     <TextField size="small" label="Longitude" value={officeLng} onChange={(e) => setOfficeLng(e.target.value)} />
                     <TextField size="small" label="Radius meters" value={officeRadius} onChange={(e) => setOfficeRadius(e.target.value)} />
-                    <Button variant="contained" onClick={() => createOffice().catch((err) => toastError(err?.response?.data?.error || "Office failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Save office</Button>
+                    <Box sx={{ display: "flex", gap: 1 }}>
+                      <Button variant="contained" onClick={() => createOffice().catch((err) => toastError(err?.response?.data?.error || "Office failed"))} sx={{ borderRadius: "8px", fontWeight: 900, flex: 1 }}>
+                        {editOfficeId ? "Update office" : "Save office"}
+                      </Button>
+                      {editOfficeId && (
+                        <Button variant="outlined" onClick={() => { setEditOfficeId(null); setOfficeName(""); setOfficeLat(""); setOfficeLng(""); setOfficeRadius("100"); setOfficeIp(""); }} sx={{ borderRadius: "8px", fontWeight: 900 }}>
+                          Cancel
+                        </Button>
+                      )}
+                    </Box>
                   </Box>
+                  {offices.length > 0 && (
+                    <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                      {offices.map((off) => (
+                        <Box key={off.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', p: 1, border: '1px solid #E2E8F0', borderRadius: '8px' }}>
+                          <Box>
+                            <Typography sx={{ fontWeight: 800, fontSize: 13 }}>{off.officeName || `Office #${off.id}`}</Typography>
+                            <Typography sx={{ color: '#64748B', fontSize: 12 }}>Radius: {off.radiusMeters}m | IP: {off.officeIpAddress || 'None'}</Typography>
+                          </Box>
+                          <Button size="small" variant="outlined" onClick={() => {
+                            setEditOfficeId(off.id);
+                            setOfficeName(off.officeName || "");
+                            setOfficeLat(String(off.latitude));
+                            setOfficeLng(String(off.longitude));
+                            setOfficeRadius(String(off.radiusMeters));
+                            setOfficeIp(off.officeIpAddress || "");
+                          }}>Edit</Button>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
                 </Box>
               </Box>
             </Box>
