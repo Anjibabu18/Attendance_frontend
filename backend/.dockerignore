@@ -1,0 +1,7 @@
+target
+.m2repo
+.settings
+.classpath
+.project
+*.log
+hs_err_pid*.log
