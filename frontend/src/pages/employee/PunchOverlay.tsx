@@ -132,7 +132,7 @@ export function PunchOverlay({
     try {
       stopCamera();
       qrScanActiveRef.current = true;
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -252,7 +252,7 @@ export function PunchOverlay({
 
     try {
       stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -304,7 +304,6 @@ export function PunchOverlay({
       if (!blob) throw new Error("Cannot capture");
 
       const file = new File([blob], `${kind}.jpg`, { type: 'image/jpeg' });
-      stopCamera();
 
       if (deviceStatus && !deviceStatus.approved) {
         throw new Error("Device not approved. Register device first.");
@@ -322,11 +321,10 @@ export function PunchOverlay({
       }
       fd.append("file", file);
 
-      setBusy(true);
-      // Run Face Recognition
+      // Run Face Recognition on the captured canvas
       const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
       faceApiRef.current = faceapi;
-      const detection = await detectReliableFace(faceapi, v);
+      const detection = await detectReliableFace(faceapi, c);
       if (detection) {
         const descriptorArray = Array.from(detection.descriptor);
         fd.append("faceDescriptor", JSON.stringify(descriptorArray));
@@ -338,6 +336,7 @@ export function PunchOverlay({
         headers: { "Content-Type": "multipart/form-data" } 
       });
 
+      stopCamera();
       setStep(4); // Success
       await refreshData();
     } catch (e: any) {
