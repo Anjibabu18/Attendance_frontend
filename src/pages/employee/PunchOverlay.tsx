@@ -22,7 +22,7 @@ export function PunchOverlay({
   const { refreshData, deviceStatus, settings, profile } = useEmployee();
   
   const [step, setStep] = useState<number>(0); 
-  // 0: Location, 1: QR Scan, 2: Daily Code, 3: Selfie, 4: Success, 5: Face Registration
+  // 0: Location, 1: QR Scan, 3: Selfie, 4: Success, 5: Face Registration
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
@@ -38,7 +38,6 @@ export function PunchOverlay({
   const [qrToken, setQrToken] = useState<string>("");
   const [manualQr, setManualQr] = useState<string>("");
   const [qrMode, setQrMode] = useState<string>("");
-  const [dailyCode, setDailyCode] = useState<string>("");
   const [officeLocation, setOfficeLocation] = useState<{ lat: number; lng: number; radius: number } | null>(null);
   const faceReady = Boolean(profile?.faceRegistered || faceRegisteredThisSession);
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -54,12 +53,12 @@ export function PunchOverlay({
       if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; }
       const map = L.map(mapContainerRef.current!, { zoomControl: true, scrollWheelZoom: false });
       mapInstanceRef.current = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'Ãƒâ€šÃ‚Â© OpenStreetMap' }).addTo(map);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap' }).addTo(map);
       // Office circle
       L.circle([officeLocation.lat, officeLocation.lng], { radius: officeLocation.radius, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.1, weight: 2 }).addTo(map);
-      L.marker([officeLocation.lat, officeLocation.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Office').addTo(map);
+      L.marker([officeLocation.lat, officeLocation.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('Office').addTo(map);
       // Employee position
-      L.marker([location.lat, location.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#3b82f6;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â You are here').addTo(map);
+      L.marker([location.lat, location.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#3b82f6;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('You are here').addTo(map);
       // Fit bounds
       const bounds = L.latLngBounds([[officeLocation.lat, officeLocation.lng], [location.lat, location.lng]]);
       map.fitBounds(bounds, { padding: [40, 40] });
@@ -72,7 +71,6 @@ export function PunchOverlay({
     setError(null);
     setQrToken("");
     setQrMode("");
-    setDailyCode("");
     setShowFaceRegister(false);
     try {
       const loc = await new Promise<{lat: number, lng: number}>((res, rej) => {
@@ -181,13 +179,9 @@ export function PunchOverlay({
     try {
       const res = await api.get('/api/employee/punch/qr', { params: { token } });
       setQrToken(token);
-      if (res.data.mode === "FIXED_QR_DAILY_CODE") {
-        setQrMode("FIXED_QR_DAILY_CODE");
-        setStep(2);
-      } else {
-        setStep(3);
-        startSelfieCamera();
-      }
+      setQrMode(res.data.mode || "PERMANENT_OFFICE_QR_AUTO_CODE");
+      setStep(3);
+      startSelfieCamera();
     } catch (e: any) {
       setError(e?.response?.data?.error || "Invalid QR Code");
       setTimeout(() => startQrCamera(), 500);
@@ -215,16 +209,6 @@ export function PunchOverlay({
     const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
     if (!code) throw new Error("No QR found in image");
     await handleQrScanned(code.data);
-  };
-
-  const handleDailyCodeSubmit = () => {
-    if (dailyCode.length < 4) {
-      setError("Please enter the 4-digit code");
-      return;
-    }
-    setError(null);
-    setStep(3);
-    startSelfieCamera();
   };
 
   // ----- Selfie -----
@@ -298,9 +282,6 @@ export function PunchOverlay({
       fd.append("deviceId", deviceId);
       if (settings?.requireQrForPunch) {
         fd.append("qrToken", qrToken);
-        if (qrMode === "FIXED_QR_DAILY_CODE") {
-          fd.append("dailyCode", dailyCode);
-        }
       }
       fd.append("file", file);
 
@@ -390,26 +371,6 @@ export function PunchOverlay({
           </Box>
         )}
 
-        {step === 2 && (
-          <Box sx={{ m: 'auto' }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Enter Daily Code</Typography>
-            <Typography sx={{ color: '#94A3B8', mb: 4 }}>Please enter the 4-digit code shown on the office board.</Typography>
-            <TextField 
-              autoFocus
-              variant="outlined"
-              placeholder="0000"
-              value={dailyCode}
-              onChange={(e) => setDailyCode(e.target.value)}
-              inputProps={{ style: { textAlign: 'center', fontSize: 32, letterSpacing: 8, color: 'white' }, maxLength: 4 }}
-              sx={{ bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2, mb: 4, width: '200px' }}
-            />
-            {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
-            <Button variant="contained" onClick={handleDailyCodeSubmit} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 2, px: 6, fontSize: 18, fontWeight: 700, width: '100%' }}>
-              Continue
-            </Button>
-          </Box>
-        )}
-
         {step === 3 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Take a Selfie</Typography>
@@ -445,7 +406,8 @@ export function PunchOverlay({
               Done
             </Button>
           </Box>
-        )}      </Box>
+        )}
+      </Box>
       {showFaceRegister && (
         <FaceRegisterOverlay
           onClose={() => setShowFaceRegister(false)}
@@ -461,3 +423,5 @@ export function PunchOverlay({
     </Dialog>
   );
 }
+
+
