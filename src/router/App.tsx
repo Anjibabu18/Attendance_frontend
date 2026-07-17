@@ -9,11 +9,10 @@ const AdminPage = lazy(() => import("../pages/AdminPage"));
 const HrPage = lazy(() => import("../pages/HrPage"));
 const ManagerPage = lazy(() => import("../pages/ManagerPage"));
 const EmployeePage = lazy(() => import("../pages/EmployeePage"));
-const HomePage = lazy(() => import("../pages/HomePage"));
 
 function AuthedRedirect() {
   const auth = getAuth();
-  if (!auth) return <HomePage />;
+  if (!auth) return <Navigate to="/login" replace />;
   if (auth.role === "ROLE_ADMIN") return <Navigate to="/admin" replace />;
   if (auth.role === "ROLE_HR") return <Navigate to="/hr" replace />;
   if (auth.role === "ROLE_MANAGER") return <Navigate to="/manager" replace />;

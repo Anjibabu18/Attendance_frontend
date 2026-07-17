@@ -95,7 +95,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
 
   const handleLogout = () => {
     clearAuth();
-    window.location.href = '/';
+    window.location.replace('/login');
   };
 
   const totalLeave = leaveBalances.reduce((sum, item) => sum + item.remainingDays, 0);
