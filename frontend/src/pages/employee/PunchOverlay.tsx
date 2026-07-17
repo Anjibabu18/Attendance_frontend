@@ -3,6 +3,7 @@ import { Box, Button, Typography, CircularProgress, Dialog, IconButton, TextFiel
 import CloseIcon from '@mui/icons-material/Close';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MyLocationIcon from '@mui/icons-material/MyLocation';
+import LocationOffRoundedIcon from '@mui/icons-material/LocationOffRounded';
 import { api } from '../../api/client';
 import { useEmployee } from './EmployeeContext';
 import dayjs from 'dayjs';
@@ -82,7 +83,7 @@ export function PunchOverlay({
       });
       setLocation(loc);
 
-      const res = await api.get('/api/employee/punch/place', { params: loc });
+      const res = await api.get('/api/employee/punch/place', { params: { latitude: loc.lat, longitude: loc.lng } });
       if (res.data.officeLocation) {
         setOfficeLocation({ lat: res.data.officeLocation.latitude, lng: res.data.officeLocation.longitude, radius: res.data.officeLocation.radiusMeters });
       }
@@ -335,7 +336,10 @@ export function PunchOverlay({
               </>
             ) : (
               <>
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#EF4444' }}>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â Location Issue</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1, color: '#EF4444' }}>
+                  <LocationOffRoundedIcon sx={{ fontSize: 28, mr: 1 }} />
+                  <Typography variant="h5" sx={{ fontWeight: 700 }}>Location Issue</Typography>
+                </Box>
                 <Typography sx={{ color: '#94A3B8', mb: 2 }}>{error}</Typography>
                 {location && officeLocation && (
                   <Box sx={{ borderRadius: 3, overflow: 'hidden', mb: 3, height: 260 }}>
@@ -423,5 +427,6 @@ export function PunchOverlay({
     </Dialog>
   );
 }
+
 
 

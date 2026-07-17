@@ -137,6 +137,17 @@ const timePayload = (value: string) => `1970-01-01T${value.length === 5 ? `${val
 const dateOnly = (value?: string | Date | null) => value ? new Date(value).toISOString().slice(0, 10) : "--";
 const displayTime = (value?: string | Date | null) => value ? timeOnly(String(value), "--") : "--";
 
+const parseOfficeCoordinates = (latInput: string, lngInput: string) => {
+  const latRaw = latInput.trim();
+  const lngRaw = lngInput.trim();
+  const combined = `${latRaw} ${lngRaw}`.trim();
+  const mapMatch = combined.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/) || combined.match(/[?&](?:q|query|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/);
+  const lat = mapMatch ? Number(mapMatch[1]) : Number(latRaw);
+  const lng = mapMatch ? Number(mapMatch[2]) : Number(lngRaw);
+  if (!Number.isFinite(lat) || lat < -90 || lat > 90) throw new Error("Latitude must be a number between -90 and 90. Example: 17.4931753");
+  if (!Number.isFinite(lng) || lng < -180 || lng > 180) throw new Error("Longitude must be a number between -180 and 180. Example: 78.4132323");
+  return { lat, lng };
+};
 const requestTone = (kind: ApprovalKind) => {
   if (kind === "leave") return { bg: "#EFF6FF", color: "#1D4ED8", label: "Leave" };
   if (kind === "correction") return { bg: "#F0FDFA", color: "#0F766E", label: "Correction" };
@@ -435,12 +446,15 @@ export default function AdminPage() {
   }
 
   async function createOffice() {
-    if (!officeLat.trim() || !officeLng.trim()) return;
+    if (!officeLat.trim()) return toastError("Enter latitude, or paste a Google Maps link in Latitude.");
+    const coords = parseOfficeCoordinates(officeLat, officeLng);
+    const radius = Number(officeRadius);
+    if (!Number.isFinite(radius) || radius <= 0) return toastError("Radius must be a positive number in meters.");
     await api.post("/api/admin/office-location/active", {
       officeName: officeName.trim(),
-      latitude: Number(officeLat),
-      longitude: Number(officeLng),
-      radiusMeters: Number(officeRadius),
+      latitude: coords.lat,
+      longitude: coords.lng,
+      radiusMeters: radius,
       officeIpAddress: officeIp.trim() || undefined,
     });
     setOfficeName("");
@@ -823,8 +837,8 @@ export default function AdminPage() {
                   <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", sm: "repeat(2, minmax(0, 1fr))" }, gap: 1 }}>
                     <TextField size="small" label="Office name" value={officeName} onChange={(e) => setOfficeName(e.target.value)} />
                     <TextField size="small" label="IP whitelist optional" value={officeIp} onChange={(e) => setOfficeIp(e.target.value)} />
-                    <TextField size="small" label="Latitude" value={officeLat} onChange={(e) => setOfficeLat(e.target.value)} />
-                    <TextField size="small" label="Longitude" value={officeLng} onChange={(e) => setOfficeLng(e.target.value)} />
+                    <TextField size="small" label="Latitude or Google Maps link" value={officeLat} onChange={(e) => setOfficeLat(e.target.value)} helperText="Example: 17.4931753 or paste Maps URL" />
+                    <TextField size="small" label="Longitude" value={officeLng} onChange={(e) => setOfficeLng(e.target.value)} helperText="Example: 78.4132323" />
                     <TextField size="small" label="Radius meters" value={officeRadius} onChange={(e) => setOfficeRadius(e.target.value)} />
                     <Button variant="contained" onClick={() => createOffice().catch((err) => toastError(err?.response?.data?.error || "Office failed"))} sx={{ borderRadius: "8px", fontWeight: 900 }}>Save office</Button>
                   </Box>
@@ -1006,6 +1020,8 @@ export default function AdminPage() {
     </Box>
   );
 }
+
+
 
 
 
