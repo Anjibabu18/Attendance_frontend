@@ -257,6 +257,7 @@ export function PunchOverlay({
 
     try {
       stopCamera();
+      await new Promise(r => setTimeout(r, 400));
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) {
