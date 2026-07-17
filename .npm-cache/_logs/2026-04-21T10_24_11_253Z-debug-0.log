@@ -1,0 +1,139 @@
+0 verbose cli C:\Program Files\nodejs\node.exe C:\Program Files\nodejs\node_modules\npm\bin\npm-cli.js
+1 info using npm@10.9.7
+2 info using node@v22.22.2
+3 silly config load:file:C:\Program Files\nodejs\node_modules\npm\npmrc
+4 silly config load:file:C:\Users\venka\OneDrive\Desktop\Attendance\frontend\.npmrc
+5 silly config load:file:C:\Users\venka\.npmrc
+6 silly config load:file:C:\Users\venka\AppData\Roaming\npm\etc\npmrc
+7 verbose title npm install
+8 verbose argv "install"
+9 verbose logfile logs-max:10 dir:C:\Users\venka\OneDrive\Desktop\Attendance\frontend\.npm-cache\_logs\2026-04-21T10_24_11_253Z-
+10 verbose logfile C:\Users\venka\OneDrive\Desktop\Attendance\frontend\.npm-cache\_logs\2026-04-21T10_24_11_253Z-debug-0.log
+11 silly logfile done cleaning log files
+12 http fetch GET https://registry.npmjs.org/npm attempt 1 failed with ECONNREFUSED
+13 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+14 silly idealTree buildDeps
+15 silly fetch manifest @emotion/react@^11.11.4
+16 silly packumentCache full:https://registry.npmjs.org/@emotion%2freact cache-miss
+17 http fetch GET https://registry.npmjs.org/@emotion%2freact attempt 1 failed with ECONNREFUSED
+18 http fetch GET https://registry.npmjs.org/npm attempt 2 failed with ECONNREFUSED
+19 http fetch GET https://registry.npmjs.org/@emotion%2freact attempt 2 failed with ECONNREFUSED
+20 http fetch GET https://registry.npmjs.org/npm attempt 3 failed with ECONNREFUSED
+21 http fetch GET https://registry.npmjs.org/@emotion%2freact attempt 3 failed with ECONNREFUSED
+22 silly fetch manifest @emotion/styled@^11.11.5
+23 silly packumentCache full:https://registry.npmjs.org/@emotion%2fstyled cache-miss
+24 http fetch GET https://registry.npmjs.org/@emotion%2fstyled attempt 1 failed with ECONNREFUSED
+25 http fetch GET https://registry.npmjs.org/@emotion%2fstyled attempt 2 failed with ECONNREFUSED
+26 http fetch GET https://registry.npmjs.org/@emotion%2fstyled attempt 3 failed with ECONNREFUSED
+27 silly fetch manifest @mui/icons-material@^5.16.14
+28 silly packumentCache full:https://registry.npmjs.org/@mui%2ficons-material cache-miss
+29 http fetch GET https://registry.npmjs.org/@mui%2ficons-material attempt 1 failed with ECONNREFUSED
+30 http fetch GET https://registry.npmjs.org/@mui%2ficons-material attempt 2 failed with ECONNREFUSED
+31 http fetch GET https://registry.npmjs.org/@mui%2ficons-material attempt 3 failed with ECONNREFUSED
+32 silly fetch manifest @mui/material@^5.16.14
+33 silly packumentCache full:https://registry.npmjs.org/@mui%2fmaterial cache-miss
+34 http fetch GET https://registry.npmjs.org/@mui%2fmaterial attempt 1 failed with ECONNREFUSED
+35 http fetch GET https://registry.npmjs.org/@mui%2fmaterial attempt 2 failed with ECONNREFUSED
+36 http fetch GET https://registry.npmjs.org/@mui%2fmaterial attempt 3 failed with ECONNREFUSED
+37 silly fetch manifest axios@^1.7.7
+38 silly packumentCache full:https://registry.npmjs.org/axios cache-miss
+39 http fetch GET https://registry.npmjs.org/axios attempt 1 failed with ECONNREFUSED
+40 http fetch GET https://registry.npmjs.org/axios attempt 2 failed with ECONNREFUSED
+41 http fetch GET https://registry.npmjs.org/axios attempt 3 failed with ECONNREFUSED
+42 silly fetch manifest dayjs@^1.11.13
+43 silly packumentCache full:https://registry.npmjs.org/dayjs cache-miss
+44 http fetch GET https://registry.npmjs.org/dayjs attempt 1 failed with ECONNREFUSED
+45 http fetch GET https://registry.npmjs.org/dayjs attempt 2 failed with ECONNREFUSED
+46 http fetch GET https://registry.npmjs.org/dayjs attempt 3 failed with ECONNREFUSED
+47 silly fetch manifest react@^18.3.1
+48 silly packumentCache full:https://registry.npmjs.org/react cache-miss
+49 http fetch GET https://registry.npmjs.org/react attempt 1 failed with ECONNREFUSED
+50 http fetch GET https://registry.npmjs.org/react attempt 2 failed with ECONNREFUSED
+51 http fetch GET https://registry.npmjs.org/react attempt 3 failed with ECONNREFUSED
+52 silly fetch manifest react-dom@^18.3.1
+53 silly packumentCache full:https://registry.npmjs.org/react-dom cache-miss
+54 http fetch GET https://registry.npmjs.org/react-dom attempt 1 failed with ECONNREFUSED
+55 http fetch GET https://registry.npmjs.org/react-dom attempt 2 failed with ECONNREFUSED
+56 http fetch GET https://registry.npmjs.org/react-dom attempt 3 failed with ECONNREFUSED
+57 silly fetch manifest react-router-dom@^6.26.2
+58 silly packumentCache full:https://registry.npmjs.org/react-router-dom cache-miss
+59 http fetch GET https://registry.npmjs.org/react-router-dom attempt 1 failed with ECONNREFUSED
+60 http fetch GET https://registry.npmjs.org/react-router-dom attempt 2 failed with ECONNREFUSED
+61 http fetch GET https://registry.npmjs.org/react-router-dom attempt 3 failed with ECONNREFUSED
+62 silly fetch manifest @types/react@^18.3.12
+63 silly packumentCache full:https://registry.npmjs.org/@types%2freact cache-miss
+64 http fetch GET https://registry.npmjs.org/@types%2freact attempt 1 failed with ECONNREFUSED
+65 http fetch GET https://registry.npmjs.org/@types%2freact attempt 2 failed with ECONNREFUSED
+66 http fetch GET https://registry.npmjs.org/@types%2freact attempt 3 failed with ECONNREFUSED
+67 silly fetch manifest @types/react-dom@^18.3.1
+68 silly packumentCache full:https://registry.npmjs.org/@types%2freact-dom cache-miss
+69 http fetch GET https://registry.npmjs.org/@types%2freact-dom attempt 1 failed with ECONNREFUSED
+70 http fetch GET https://registry.npmjs.org/@types%2freact-dom attempt 2 failed with ECONNREFUSED
+71 http fetch GET https://registry.npmjs.org/@types%2freact-dom attempt 3 failed with ECONNREFUSED
+72 silly fetch manifest @vitejs/plugin-react@^4.3.3
+73 silly packumentCache full:https://registry.npmjs.org/@vitejs%2fplugin-react cache-miss
+74 http fetch GET https://registry.npmjs.org/@vitejs%2fplugin-react attempt 1 failed with ECONNREFUSED
+75 http fetch GET https://registry.npmjs.org/@vitejs%2fplugin-react attempt 2 failed with ECONNREFUSED
+76 http fetch GET https://registry.npmjs.org/@vitejs%2fplugin-react attempt 3 failed with ECONNREFUSED
+77 silly fetch manifest typescript@^5.6.3
+78 silly packumentCache full:https://registry.npmjs.org/typescript cache-miss
+79 http fetch GET https://registry.npmjs.org/typescript attempt 1 failed with ECONNREFUSED
+80 http fetch GET https://registry.npmjs.org/typescript attempt 2 failed with ECONNREFUSED
+81 http fetch GET https://registry.npmjs.org/typescript attempt 3 failed with ECONNREFUSED
+82 silly fetch manifest vite@^5.4.10
+83 silly packumentCache full:https://registry.npmjs.org/vite cache-miss
+84 http fetch GET https://registry.npmjs.org/vite attempt 1 failed with ECONNREFUSED
+85 http fetch GET https://registry.npmjs.org/vite attempt 2 failed with ECONNREFUSED
+86 http fetch GET https://registry.npmjs.org/vite attempt 3 failed with ECONNREFUSED
+87 silly placeDep ROOT @emotion/react@ OK for: attendance-frontend@0.1.0 want: ^11.11.4
+88 silly placeDep ROOT @emotion/styled@ OK for: attendance-frontend@0.1.0 want: ^11.11.5
+89 silly placeDep ROOT @mui/icons-material@ OK for: attendance-frontend@0.1.0 want: ^5.16.14
+90 silly placeDep ROOT @mui/material@ OK for: attendance-frontend@0.1.0 want: ^5.16.14
+91 silly placeDep ROOT @types/react@ OK for: attendance-frontend@0.1.0 want: ^18.3.12
+92 silly placeDep ROOT @types/react-dom@ OK for: attendance-frontend@0.1.0 want: ^18.3.1
+93 silly placeDep ROOT @vitejs/plugin-react@ OK for: attendance-frontend@0.1.0 want: ^4.3.3
+94 silly placeDep ROOT axios@ OK for: attendance-frontend@0.1.0 want: ^1.7.7
+95 silly placeDep ROOT dayjs@ OK for: attendance-frontend@0.1.0 want: ^1.11.13
+96 silly placeDep ROOT react@ OK for: attendance-frontend@0.1.0 want: ^18.3.1
+97 silly placeDep ROOT react-dom@ OK for: attendance-frontend@0.1.0 want: ^18.3.1
+98 silly placeDep ROOT react-router-dom@ OK for: attendance-frontend@0.1.0 want: ^6.26.2
+99 silly placeDep ROOT typescript@ OK for: attendance-frontend@0.1.0 want: ^5.6.3
+100 silly placeDep ROOT vite@ OK for: attendance-frontend@0.1.0 want: ^5.4.10
+101 verbose type system
+102 verbose stack FetchError: request to https://registry.npmjs.org/@emotion%2freact failed, reason: connect ECONNREFUSED 127.0.0.1:9
+102 verbose stack     at ClientRequest.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+102 verbose stack     at ClientRequest.emit (node:events:519:28)
+102 verbose stack     at emitErrorEvent (node:_http_client:108:11)
+102 verbose stack     at _destroy (node:_http_client:963:9)
+102 verbose stack     at onSocketNT (node:_http_client:983:5)
+102 verbose stack     at process.processTicksAndRejections (node:internal/process/task_queues:90:21)
+103 error code ECONNREFUSED
+104 error syscall connect
+105 error errno ECONNREFUSED
+106 error FetchError: request to https://registry.npmjs.org/@emotion%2freact failed, reason: connect ECONNREFUSED 127.0.0.1:9
+106 error     at ClientRequest.<anonymous> (C:\Program Files\nodejs\node_modules\npm\node_modules\minipass-fetch\lib\index.js:130:14)
+106 error     at ClientRequest.emit (node:events:519:28)
+106 error     at emitErrorEvent (node:_http_client:108:11)
+106 error     at _destroy (node:_http_client:963:9)
+106 error     at onSocketNT (node:_http_client:983:5)
+106 error     at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+106 error   code: 'ECONNREFUSED',
+106 error   errno: 'ECONNREFUSED',
+106 error   syscall: 'connect',
+106 error   address: '127.0.0.1',
+106 error   port: 9,
+106 error   type: 'system',
+106 error   requiredBy: '.'
+106 error }
+107 error
+107 error If you are behind a proxy, please make sure that the
+107 error 'proxy' config is set properly.  See: 'npm help config'
+108 silly unfinished npm timer reify 1776767051889
+109 silly unfinished npm timer reify:loadTrees 1776767051891
+110 verbose cwd C:\Users\venka\OneDrive\Desktop\Attendance\frontend
+111 verbose os Windows_NT 10.0.26200
+112 verbose node v22.22.2
+113 verbose npm  v10.9.7
+114 verbose exit 1
+115 verbose code 1
+116 error A complete log of this run can be found in: C:\Users\venka\OneDrive\Desktop\Attendance\frontend\.npm-cache\_logs\2026-04-21T10_24_11_253Z-debug-0.log
