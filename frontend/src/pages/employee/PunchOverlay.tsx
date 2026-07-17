@@ -99,8 +99,12 @@ export function PunchOverlay({
         setStep(1);
         setTimeout(() => startQrCamera(), 100);
       } else {
-        setStep(3);
-        setTimeout(() => startSelfieCamera(false), 100);
+        if (!faceReady) {
+          setStep(5);
+        } else {
+          setStep(3);
+          // Do NOT auto-start camera here. The user MUST click the "Start Camera" button in step 3.
+        }
       }
     } catch (e: any) {
       setError(e?.response?.data?.error || e.message || 'Location verification failed');
@@ -204,8 +208,11 @@ export function PunchOverlay({
       const res = await api.get('/api/employee/punch/qr', { params: { token } });
       setQrToken(token);
       setQrMode(res.data.mode || "PERMANENT_OFFICE_QR_AUTO_CODE");
-      setStep(3);
-      setTimeout(() => startSelfieCamera(false), 100);
+      if (!faceReady) {
+        setStep(5);
+      } else {
+        setStep(3);
+      }
     } catch (e: any) {
       setError(e?.response?.data?.error || "Invalid QR Code");
       setTimeout(() => startQrCamera(), 500);
