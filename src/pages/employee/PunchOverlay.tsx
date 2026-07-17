@@ -8,6 +8,7 @@ import { useEmployee } from './EmployeeContext';
 import dayjs from 'dayjs';
 import jsQR from 'jsqr';
 import 'leaflet/dist/leaflet.css';
+import { FaceRegisterOverlay } from './FaceRegisterOverlay';
 
 export function PunchOverlay({ 
   open, 
@@ -18,13 +19,15 @@ export function PunchOverlay({
   onClose: () => void; 
   kind: 'checkin' | 'checkout' 
 }) {
-  const { refreshData, deviceStatus, settings } = useEmployee();
+  const { refreshData, deviceStatus, settings, profile } = useEmployee();
   
   const [step, setStep] = useState<number>(0); 
-  // 0: Location, 1: QR Scan, 2: Daily Code, 3: Selfie, 4: Success
+  // 0: Location, 1: QR Scan, 2: Daily Code, 3: Selfie, 4: Success, 5: Face Registration
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
+  const [faceRegisteredThisSession, setFaceRegisteredThisSession] = useState(false);
+  const [showFaceRegister, setShowFaceRegister] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -37,6 +40,7 @@ export function PunchOverlay({
   const [qrMode, setQrMode] = useState<string>("");
   const [dailyCode, setDailyCode] = useState<string>("");
   const [officeLocation, setOfficeLocation] = useState<{ lat: number; lng: number; radius: number } | null>(null);
+  const faceReady = Boolean(profile?.faceRegistered || faceRegisteredThisSession);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const faceApiRef = useRef<any>(null);
@@ -69,6 +73,7 @@ export function PunchOverlay({
     setQrToken("");
     setQrMode("");
     setDailyCode("");
+    setShowFaceRegister(false);
     try {
       const loc = await new Promise<{lat: number, lng: number}>((res, rej) => {
         navigator.geolocation.getCurrentPosition(
@@ -223,7 +228,14 @@ export function PunchOverlay({
   };
 
   // ----- Selfie -----
-  const startSelfieCamera = async () => {
+  const startSelfieCamera = async (skipFaceCheck = false) => {
+    if (!skipFaceCheck && !faceReady) {
+      stopCamera();
+      setStep(5);
+      setError(null);
+      return;
+    }
+
     try {
       stopCamera();
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
@@ -411,6 +423,19 @@ export function PunchOverlay({
           </Box>
         )}
 
+        {step === 5 && (
+          <Box sx={{ m: 'auto', width: '100%', maxWidth: 420 }}>
+            <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>Register Face AI First</Typography>
+            <Typography sx={{ color: '#94A3B8', mb: 3 }}>Your attendance punch requires face verification. Register your face once, then continue this punch.</Typography>
+            {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
+            <Button variant="contained" onClick={() => setShowFaceRegister(true)} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 1.7, px: 4, fontWeight: 800, width: '100%', mb: 1.5 }}>
+              Register Face AI
+            </Button>
+            <Button variant="outlined" onClick={closeOverlay} sx={{ borderColor: '#475569', color: '#CBD5E1', borderRadius: 8, py: 1.4, width: '100%' }}>
+              Cancel Punch
+            </Button>
+          </Box>
+        )}
         {step === 4 && (
           <Box sx={{ m: 'auto' }}>
             <CheckCircleIcon sx={{ fontSize: 100, color: '#10B981', mb: 2 }} />
@@ -420,8 +445,19 @@ export function PunchOverlay({
               Done
             </Button>
           </Box>
-        )}
-      </Box>
+        )}      </Box>
+      {showFaceRegister && (
+        <FaceRegisterOverlay
+          onClose={() => setShowFaceRegister(false)}
+          onRegistered={() => {
+            setFaceRegisteredThisSession(true);
+            setShowFaceRegister(false);
+            void refreshData();
+            setStep(3);
+            setTimeout(() => startSelfieCamera(true), 250);
+          }}
+        />
+      )}
     </Dialog>
   );
 }

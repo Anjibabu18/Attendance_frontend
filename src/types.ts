@@ -6,7 +6,7 @@ export type Profile = {
   assignedOfficeLocation?: OfficeLocation | null;
   department?: { id: number; name: string } | null;
   shift?: { id: number; name: string; inTime: string; outTime: string; flexible: boolean } | null;
-  status?: string; profilePhotoUrl?: string | null;
+  status?: string; profilePhotoUrl?: string | null; faceRegistered?: boolean;
 };
 export type Attendance = {
   id: number; employeeId: number; date: string;

@@ -4,7 +4,7 @@ import AccountCircleRoundedIcon from '@mui/icons-material/AccountCircleRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { api } from '../../api/client';
 
-export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
+export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => void; onRegistered?: () => void }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const faceApiRef = useRef<any>(null);
   const [loadingMsg, setLoadingMsg] = useState('Initializing camera...');
@@ -71,6 +71,7 @@ export const FaceRegisterOverlay = ({ onClose }: { onClose: () => void }) => {
       
       await api.post('/api/employee/face-register', { descriptor: descriptorArray });
       setSuccess(true);
+      onRegistered?.();
       setTimeout(() => onClose(), 2000);
     } catch (err: any) {
       setLoadingMsg(`Failed: ${err.message}`);
