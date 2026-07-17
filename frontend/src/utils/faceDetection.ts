@@ -19,8 +19,10 @@ export const waitForVideoFrame = async (video: HTMLVideoElement) => {
   throw new Error("Camera frame is not ready yet. Please wait a second and try again.");
 };
 
-export const detectReliableFace = async (faceapi: any, video: HTMLVideoElement) => {
-  await waitForVideoFrame(video);
+export const detectReliableFace = async (faceapi: any, videoOrCanvas: HTMLVideoElement | HTMLCanvasElement) => {
+  if (videoOrCanvas instanceof HTMLVideoElement) {
+    await waitForVideoFrame(videoOrCanvas);
+  }
 
   const tinyOptions = [
     new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.25 }),
@@ -34,11 +36,11 @@ export const detectReliableFace = async (faceapi: any, video: HTMLVideoElement) 
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
     for (const options of tinyOptions) {
-      const detection = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
+      const detection = await faceapi.detectSingleFace(videoOrCanvas, options).withFaceLandmarks().withFaceDescriptor();
       if (detection) return detection;
     }
     for (const options of ssdOptions) {
-      const detection = await faceapi.detectSingleFace(video, options).withFaceLandmarks().withFaceDescriptor();
+      const detection = await faceapi.detectSingleFace(videoOrCanvas, options).withFaceLandmarks().withFaceDescriptor();
       if (detection) return detection;
     }
     await wait(220);
