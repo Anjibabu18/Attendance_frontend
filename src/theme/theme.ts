@@ -22,15 +22,15 @@ export const getDesignTokens = (mode: 'light' | 'dark'): ThemeOptions => ({
           divider: 'rgba(15, 23, 42, 0.08)',
         }
       : {
-          primary:   { main: "#F8FAFC", dark: "#E2E8F0", light: "#FFFFFF" },
-          secondary: { main: "#38BDF8", dark: "#0284C7", light: "#7DD3FC" }, // Electric blue
+          primary:   { main: "#0EA5E9", dark: "#0284C7", light: "#38BDF8" }, // Neon Cyber Blue
+          secondary: { main: "#C026D3", dark: "#A21CAF", light: "#E879F9" }, // Neon Fuchsia
           info:      { main: "#818CF8" },
-          success:   { main: "#34D399", light: "#6EE7B7" },
-          error:     { main: "#F87171", light: "#FCA5A5" },
-          warning:   { main: "#FBBF24", light: "#FCD34D" },
+          success:   { main: "#10B981", light: "#34D399" }, // Emerald Neon
+          error:     { main: "#F43F5E", light: "#FB7185" }, // Rose Neon
+          warning:   { main: "#F59E0B", light: "#FBBF24" }, // Amber Neon
           background: {
             default: "transparent",
-            paper:   "rgba(10, 14, 28, 0.45)", // Deeper, more translucent dark glass
+            paper:   "rgba(12, 17, 34, 0.55)", // Deeper, more translucent dark glass with bluish tint
           },
           text: {
             primary:   "#F8FAFC",
@@ -67,17 +67,17 @@ export const getDesignTokens = (mode: 'light' | 'dark'): ThemeOptions => ({
       styleOverrides: {
         root: ({ theme }) => ({
           backgroundImage: 'none',
-          backdropFilter: 'blur(32px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(140%)',
+          backdropFilter: 'blur(40px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(40px) saturate(180%)',
           border: theme.palette.mode === 'light' 
             ? `1px solid ${theme.palette.divider}` 
             : `1px solid rgba(255,255,255,0.06)`,
           borderTop: theme.palette.mode === 'light' 
             ? `1px solid ${theme.palette.divider}` 
-            : `1px solid rgba(255,255,255,0.12)`,
+            : `1px solid rgba(255,255,255,0.15)`,
           boxShadow: theme.palette.mode === 'light' 
             ? '0 8px 32px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.02)'
-            : '0 12px 40px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2)',
+            : '0 16px 48px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1)',
         }),
       },
     },
@@ -89,9 +89,13 @@ export const getDesignTokens = (mode: 'light' | 'dark'): ThemeOptions => ({
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         },
         contained: ({ theme }) => ({
-          boxShadow: 'none',
+          boxShadow: theme.palette.mode === 'light' 
+            ? 'none' 
+            : `0 0 20px ${alpha(theme.palette.primary.main, 0.4)}`,
           '&:hover': {
-            boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`,
+            boxShadow: theme.palette.mode === 'light'
+              ? `0 8px 24px ${alpha(theme.palette.primary.main, 0.25)}`
+              : `0 0 30px ${alpha(theme.palette.primary.main, 0.6)}`,
             transform: 'translateY(-2px)',
           },
         }),
@@ -99,7 +103,7 @@ export const getDesignTokens = (mode: 'light' | 'dark'): ThemeOptions => ({
           borderWidth: 2,
           '&:hover': {
             borderWidth: 2,
-            backgroundColor: alpha(theme.palette.primary.main, 0.04),
+            backgroundColor: alpha(theme.palette.primary.main, theme.palette.mode === 'light' ? 0.04 : 0.15),
           },
         }),
       },
