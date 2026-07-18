@@ -263,7 +263,11 @@ export function PunchOverlay({
         setFaceModelsLoaded(true);
       } catch (err: any) {
         if (err?.message?.includes('Failed to fetch dynamically imported module') || err?.message?.includes('Importing a module script failed')) {
-          window.location.reload();
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).finally(() => window.location.reload());
+          } else {
+            window.location.reload();
+          }
           return;
         }
         setError("Failed to load Face AI Models");
@@ -349,7 +353,11 @@ export function PunchOverlay({
       await refreshData();
     } catch (e: any) {
       if (e?.message?.includes('Failed to fetch dynamically imported module') || e?.message?.includes('Importing a module script failed')) {
-        window.location.reload();
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).finally(() => window.location.reload());
+        } else {
+          window.location.reload();
+        }
         return;
       }
       setError(e?.response?.data?.error || e.message || 'Punch failed');
