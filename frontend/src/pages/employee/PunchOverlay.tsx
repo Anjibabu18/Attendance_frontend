@@ -442,9 +442,11 @@ export function PunchOverlay({
         {step === 3 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Take a Selfie</Typography>
+            <Typography sx={{ color: '#94A3B8', mb: 3, fontSize: 14 }}>Position your face clearly inside the green dashed circle.</Typography>
             {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
-            <Box sx={{ flex: 1, position: 'relative', borderRadius: '50%', overflow: 'hidden', border: '4px solid #0052FF', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
+            <Box sx={{ flex: 1, position: 'relative', borderRadius: '50%', overflow: 'hidden', border: '6px dashed #22C55E', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black', boxShadow: '0 0 30px rgba(34, 197, 94, 0.3)' }}>
               <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '70%', height: '80%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', pointerEvents: 'none' }} />
             </Box>
             <Button variant="contained" onClick={handleCaptureAndPunch} disabled={busy} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 2, fontSize: 18, fontWeight: 700 }}>
               {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Capture & Punch'}
