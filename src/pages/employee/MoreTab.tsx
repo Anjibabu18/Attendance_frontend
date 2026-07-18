@@ -43,7 +43,7 @@ const cardSx = {
 };
 
 export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 'work' | 'regularization') => void }) {
-  const { profile, month, leaveBalances, monthSummary, payslip, deviceStatus } = useEmployee();
+  const { profile, month, leaveBalances, monthSummary, payslip, deviceStatus, refreshData } = useEmployee();
   const { mode, toggleColorMode } = useThemeContext();
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
@@ -71,6 +71,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
     if (!window.confirm('Remove this device?')) return;
     try {
       await api.delete(`/api/account/devices/${id}`);
+      await refreshData();
       setUserDevices(prev => prev.filter(d => d.id !== id));
       alert('Device removed.');
     } catch (e: any) {
@@ -90,6 +91,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
 
       await api.post('/api/account/devices/register', { deviceId, label });
       alert('Device registered! It is now awaiting Admin approval.');
+      await refreshData();
       openDeviceDialog();
     } catch (e: any) {
       alert(e.response?.data?.error || e.message);
