@@ -24,7 +24,6 @@ export function PunchOverlay({
   // 0: Location, 1: QR Scan, 2: Daily Code, 3: Selfie, 4: Success
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string|null>(null);
-  const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -248,24 +247,6 @@ export function PunchOverlay({
     } catch (e: any) {
       setError("Camera unavailable for selfie");
     }
-
-    if (!faceModelsLoaded) {
-      setBusy(true);
-      try {
-        const faceapi = await import('@vladmandic/face-api');
-        faceApiRef.current = faceapi;
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
-        setFaceModelsLoaded(true);
-      } catch (err) {
-        setError("Failed to load Face AI Models");
-      }
-      setBusy(false);
-    }
   };
 
   const registerDevice = async () => {
@@ -303,15 +284,16 @@ export function PunchOverlay({
       const ctx = c.getContext('2d');
       if (!ctx) throw new Error("Cannot capture");
       ctx.drawImage(v, 0, 0);
-      const blob = await new Promise<Blob|null>(r => c.toBlob(r, 'image/jpeg', 0.9));
+      const blob = await new Promise<Blob|null>(r => c.toBlob(r, 'image/jpeg', 0.8));
       if (!blob) throw new Error("Cannot capture");
+      const dataUrl = c.toDataURL('image/jpeg', 0.8);
 
       const file = new File([blob], `${kind}.jpg`, { type: 'image/jpeg' });
-      stopCamera();
-
+      
       const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
 
       const fd = new FormData();
+      fd.append("photoBase64", dataUrl);
       if (location) {
         fd.append("latitude", String(location.lat));
         fd.append("longitude", String(location.lng));
@@ -326,16 +308,9 @@ export function PunchOverlay({
       fd.append("file", file);
 
       setBusy(true);
-      // Run Face Recognition
-      const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
-      faceApiRef.current = faceapi;
-      const detection = await faceapi.detectSingleFace(v).withFaceLandmarks().withFaceDescriptor();
-      if (detection) {
-        const descriptorArray = Array.from(detection.descriptor);
-        fd.append("faceDescriptor", JSON.stringify(descriptorArray));
-      } else {
-        throw new Error("No face detected! Please ensure your face is clearly visible.");
-      }
+      
+      // Stop the camera since we've captured the photo
+      stopCamera();
 
       await api.post(`/api/employee/punch/${kind}`, fd, { 
         headers: { "Content-Type": "multipart/form-data" } 
@@ -344,6 +319,14 @@ export function PunchOverlay({
       setStep(4); // Success
       await refreshData();
     } catch (e: any) {
+      if (e?.message?.includes('Failed to fetch dynamically imported module') || e?.message?.includes('Importing a module script failed')) {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).finally(() => window.location.reload());
+        } else {
+          window.location.reload();
+        }
+        return;
+      }
       setError(e?.response?.data?.error || e.message || 'Punch failed');
     } finally {
       setBusy(false);
@@ -434,9 +417,11 @@ export function PunchOverlay({
         {step === 3 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Take a Selfie</Typography>
+            <Typography sx={{ color: '#94A3B8', mb: 3, fontSize: 14 }}>Position your face clearly inside the green dashed circle.</Typography>
             {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
-            <Box sx={{ flex: 1, position: 'relative', borderRadius: '50%', overflow: 'hidden', border: '4px solid #0052FF', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
+            <Box sx={{ flex: 1, position: 'relative', borderRadius: '50%', overflow: 'hidden', border: '6px dashed #22C55E', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black', boxShadow: '0 0 30px rgba(34, 197, 94, 0.3)' }}>
               <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '70%', height: '80%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', pointerEvents: 'none' }} />
             </Box>
             <Button variant="contained" onClick={handleCaptureAndPunch} disabled={busy} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 2, fontSize: 18, fontWeight: 700 }}>
               {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Capture & Punch'}
