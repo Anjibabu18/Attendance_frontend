@@ -22,15 +22,15 @@ export const getDesignTokens = (mode: 'light' | 'dark'): ThemeOptions => ({
           divider: 'rgba(15, 23, 42, 0.08)',
         }
       : {
-          primary:   { main: "#F8FAFC", dark: "#E2E8F0", light: "#FFFFFF" }, // Sleek light primary
-          secondary: { main: "#60A5FA", dark: "#3B82F6", light: "#93C5FD" }, // Vibrant blue secondary
+          primary:   { main: "#F8FAFC", dark: "#E2E8F0", light: "#FFFFFF" },
+          secondary: { main: "#38BDF8", dark: "#0284C7", light: "#7DD3FC" }, // Electric blue
           info:      { main: "#818CF8" },
           success:   { main: "#34D399", light: "#6EE7B7" },
           error:     { main: "#F87171", light: "#FCA5A5" },
           warning:   { main: "#FBBF24", light: "#FCD34D" },
           background: {
-            default: "transparent", // Handled by index.css gradient
-            paper:   "rgba(15, 23, 42, 0.4)", // Dark glass card
+            default: "transparent",
+            paper:   "rgba(10, 14, 28, 0.45)", // Deeper, more translucent dark glass
           },
           text: {
             primary:   "#F8FAFC",
@@ -67,12 +67,17 @@ export const getDesignTokens = (mode: 'light' | 'dark'): ThemeOptions => ({
       styleOverrides: {
         root: ({ theme }) => ({
           backgroundImage: 'none',
-          backdropFilter: 'blur(24px)', // The core of glassmorphism
-          WebkitBackdropFilter: 'blur(24px)',
-          border: `1px solid ${theme.palette.divider}`,
-          boxShadow: mode === 'light' 
+          backdropFilter: 'blur(32px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(32px) saturate(140%)',
+          border: theme.palette.mode === 'light' 
+            ? `1px solid ${theme.palette.divider}` 
+            : `1px solid rgba(255,255,255,0.06)`,
+          borderTop: theme.palette.mode === 'light' 
+            ? `1px solid ${theme.palette.divider}` 
+            : `1px solid rgba(255,255,255,0.12)`,
+          boxShadow: theme.palette.mode === 'light' 
             ? '0 8px 32px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.02)'
-            : '0 8px 32px rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.1)',
+            : '0 12px 40px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2)',
         }),
       },
     },
