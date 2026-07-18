@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import { GlobalLoader } from "../components/GlobalLoader";
 import { Box, CircularProgress, Typography } from "@mui/material";
 import { motion } from "framer-motion";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -75,32 +76,6 @@ export default function App() {
 }
 
 function RouteLoading() {
-  return (
-    <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center", bgcolor: "background.default" }}>
-      <Box sx={{ display: "grid", justifyItems: "center", gap: 3 }}>
-        <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 180, 360],
-          }}
-          transition={{
-            duration: 2,
-            ease: "easeInOut",
-            repeat: Infinity,
-          }}
-        >
-          <Box sx={{ width: 64, height: 64, borderRadius: "25%", border: "4px solid", borderColor: "primary.main", borderTopColor: "transparent" }} />
-        </motion.div>
-        <Typography sx={{ fontWeight: 900, fontSize: 18, color: "text.primary", letterSpacing: 1 }}>
-          <motion.span
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-          >
-            ATTENDANCE AI
-          </motion.span>
-        </Typography>
-      </Box>
-    </Box>
-  );
+  return <GlobalLoader message="Loading workspace..." />;
 }
 
