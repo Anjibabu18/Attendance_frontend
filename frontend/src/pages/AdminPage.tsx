@@ -36,6 +36,7 @@ import { motion } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { clearAuth } from "../auth/auth";
+import { GlobalLoader } from "../components/GlobalLoader";
 
 const MotionBox = motion.create(Box);
 
@@ -593,8 +594,9 @@ export default function AdminPage() {
   ];
 
   return (
-    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "#F5F7FB", backgroundImage: "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "#0F172A" }}>
-      <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "rgba(245,247,251,0.88)", backdropFilter: "blur(18px)", borderBottom: "1px solid #E2E8F0" }}>
+    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "background.default", backgroundImage: "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "text.primary" }}>
+      {busy && <GlobalLoader message="Loading Admin Workspace..." />}
+      <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "background.paper", backdropFilter: "blur(18px)", borderBottom: "1px solid", borderColor: "divider" }}>
         <Box sx={{ maxWidth: 1440, mx: "auto", px: { xs: 2, md: 3 }, py: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
             <Avatar sx={{ bgcolor: "#0F2F5F", borderRadius: "8px" }}><AdminPanelSettingsRoundedIcon /></Avatar>
