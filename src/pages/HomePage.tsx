@@ -87,23 +87,14 @@ export default function HomePage() {
           >
             <Box component={motion.div} animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} sx={{ position: "absolute", width: "70vw", height: "70vw", maxHeight: 800, maxWidth: 800, background: "radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%", pointerEvents: "none" }} />
             <Box sx={{ position: "relative", width: 180, height: 180, mb: 4, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <svg width="0" height="0">
-                <defs>
-                  <filter id="splash-liquid-filter">
-                    <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
-                    <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 25 -10" result="liquid" />
-                    <feBlend in="SourceGraphic" in2="liquid" />
-                  </filter>
-                </defs>
-              </svg>
-              <Box sx={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "center", filter: "url(#splash-liquid-filter)" }}>
-                <Box component={motion.div} animate={{ scale: [1, 1.05, 1], rotate: 360, borderRadius: ["50% 50% 50% 50%", "40% 60% 60% 40%", "50% 50% 50% 50%"] }} transition={{ duration: 5, repeat: Infinity, ease: "linear" }} sx={{ position: "absolute", width: 100, height: 100, background: "linear-gradient(135deg, #38bdf8, #818cf8)", boxShadow: "0 0 50px rgba(56, 189, 248, 0.5)" }} />
-                {[...Array(4)].map((_, i) => (
-                  <Box key={i} component={motion.div} animate={{ rotate: 360 }} transition={{ duration: 3 + i, repeat: Infinity, ease: "linear", delay: i * 0.5 }} sx={{ position: "absolute", width: 160, height: 160, transformOrigin: "center" }}>
-                    <Box sx={{ width: 45, height: 45, background: "linear-gradient(135deg, #c084fc, #38bdf8)", borderRadius: "50%", position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)" }} />
-                  </Box>
-                ))}
-              </Box>
+              <Box
+                component={motion.img}
+                src="/vd-logo.png"
+                alt="VD Logo"
+                animate={{ scale: [0.95, 1.05, 0.95], opacity: [0.8, 1, 0.8] }}
+                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                sx={{ width: 140, height: 'auto', filter: 'drop-shadow(0 0 25px rgba(255, 255, 255, 0.2))' }}
+              />
             </Box>
             <Typography component={motion.div} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.8 }} sx={{ fontSize: { xs: 32, sm: 48 }, fontWeight: 900, color: "#fff", letterSpacing: "-0.04em", display: "flex", gap: 0.5 }}>
               Work<Box component="span" sx={{ background: "linear-gradient(135deg, #38bdf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Track</Box>
