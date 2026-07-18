@@ -316,8 +316,7 @@ export function PunchOverlay({
       const dataUrl = c.toDataURL('image/jpeg', 0.8);
 
       const file = new File([blob], `${kind}.jpg`, { type: 'image/jpeg' });
-      stopCamera();
-
+      
       const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
 
       const fd = new FormData();
@@ -336,15 +335,19 @@ export function PunchOverlay({
       fd.append("file", file);
 
       setBusy(true);
-      // Run Face Recognition
+      // Run Face Recognition on the captured canvas to ensure exact match with uploaded photo
       const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
       faceApiRef.current = faceapi;
-      const detection = await faceapi.detectSingleFace(v).withFaceLandmarks().withFaceDescriptor();
+      const detection = await faceapi.detectSingleFace(c).withFaceLandmarks().withFaceDescriptor();
+      
+      // Now that detection is done, we can stop the camera
+      stopCamera();
+
       if (detection) {
         const descriptorArray = Array.from(detection.descriptor);
         fd.append("faceDescriptor", JSON.stringify(descriptorArray));
       } else {
-        throw new Error("No face detected! Please ensure your face is clearly visible.");
+        throw new Error("No face detected! Please ensure your face is clearly visible inside the green circle.");
       }
 
       await api.post(`/api/employee/punch/${kind}`, fd, { 
