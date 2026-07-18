@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Box, Button, Dialog, DialogContent, DialogTitle, IconButton, Typography, CircularProgress } from '@mui/material';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded';
-import * as faceapi from '@vladmandic/face-api';
 import { api } from '../../api/client';
 
 interface Props {
@@ -16,29 +15,10 @@ export function LiveVerificationOverlay({ requestId, open, onSuccess, onClose }:
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
-  const [modelsLoaded, setModelsLoaded] = useState(false);
   const [cameraActive, setCameraActive] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-
-  useEffect(() => {
-    const loadModels = async () => {
-      try {
-        await Promise.all([
-          faceapi.nets.tinyFaceDetector.loadFromUri('/models'),
-          faceapi.nets.faceLandmark68Net.loadFromUri('/models'),
-          faceapi.nets.faceRecognitionNet.loadFromUri('/models')
-        ]);
-        setModelsLoaded(true);
-      } catch (err) {
-        setError('Failed to load Face AI models.');
-      }
-    };
-    if (open) {
-      loadModels();
-    }
-  }, [open]);
 
   const startCamera = async () => {
     setError(null);
@@ -58,21 +38,22 @@ export function LiveVerificationOverlay({ requestId, open, onSuccess, onClose }:
       const stream = videoRef.current.srcObject as MediaStream;
       stream.getTracks().forEach(track => track.stop());
       videoRef.current.srcObject = null;
+      setCameraActive(false);
     }
-    setCameraActive(false);
   }, []);
 
   useEffect(() => {
-    if (open && modelsLoaded && !cameraActive) {
-      startCamera();
-    }
-    return () => {
+    if (!open) {
       stopCamera();
-    };
-  }, [open, modelsLoaded, cameraActive, stopCamera]);
+      setSuccess(false);
+      setError(null);
+      setProcessing(false);
+    }
+  }, [open, stopCamera]);
 
-  const handleCapture = async () => {
+  const captureAndVerify = async () => {
     if (!videoRef.current || !canvasRef.current) return;
+    
     setProcessing(true);
     setError(null);
 
@@ -80,89 +61,89 @@ export function LiveVerificationOverlay({ requestId, open, onSuccess, onClose }:
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
     
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setError('Could not access canvas context');
+      setProcessing(false);
+      return;
+    }
+
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageDataUrl = canvas.toDataURL('image/jpeg');
+    const base64Data = imageDataUrl.split(',')[1];
 
     try {
-      const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-      if (!detection) {
-        throw new Error('No face detected. Please ensure your face is clearly visible.');
+      // Just submit the photo directly for verification without local face checks
+      const result = await api.post(`/api/requests/${requestId}/verify-photo`, { photoData: base64Data });
+      if (result.data?.success || result.status === 200) {
+        setSuccess(true);
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 1500);
+      } else {
+        setError(result.data?.message || 'Verification failed.');
       }
-
-      // Convert canvas to blob
-      const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-      if (!blob) throw new Error('Failed to generate image blob');
-
-      const formData = new FormData();
-      formData.append('faceDescriptor', JSON.stringify(Array.from(detection.descriptor)));
-      formData.append('file', blob, 'live-verify.jpg');
-
-      await api.post(`/api/employee/live-verify/${requestId}/submit`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-
-      setSuccess(true);
-      setTimeout(() => {
-        stopCamera();
-        onSuccess();
-      }, 2000);
-
     } catch (err: any) {
-      setError(err?.response?.data?.error || err.message || 'Verification failed');
+      setError(err.response?.data?.message || 'Verification failed due to server error.');
+    } finally {
       setProcessing(false);
     }
   };
 
   return (
-    <Dialog open={open} onClose={() => {}} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '16px', bgcolor: 'background.paper', p: 1 } }}>
-      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-        <Typography sx={{ fontWeight: 900, fontSize: 20 }}>Live Verification Required</Typography>
-        <IconButton onClick={() => { stopCamera(); onClose(); }} disabled={processing || success}><CloseRoundedIcon /></IconButton>
+    <Dialog open={open} onClose={processing ? undefined : onClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: '24px' } }}>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        Live Photo Verification
+        <IconButton onClick={onClose} disabled={processing}>
+          <CloseRoundedIcon />
+        </IconButton>
       </DialogTitle>
-      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
-        {!modelsLoaded && !error && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4, gap: 2 }}>
-            <CircularProgress />
-            <Typography>Loading Face AI Engine...</Typography>
-          </Box>
-        )}
-        
-        {modelsLoaded && (
-          <Box sx={{ position: 'relative', width: '100%', maxWidth: 400, borderRadius: '12px', overflow: 'hidden', bgcolor: 'black', aspectRatio: '3/4' }}>
-            <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-            <canvas ref={canvasRef} style={{ display: 'none' }} />
-            
-            {processing && (
-              <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(0,0,0,0.6)', display: 'grid', placeItems: 'center' }}>
-                <CircularProgress color="primary" />
-              </Box>
-            )}
+      
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, pb: 4 }}>
+        <Typography variant="body2" color="text.secondary" textAlign="center">
+          Please capture a clear photo of yourself to verify this request.
+        </Typography>
 
-            {success && (
-              <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(76, 175, 80, 0.9)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', color: 'white' }}>
-                <Typography sx={{ fontWeight: 900, fontSize: 24 }}>Verified!</Typography>
-              </Box>
-            )}
-          </Box>
+        <Box sx={{ position: 'relative', width: 300, height: 300, borderRadius: '50%', overflow: 'hidden', bgcolor: 'black', border: '4px solid', borderColor: success ? 'success.main' : error ? 'error.main' : 'primary.main', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          {success ? (
+            <Typography variant="h6" color="success.main" sx={{ fontWeight: 800 }}>Verified!</Typography>
+          ) : (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)', display: cameraActive ? 'block' : 'none' }}
+            />
+          )}
+          {!cameraActive && !success && (
+            <Button variant="contained" onClick={startCamera} sx={{ borderRadius: '100px', px: 4 }}>
+              Start Camera
+            </Button>
+          )}
+          
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+        </Box>
+
+        {error && (
+          <Typography color="error" variant="body2" sx={{ fontWeight: 600 }}>{error}</Typography>
         )}
 
-        {error && <Typography color="error" sx={{ fontWeight: 600, textAlign: 'center' }}>{error}</Typography>}
-        
-        {modelsLoaded && !success && (
-          <Button 
-            variant="contained" 
-            color="primary" 
-            size="large" 
-            startIcon={<CameraAltRoundedIcon />} 
-            onClick={handleCapture} 
-            disabled={processing || !cameraActive}
-            sx={{ fontWeight: 900, borderRadius: '12px', px: 4, py: 1.5, mt: 1 }}
+        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            size="large"
+            disabled={!cameraActive || processing || success}
+            onClick={captureAndVerify}
+            startIcon={processing ? <CircularProgress size={20} color="inherit" /> : <CameraAltRoundedIcon />}
+            sx={{ borderRadius: '12px', px: 6, py: 1.5, fontWeight: 700 }}
           >
-            Verify Face
+            {processing ? 'Verifying...' : 'Capture & Verify'}
           </Button>
-        )}
+        </Box>
       </DialogContent>
     </Dialog>
   );
