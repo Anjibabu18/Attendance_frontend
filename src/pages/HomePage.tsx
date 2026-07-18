@@ -23,6 +23,7 @@ import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
 import PlaceIcon from "@mui/icons-material/Place";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
+import { VDLogo } from "../components/VDLogo";
 import WorkHistoryIcon from "@mui/icons-material/WorkHistory";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
@@ -87,14 +88,7 @@ export default function HomePage() {
           >
             <Box component={motion.div} animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} sx={{ position: "absolute", width: "70vw", height: "70vw", maxHeight: 800, maxWidth: 800, background: "radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%", pointerEvents: "none" }} />
             <Box sx={{ position: "relative", width: 180, height: 180, mb: 4, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <Box
-                component={motion.img}
-                src="/vd-logo.png"
-                alt="VD Logo"
-                animate={{ scale: [0.95, 1.05, 0.95], opacity: [0.8, 1, 0.8] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-                sx={{ width: 140, height: 'auto', filter: 'drop-shadow(0 0 25px rgba(255, 255, 255, 0.2))' }}
-              />
+              <VDLogo size={140} />
             </Box>
             <Typography component={motion.div} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.8 }} sx={{ fontSize: { xs: 32, sm: 48 }, fontWeight: 900, color: "#fff", letterSpacing: "-0.04em", display: "flex", gap: 0.5 }}>
               Work<Box component="span" sx={{ background: "linear-gradient(135deg, #38bdf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Track</Box>

@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useThemeContext } from '../theme/ThemeContext';
+import { VDLogo } from './VDLogo';
 
 export function GlobalLoader({ message = "Loading Workspace..." }: { message?: string }) {
   const { mode } = useThemeContext();
@@ -50,22 +51,7 @@ export function GlobalLoader({ message = "Loading Workspace..." }: { message?: s
       />
 
       <Box sx={{ position: 'relative', width: 140, height: 140, mb: 6, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        
-        <Box
-          component={motion.img}
-          src="/vd-logo.png"
-          alt="VD Logo"
-          animate={{ 
-            scale: [0.95, 1.05, 0.95], 
-            opacity: [0.8, 1, 0.8] 
-          }}
-          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-          sx={{
-            width: 120,
-            height: 'auto',
-            filter: isDark ? 'drop-shadow(0 0 25px rgba(255, 255, 255, 0.25))' : 'drop-shadow(0 0 20px rgba(0, 0, 0, 0.2))',
-          }}
-        />
+        <VDLogo size={120} />
       </Box>
 
       {/* Shimmering Text */}
