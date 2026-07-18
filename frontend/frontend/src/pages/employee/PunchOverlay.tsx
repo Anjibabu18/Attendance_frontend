@@ -24,7 +24,6 @@ export function PunchOverlay({
   // 0: Location, 1: QR Scan, 2: Daily Code, 3: Selfie, 4: Success
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string|null>(null);
-  const [faceModelsLoaded, setFaceModelsLoaded] = useState(false);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -248,32 +247,6 @@ export function PunchOverlay({
     } catch (e: any) {
       setError("Camera unavailable for selfie");
     }
-
-    if (!faceModelsLoaded) {
-      setBusy(true);
-      try {
-        const faceapi = await import('@vladmandic/face-api');
-        faceApiRef.current = faceapi;
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        await Promise.all([
-          faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-          faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
-        ]);
-        setFaceModelsLoaded(true);
-      } catch (err: any) {
-        if (err?.message?.includes('Failed to fetch dynamically imported module') || err?.message?.includes('Importing a module script failed')) {
-          if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).finally(() => window.location.reload());
-          } else {
-            window.location.reload();
-          }
-          return;
-        }
-        setError("Failed to load Face AI Models");
-      }
-      setBusy(false);
-    }
   };
 
   const registerDevice = async () => {
@@ -335,20 +308,9 @@ export function PunchOverlay({
       fd.append("file", file);
 
       setBusy(true);
-      // Run Face Recognition on the captured canvas to ensure exact match with uploaded photo
-      const faceapi = faceApiRef.current || await import('@vladmandic/face-api');
-      faceApiRef.current = faceapi;
-      const detection = await faceapi.detectSingleFace(c).withFaceLandmarks().withFaceDescriptor();
       
-      // Now that detection is done, we can stop the camera
+      // Stop the camera since we've captured the photo
       stopCamera();
-
-      if (detection) {
-        const descriptorArray = Array.from(detection.descriptor);
-        fd.append("faceDescriptor", JSON.stringify(descriptorArray));
-      } else {
-        throw new Error("No face detected! Please ensure your face is clearly visible inside the green circle.");
-      }
 
       await api.post(`/api/employee/punch/${kind}`, fd, { 
         headers: { "Content-Type": "multipart/form-data" } 

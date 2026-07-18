@@ -36,6 +36,7 @@ import { motion } from "framer-motion";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { clearAuth } from "../auth/auth";
+import { GlobalLoader } from "../components/GlobalLoader";
 
 const MotionBox = motion.create(Box);
 
@@ -70,7 +71,7 @@ type EmployeeDetail = {
   exceptions: Array<{ id: number; type: string; message: string; resolved: boolean; createdAt: string }>;
   requests: Array<{ id: number; type: string; status: string; date: string; title: string }>;
 };
-type ApprovalKind = "leave" | "correction" | "work" | "compOff";
+type ApprovalKind = "leave" | "correction" | "work" | "compOff" | "device";
 type ApprovalItem = {
   id: number;
   kind: ApprovalKind;
@@ -126,6 +127,7 @@ const requestTone = (kind: ApprovalKind) => {
   if (kind === "leave") return { bg: "#EFF6FF", color: "#1D4ED8", label: "Leave" };
   if (kind === "correction") return { bg: "#F0FDFA", color: "#0F766E", label: "Correction" };
   if (kind === "work") return { bg: "#F5F3FF", color: "#6D28D9", label: "Work" };
+  if (kind === "device") return { bg: "#FDF4FF", color: "#C026D3", label: "Device" };
   return { bg: "#FFF7ED", color: "#C2410C", label: "Comp off" };
 };
 
@@ -180,7 +182,7 @@ export default function AdminPage() {
   async function refresh() {
     setBusy(true);
     try {
-      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes] = await Promise.allSettled([
+      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes, deviceReqRes] = await Promise.allSettled([
         api.get<Employee[]>("/api/admin/employees"),
         api.get<CompanyRole[]>("/api/admin/company-roles"),
         api.get<Department[]>("/api/admin/departments"),
@@ -195,6 +197,7 @@ export default function AdminPage() {
         api.get<any[]>("/api/hr/regularization-requests/pending"),
         api.get<any[]>("/api/hr/work-requests/pending"),
         api.get<any[]>("/api/hr/comp-off-requests/pending"),
+        api.get<any[]>("/api/hr/device-requests/pending"),
       ]);
       if (employeeRes.status === "fulfilled") setEmployees(employeeRes.value.data);
       if (roleRes.status === "fulfilled") setRoles(roleRes.value.data);
@@ -278,6 +281,20 @@ export default function AdminPage() {
           attachmentUrl: item.attachmentUrl,
         })));
       }
+      if (deviceReqRes.status === "fulfilled") {
+        approvalRows.push(...deviceReqRes.value.data.map((item: any) => ({
+          id: item.id,
+          kind: "device" as const,
+          title: "Device registration",
+          employeeName: item.employee?.name || item.username || "Employee",
+          employeeNumber: item.employee?.employeeNumber || "--",
+          dateText: `Device: ${item.label || "Mobile Device"}`,
+          detail: `Device ID: ${item.deviceId}`,
+          reason: item.model || "--",
+          status: item.approved ? "APPROVED" : "PENDING",
+          createdAt: item.createdAt,
+        })));
+      }
       const requestResults = [
         { label: "Employees", result: employeeRes },
         { label: "Roles", result: roleRes },
@@ -293,6 +310,7 @@ export default function AdminPage() {
         { label: "Corrections", result: correctionReqRes },
         { label: "Work requests", result: workReqRes },
         { label: "Comp-off requests", result: compOffReqRes },
+        { label: "Device requests", result: deviceReqRes },
       ];
       const rejected = requestResults.filter((item): item is { label: string; result: PromiseRejectedResult } => item.result.status === "rejected");
       const failedList = rejected.map((item) => `${item.label} (${item.result.reason?.response?.status || "network"})`).join(", ");
@@ -339,7 +357,9 @@ export default function AdminPage() {
         ? "regularization-requests"
         : item.kind === "work"
           ? "work-requests"
-          : "comp-off-requests";
+          : item.kind === "device"
+            ? "device-requests"
+            : "comp-off-requests";
     const key = `${item.kind}-${item.id}`;
     setApprovalBusyId(`${key}-${action}`);
     try {
@@ -593,8 +613,9 @@ export default function AdminPage() {
   ];
 
   return (
-    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "#F5F7FB", backgroundImage: "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "#0F172A" }}>
-      <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "rgba(245,247,251,0.88)", backdropFilter: "blur(18px)", borderBottom: "1px solid #E2E8F0" }}>
+    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "background.default", backgroundImage: "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "text.primary" }}>
+      {busy && <GlobalLoader message="Loading Admin Workspace..." />}
+      <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "background.paper", backdropFilter: "blur(18px)", borderBottom: "1px solid", borderColor: "divider" }}>
         <Box sx={{ maxWidth: 1440, mx: "auto", px: { xs: 2, md: 3 }, py: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
             <Avatar sx={{ bgcolor: "#0F2F5F", borderRadius: "8px" }}><AdminPanelSettingsRoundedIcon /></Avatar>

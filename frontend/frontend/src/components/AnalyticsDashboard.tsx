@@ -71,7 +71,7 @@ export default function AnalyticsDashboard({ analytics }: { analytics: any }) {
                   <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e2e8f0" />
                   <XAxis type="number" domain={[0, 100]} hide />
                   <YAxis dataKey="dept" type="category" axisLine={false} tickLine={false} tick={{ fontSize: 13, fontWeight: 700, fill: '#334155' }} width={90} />
-                  <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value: number) => [`${value}%`, 'Rate']} />
+                  <RechartsTooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value: any) => [`${value}%`, 'Rate']} />
                   <Bar dataKey="rate" fill="#10b981" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>

@@ -35,6 +35,14 @@ export const FaceRegisterOverlay = ({ onClose, onRegistered }: { onClose: () => 
           await videoRef.current.play().catch(() => undefined);
         }
       } catch (err: any) {
+        if (err?.message?.includes('Failed to fetch dynamically imported module') || err?.message?.includes('Importing a module script failed')) {
+          if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).finally(() => window.location.reload());
+          } else {
+            window.location.reload();
+          }
+          return;
+        }
         if (isMounted) setLoadingMsg(`Error: ${err.message}`);
       }
     };

@@ -32,11 +32,15 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { motion } from "framer-motion";
+import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
+import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
+import { IconButton, Tooltip } from "@mui/material";
 
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { clearAuth } from "../auth/auth";
 import { GlobalLoader } from "../components/GlobalLoader";
+import { useThemeContext } from "../theme/ThemeContext";
 
 const MotionBox = motion.create(Box);
 
@@ -104,13 +108,14 @@ type AttendanceSettings = {
 };
 
 const cardSx = {
-  bgcolor: "rgba(255,255,255,0.94)",
-  border: "1px solid rgba(203,213,225,0.86)",
+  bgcolor: "background.paper",
+  border: "1px solid",
+  borderColor: "divider",
   borderRadius: "8px",
-  boxShadow: "0 18px 46px rgba(15,23,42,0.08)",
+  boxShadow: "0 18px 46px rgba(0,0,0,0.08)",
   transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
   minWidth: 0,
-  "&:hover": { transform: "translateY(-2px)", borderColor: "#AFC5FF", boxShadow: "0 24px 70px rgba(15,23,42,0.12)" },
+  "&:hover": { transform: "translateY(-2px)", borderColor: "primary.light", boxShadow: "0 24px 70px rgba(0,0,0,0.12)" },
 };
 
 const timeOnly = (value?: string | null, fallback = "09:00") => {
@@ -133,6 +138,7 @@ const requestTone = (kind: ApprovalKind) => {
 
 export default function AdminPage() {
   const { toastSuccess, toastError } = useToast();
+  const { mode, toggleColorMode } = useThemeContext();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -337,7 +343,6 @@ export default function AdminPage() {
     if (!query) return employees;
     return employees.filter((employee) => [employee.name, employee.employeeNumber, employee.username, employee.department?.name, employee.companyRole?.name].some((value) => String(value || "").toLowerCase().includes(query)));
   }, [employees, search]);
-
   const activeEmployees = employees.filter((employee) => employee.enabled !== false && employee.status !== "INACTIVE").length;
   const configuredEmployees = employees.filter((employee) => employee.department || employee.shift || employee.assignedOfficeLocation).length;
   const setupProgress = employees.length ? Math.round((configuredEmployees / employees.length) * 100) : 0;
@@ -348,6 +353,7 @@ export default function AdminPage() {
     correction: approvalItems.filter((item) => item.kind === "correction").length,
     work: approvalItems.filter((item) => item.kind === "work").length,
     compOff: approvalItems.filter((item) => item.kind === "compOff").length,
+    device: approvalItems.filter((item) => item.kind === "device").length,
   };
 
   async function decideApproval(item: ApprovalItem, action: "approve" | "reject") {
@@ -613,7 +619,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "background.default", backgroundImage: "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "text.primary" }}>
+    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "background.default", backgroundImage: mode === 'dark' ? "linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px)" : "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "text.primary" }}>
       {busy && <GlobalLoader message="Loading Admin Workspace..." />}
       <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "background.paper", backdropFilter: "blur(18px)", borderBottom: "1px solid", borderColor: "divider" }}>
         <Box sx={{ maxWidth: 1440, mx: "auto", px: { xs: 2, md: 3 }, py: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
@@ -624,9 +630,24 @@ export default function AdminPage() {
               <Typography sx={{ color: "#64748B", fontSize: 13 }}>People, policies, holidays, shifts, managers, and setup health.</Typography>
             </Box>
           </Box>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button onClick={refresh} startIcon={<RefreshRoundedIcon />} variant="outlined" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }} disabled={busy}>Refresh</Button>
-            <Button onClick={handleLogout} startIcon={<LogoutRoundedIcon />} variant="outlined" color="error" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }}>Logout</Button>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            <Button onClick={refresh} startIcon={<RefreshRoundedIcon />} variant="outlined" sx={{ borderRadius: "8px", fontWeight: 900 }} disabled={busy}>Refresh</Button>
+            <Tooltip title={mode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'} arrow>
+              <IconButton
+                onClick={toggleColorMode}
+                sx={{
+                  width: 40, height: 40, borderRadius: '10px',
+                  bgcolor: mode === 'dark' ? 'rgba(14,165,233,0.15)' : 'rgba(0,0,0,0.05)',
+                  border: mode === 'dark' ? '1px solid rgba(14,165,233,0.4)' : '1px solid rgba(0,0,0,0.1)',
+                  color: mode === 'dark' ? '#38BDF8' : '#64748B',
+                  transition: 'all 0.35s ease',
+                  boxShadow: mode === 'dark' ? '0 0 12px rgba(14,165,233,0.25)' : 'none',
+                }}
+              >
+                {mode === 'dark' ? <LightModeRoundedIcon fontSize="small" /> : <DarkModeRoundedIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+            <Button onClick={handleLogout} startIcon={<LogoutRoundedIcon />} variant="outlined" color="error" sx={{ borderRadius: "8px", fontWeight: 900 }}>Logout</Button>
           </Box>
         </Box>
       </Box>
@@ -680,6 +701,7 @@ export default function AdminPage() {
               ["correction", "Attendance corrections", approvalCounts.correction],
               ["work", "Work/WFH", approvalCounts.work],
               ["compOff", "Comp-off", approvalCounts.compOff],
+              ["device", "Device requests", approvalCounts.device],
             ].map(([key, label, count]) => (
               <Button key={String(key)} size="small" variant={approvalFilter === key ? "contained" : "outlined"} onClick={() => setApprovalFilter(key as ApprovalKind | "all")} sx={{ borderRadius: "8px", fontWeight: 900 }}>
                 {label} ({count})

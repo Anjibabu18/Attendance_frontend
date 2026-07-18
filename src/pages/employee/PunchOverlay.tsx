@@ -385,12 +385,6 @@ export function PunchOverlay({
             <Box sx={{ flex: 1, position: 'relative', borderRadius: 4, overflow: 'hidden', border: '4px solid #0052FF', mb: 2, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
               <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             </Box>
-            <TextField size="small" placeholder="Paste QR token if camera cannot scan" value={manualQr} onChange={(event) => setManualQr(event.target.value)} sx={{ bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 2, mb: 1, input: { color: 'white' } }} />
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-              <Button variant="outlined" sx={{ borderColor: '#60A5FA', color: '#BFDBFE' }} onClick={() => handleQrScanned(manualQr)}>Use token</Button>
-              <Button variant="outlined" sx={{ borderColor: '#60A5FA', color: '#BFDBFE' }} onClick={() => qrFileInputRef.current?.click()}>Upload QR</Button>
-            </Box>
-            <input ref={qrFileInputRef} hidden type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; event.currentTarget.value = ''; if (file) scanQrImageFile(file).catch((err) => setError(err?.message || 'QR image scan failed')); }} />
           </Box>
         )}
 

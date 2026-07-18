@@ -23,6 +23,7 @@ type QuickRequestMode = 'leave' | 'work' | 'regularization';
 import { MoreTab } from './employee/MoreTab';
 import { LiveVerificationOverlay } from './employee/LiveVerificationOverlay';
 import { api } from '../api/client';
+import { GlobalLoader } from '../components/GlobalLoader';
 
 const tabs = [
   { label: 'Dashboard', subtitle: 'Today overview', icon: <DashboardRoundedIcon fontSize="small" /> },
@@ -66,39 +67,7 @@ function EmployeeContent() {
   }, [loading, error]);
 
   if (loading) {
-    return (
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ height: 64, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', px: 3, justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }} sx={{ width: 42, height: 42, borderRadius: '8px', bgcolor: 'action.hover' }} />
-            <Box>
-              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.1 }} sx={{ width: 120, height: 16, borderRadius: '4px', bgcolor: 'action.hover', mb: 1 }} />
-              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }} sx={{ width: 80, height: 12, borderRadius: '4px', bgcolor: 'action.hover' }} />
-            </Box>
-          </Box>
-          <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }} sx={{ width: 40, height: 40, borderRadius: '20px', bgcolor: 'action.hover' }} />
-        </Box>
-        <Box sx={{ maxWidth: 1220, mx: 'auto', w: '100%', px: { xs: 2, sm: 3 }, py: 4, display: 'grid', gridTemplateColumns: { md: '280px 1fr' }, gap: 3, flex: 1 }}>
-          <Box sx={{ display: { xs: 'none', md: 'flex' }, flexDirection: 'column', gap: 2 }}>
-            {[1, 2, 3, 4].map(i => (
-              <Box key={i} component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: i * 0.1 }} sx={{ width: '100%', height: 48, borderRadius: '8px', bgcolor: 'action.hover' }} />
-            ))}
-          </Box>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity }} sx={{ width: 200, height: 32, borderRadius: '8px', bgcolor: 'action.hover' }} />
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2 }}>
-              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }} sx={{ height: 160, borderRadius: '8px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }} />
-              <Box component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.3 }} sx={{ height: 160, borderRadius: '8px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }} />
-            </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', md: 'repeat(4, 1fr)' }, gap: 2 }}>
-              {[1, 2, 3, 4].map(i => (
-                <Box key={i} component={motion.div} animate={{ opacity: [0.5, 1, 0.5] }} transition={{ duration: 1.5, repeat: Infinity, delay: 0.4 + i * 0.1 }} sx={{ height: 100, borderRadius: '8px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }} />
-              ))}
-            </Box>
-          </Box>
-        </Box>
-      </Box>
-    );
+    return <GlobalLoader message="Loading workspace..." />;
   }
 
   if (error) {
@@ -182,7 +151,7 @@ function EmployeeContent() {
             <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 42, height: 42 }} />
             <Box sx={{ minWidth: 0, flex: 1 }}>
               <Typography sx={{ fontWeight: 900, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile?.name}</Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>{profile?.email}</Typography>
+              <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>Employee</Typography>
             </Box>
           </Box>
         </Box>

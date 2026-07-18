@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from "react";
 import {
   Avatar,
   Box,
@@ -24,7 +25,7 @@ import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
 import VerifiedUserIcon from "@mui/icons-material/VerifiedUser";
 import WorkHistoryIcon from "@mui/icons-material/WorkHistory";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const MotionBox = motion.create(Box);
 
@@ -66,9 +67,54 @@ function LogoMark() {
 
 export default function HomePage() {
   const nav = useNavigate();
+  const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 2400);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f4f8ff", color: "#0f172a", overflow: "hidden" }}>
+      <AnimatePresence>
+        {showSplash && (
+          <Box
+            component={motion.div}
+            initial={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            sx={{ position: "fixed", inset: 0, zIndex: 99999, bgcolor: "#0f172a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden" }}
+          >
+            <Box component={motion.div} animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} sx={{ position: "absolute", width: "70vw", height: "70vw", maxHeight: 800, maxWidth: 800, background: "radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%", pointerEvents: "none" }} />
+            <Box sx={{ position: "relative", width: 180, height: 180, mb: 4, display: "flex", justifyContent: "center", alignItems: "center" }}>
+              <svg width="0" height="0">
+                <defs>
+                  <filter id="splash-liquid-filter">
+                    <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur" />
+                    <feColorMatrix in="blur" mode="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 25 -10" result="liquid" />
+                    <feBlend in="SourceGraphic" in2="liquid" />
+                  </filter>
+                </defs>
+              </svg>
+              <Box sx={{ position: "absolute", inset: 0, display: "flex", justifyContent: "center", alignItems: "center", filter: "url(#splash-liquid-filter)" }}>
+                <Box component={motion.div} animate={{ scale: [1, 1.05, 1], rotate: 360, borderRadius: ["50% 50% 50% 50%", "40% 60% 60% 40%", "50% 50% 50% 50%"] }} transition={{ duration: 5, repeat: Infinity, ease: "linear" }} sx={{ position: "absolute", width: 100, height: 100, background: "linear-gradient(135deg, #38bdf8, #818cf8)", boxShadow: "0 0 50px rgba(56, 189, 248, 0.5)" }} />
+                {[...Array(4)].map((_, i) => (
+                  <Box key={i} component={motion.div} animate={{ rotate: 360 }} transition={{ duration: 3 + i, repeat: Infinity, ease: "linear", delay: i * 0.5 }} sx={{ position: "absolute", width: 160, height: 160, transformOrigin: "center" }}>
+                    <Box sx={{ width: 45, height: 45, background: "linear-gradient(135deg, #c084fc, #38bdf8)", borderRadius: "50%", position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)" }} />
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+            <Typography component={motion.div} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.8 }} sx={{ fontSize: { xs: 32, sm: 48 }, fontWeight: 900, color: "#fff", letterSpacing: "-0.04em", display: "flex", gap: 0.5 }}>
+              Work<Box component="span" sx={{ background: "linear-gradient(135deg, #38bdf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Track</Box>
+            </Typography>
+            <Typography component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 0.8 }} sx={{ color: "#94a3b8", fontSize: 16, mt: 1, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
+              Attendance Intelligence
+            </Typography>
+          </Box>
+        )}
+      </AnimatePresence>
+
       <Box
         component="header"
         sx={{
