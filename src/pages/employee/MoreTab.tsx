@@ -336,11 +336,17 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
               ))}
             </List>
           )}
-          {!deviceStatus?.registered && (
-            <Button variant="contained" fullWidth onClick={registerCurrentDevice} sx={{ mt: 2, borderRadius: 8, py: 1.5, fontWeight: 800 }}>
-              Register This Device
+          <Box sx={{ mt: 2 }}>
+            <Button 
+              variant="contained" 
+              fullWidth 
+              onClick={registerCurrentDevice} 
+              disabled={userDevices.length >= 3}
+              sx={{ borderRadius: 8, py: 1.5, fontWeight: 800 }}
+            >
+              {userDevices.length >= 3 ? 'Maximum Devices Reached' : deviceStatus?.registered ? 'Register Another Device' : 'Register This Device'}
             </Button>
-          )}
+          </Box>
           <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 2, textAlign: 'center' }}>You can register up to 3 devices to punch in from.</Typography>
         </DialogContent>
       </Dialog>
