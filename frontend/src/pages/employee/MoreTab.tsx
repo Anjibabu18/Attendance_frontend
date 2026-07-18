@@ -62,7 +62,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
         setPushEnabled(false);
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to toggle push notifications');
+      alert(err.response?.data?.error || err.message || 'Failed to toggle push notifications');
     } finally {
       setPushLoading(false);
     }
