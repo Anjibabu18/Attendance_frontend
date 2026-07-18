@@ -72,6 +72,25 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
     try {
       await api.delete(`/api/account/devices/${id}`);
       setUserDevices(prev => prev.filter(d => d.id !== id));
+      alert('Device removed.');
+    } catch (e: any) {
+      alert(e.response?.data?.error || e.message);
+    }
+  };
+
+  const registerCurrentDevice = async () => {
+    try {
+      const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
+      let label = navigator.userAgent;
+      if (label.includes('iPhone')) label = 'Apple iPhone';
+      else if (label.includes('Android')) label = 'Android Phone';
+      else if (label.includes('Windows')) label = 'Windows PC';
+      else if (label.includes('Mac')) label = 'Macbook';
+      else label = 'Mobile Device';
+
+      await api.post('/api/account/devices/register', { deviceId, label });
+      alert('Device registered! It is now awaiting Admin approval.');
+      openDeviceDialog();
     } catch (e: any) {
       alert(e.response?.data?.error || e.message);
     }
@@ -314,6 +333,11 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
                 </Box>
               ))}
             </List>
+          )}
+          {!deviceStatus?.registered && (
+            <Button variant="contained" fullWidth onClick={registerCurrentDevice} sx={{ mt: 2, borderRadius: 8, py: 1.5, fontWeight: 800 }}>
+              Register This Device
+            </Button>
           )}
           <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 2, textAlign: 'center' }}>You can register up to 3 devices to punch in from.</Typography>
         </DialogContent>
