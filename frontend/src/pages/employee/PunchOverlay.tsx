@@ -311,8 +311,9 @@ export function PunchOverlay({
       const ctx = c.getContext('2d');
       if (!ctx) throw new Error("Cannot capture");
       ctx.drawImage(v, 0, 0);
-      const blob = await new Promise<Blob|null>(r => c.toBlob(r, 'image/jpeg', 0.9));
+      const blob = await new Promise<Blob|null>(r => c.toBlob(r, 'image/jpeg', 0.8));
       if (!blob) throw new Error("Cannot capture");
+      const dataUrl = c.toDataURL('image/jpeg', 0.8);
 
       const file = new File([blob], `${kind}.jpg`, { type: 'image/jpeg' });
       stopCamera();
@@ -320,6 +321,7 @@ export function PunchOverlay({
       const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
 
       const fd = new FormData();
+      fd.append("photoBase64", dataUrl);
       if (location) {
         fd.append("latitude", String(location.lat));
         fd.append("longitude", String(location.lng));
