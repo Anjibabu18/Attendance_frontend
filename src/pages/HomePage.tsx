@@ -82,23 +82,163 @@ export default function HomePage() {
           <Box
             component={motion.div}
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.1, filter: "blur(10px)" }}
-            transition={{ duration: 0.8, ease: "easeInOut" }}
-            sx={{ position: "fixed", inset: 0, zIndex: 99999, bgcolor: "#0f172a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", overflow: "hidden" }}
+            exit={{ opacity: 0, scale: 1.05, filter: "blur(14px)" }}
+            transition={{ duration: 0.9, ease: "easeInOut" }}
+            sx={{
+              position: "fixed", inset: 0, zIndex: 99999,
+              display: "flex", flexDirection: "column",
+              alignItems: "center", justifyContent: "center",
+              overflow: "hidden",
+              background: "radial-gradient(ellipse at 50% 35%, #0f2548 0%, #05080f 100%)",
+            }}
           >
-            <Box component={motion.div} animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.6, 0.3] }} transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }} sx={{ position: "absolute", width: "70vw", height: "70vw", maxHeight: 800, maxWidth: 800, background: "radial-gradient(circle, rgba(56, 189, 248, 0.15) 0%, rgba(0,0,0,0) 70%)", borderRadius: "50%", pointerEvents: "none" }} />
-            <Box sx={{ position: "relative", width: 180, height: 180, mb: 4, display: "flex", justifyContent: "center", alignItems: "center" }}>
-              <VDLogo size={140} />
+            {/* === Ambient orbs === */}
+            {[
+              { left: "-10%", top: "5%", color: "rgba(56,189,248,0.18)", size: "55vw", delay: 0 },
+              { right: "-10%", bottom: "5%", color: "rgba(192,132,252,0.18)", size: "45vw", delay: 1.5 },
+              { left: "30%", top: "60%", color: "rgba(99,102,241,0.12)", size: "35vw", delay: 0.8 },
+            ].map((orb, i) => (
+              <Box
+                key={i}
+                component={motion.div}
+                animate={{ scale: [1, 1.25, 1], opacity: [0.6, 1, 0.6] }}
+                transition={{ duration: 5 + i, repeat: Infinity, ease: "easeInOut", delay: orb.delay }}
+                sx={{
+                  position: "absolute",
+                  width: orb.size, height: orb.size,
+                  maxWidth: 600, maxHeight: 600,
+                  background: `radial-gradient(circle, ${orb.color} 0%, transparent 70%)`,
+                  borderRadius: "50%", pointerEvents: "none",
+                  left: (orb as any).left, right: (orb as any).right,
+                  top: (orb as any).top, bottom: (orb as any).bottom,
+                }}
+              />
+            ))}
+
+            {/* === Slow spinning outer ring === */}
+            <Box
+              component={motion.div}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+              sx={{
+                position: "absolute",
+                width: 340, height: 340, borderRadius: "50%",
+                border: "1px solid rgba(56,189,248,0.15)",
+                borderTop: "2px solid rgba(56,189,248,0.5)",
+                pointerEvents: "none",
+              }}
+            />
+            <Box
+              component={motion.div}
+              animate={{ rotate: -360 }}
+              transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+              sx={{
+                position: "absolute",
+                width: 260, height: 260, borderRadius: "50%",
+                border: "1px dashed rgba(192,132,252,0.2)",
+                pointerEvents: "none",
+              }}
+            />
+
+            {/* === VD Logo with spring entrance === */}
+            <Box
+              component={motion.div}
+              initial={{ scale: 0.2, opacity: 0, y: 30 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.9, ease: [0.34, 1.56, 0.64, 1] }}
+              sx={{ position: "relative", zIndex: 2, mb: 3 }}
+            >
+              <VDLogo size={160} />
             </Box>
-            <Typography component={motion.div} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.8 }} sx={{ fontSize: { xs: 32, sm: 48 }, fontWeight: 900, color: "#fff", letterSpacing: "-0.04em", display: "flex", gap: 0.5 }}>
-              Work<Box component="span" sx={{ background: "linear-gradient(135deg, #38bdf8, #c084fc)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Track</Box>
-            </Typography>
-            <Typography component={motion.div} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 0.8 }} sx={{ color: "#94a3b8", fontSize: 16, mt: 1, fontWeight: 500, letterSpacing: "0.1em", textTransform: "uppercase" }}>
-              Attendance Intelligence
-            </Typography>
+
+            {/* === WorkTrack name === */}
+            <Box
+              component={motion.div}
+              initial={{ opacity: 0, y: 24 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.45, duration: 0.7, ease: "easeOut" }}
+              sx={{ position: "relative", zIndex: 2, textAlign: "center", mb: 0.5 }}
+            >
+              <Typography sx={{
+                fontSize: { xs: 38, sm: 54, md: 68 },
+                fontWeight: 900, lineHeight: 1,
+                letterSpacing: "-0.04em",
+                fontFamily: '"Georgia", serif',
+                color: "#f8fafc",
+              }}>
+                Work<Box component="span" sx={{
+                  background: "linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%)",
+                  WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                }}>Track</Box>
+              </Typography>
+            </Box>
+
+            {/* === Tagline === */}
+            <Box
+              component={motion.div}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.75, duration: 0.8 }}
+              sx={{ position: "relative", zIndex: 2, textAlign: "center", mb: 5 }}
+            >
+              <Typography sx={{
+                color: "#64748b", fontSize: { xs: 13, sm: 15 },
+                fontWeight: 600, letterSpacing: "0.18em", textTransform: "uppercase",
+              }}>
+                Attendance Intelligence Platform
+              </Typography>
+            </Box>
+
+            {/* === Animated dots === */}
+            <Box
+              component={motion.div}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.95 }}
+              sx={{ position: "relative", zIndex: 2, display: "flex", gap: 1.5 }}
+            >
+              {[0, 1, 2, 3, 4].map((i) => (
+                <Box
+                  key={i}
+                  component={motion.div}
+                  animate={{ scale: [1, 1.6, 1], opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1.3, repeat: Infinity, delay: i * 0.18, ease: "easeInOut" }}
+                  sx={{
+                    width: 8, height: 8, borderRadius: "50%",
+                    backgroundColor: ["#38bdf8", "#818cf8", "#c084fc", "#818cf8", "#38bdf8"][i],
+                  }}
+                />
+              ))}
+            </Box>
+
+            {/* === Corner decorative lines === */}
+            {["top left", "top right", "bottom left", "bottom right"].map((corner, i) => {
+              const [v, h] = corner.split(" ");
+              return (
+                <Box
+                  key={i}
+                  component={motion.div}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 0.4, scale: 1 }}
+                  transition={{ delay: 0.6 + i * 0.1, duration: 0.5 }}
+                  sx={{
+                    position: "absolute",
+                    [v]: 24, [h]: 24,
+                    width: 40, height: 40,
+                    borderTop: v === "top" ? "2px solid rgba(56,189,248,0.5)" : "none",
+                    borderBottom: v === "bottom" ? "2px solid rgba(192,132,252,0.5)" : "none",
+                    borderLeft: h === "left" ? "2px solid rgba(56,189,248,0.5)" : "none",
+                    borderRight: h === "right" ? "2px solid rgba(192,132,252,0.5)" : "none",
+                    borderRadius: `${v === "top" && h === "left" ? "6px 0 0 0" : v === "top" && h === "right" ? "0 6px 0 0" : v === "bottom" && h === "left" ? "0 0 0 6px" : "0 0 6px 0"}`,
+                    pointerEvents: "none",
+                  }}
+                />
+              );
+            })}
           </Box>
         )}
       </AnimatePresence>
+
 
       <Box
         component="header"
