@@ -88,7 +88,7 @@ function sessionDateTime(entry: Attendance, timeValue?: string | null) {
   return parsed.isValid() ? parsed : null;
 }
 export function DashboardTab() {
-  const { profile, todayEntry, settings, monthSummary, entries, leaveBalances, activeBreak, breaks, fetchBreaks, month } = useEmployee();
+  const { profile, todayEntry, settings, monthSummary, entries, leaveBalances, activeBreak, breaks, fetchBreaks, month, deviceStatus, refreshData } = useEmployee();
   const [punchOpen, setPunchOpen] = useState(false);
   const [punchKind, setPunchKind] = useState<'checkin' | 'checkout'>('checkin');
   const [breakBusy, setBreakBusy] = useState(false);
@@ -166,6 +166,43 @@ export function DashboardTab() {
 
   return (
     <MotionBox variants={containerVariants} initial="hidden" animate="visible" sx={{ display: 'grid', gap: 2.5 }}>
+      
+      {!deviceStatus?.registered && (
+        <Box sx={{ p: { xs: 2.5, md: 4 }, bgcolor: '#FEF2F2', border: '2px dashed #EF4444', borderRadius: '12px', display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between', gap: 3 }}>
+          <Box>
+            <Typography sx={{ fontWeight: 950, color: '#991B1B', fontSize: { xs: 20, md: 24 }, mb: 0.5, lineHeight: 1.1 }}>Device Not Registered</Typography>
+            <Typography sx={{ color: '#7F1D1D', fontSize: 15, fontWeight: 500, maxWidth: 500 }}>
+              You cannot Punch In until your device is authorized. Click the button to register this device for approval.
+            </Typography>
+          </Box>
+          <Button
+            variant="contained"
+            color="error"
+            size="large"
+            sx={{ fontWeight: 950, py: 1.75, px: 5, borderRadius: 8, whiteSpace: 'nowrap', boxShadow: '0 8px 24px rgba(239, 68, 68, 0.4)' }}
+            onClick={async () => {
+              const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
+              let label = navigator.userAgent;
+              if (label.includes('iPhone')) label = 'Apple iPhone';
+              else if (label.includes('Android')) label = 'Android Phone';
+              else if (label.includes('Windows')) label = 'Windows PC';
+              else if (label.includes('Mac')) label = 'Macbook';
+              else label = 'Mobile Device';
+              
+              try {
+                await api.post('/api/account/devices/register', { deviceId, label });
+                alert('Device registered! It is now awaiting Admin approval.');
+                await refreshData();
+              } catch (e: any) {
+                alert(e.response?.data?.error || e.message);
+              }
+            }}
+          >
+            REGISTER THIS DEVICE
+          </Button>
+        </Box>
+      )}
+
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.35fr 0.65fr' }, gap: 2.5 }}>
         <Box sx={{ ...cardSx, p: { xs: 2, md: 3 }, bgcolor: 'primary.dark', color: 'white', borderColor: 'primary.dark' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, mb: 3 }}>
