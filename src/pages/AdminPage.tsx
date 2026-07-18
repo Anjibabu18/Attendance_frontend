@@ -337,7 +337,6 @@ export default function AdminPage() {
     if (!query) return employees;
     return employees.filter((employee) => [employee.name, employee.employeeNumber, employee.username, employee.department?.name, employee.companyRole?.name].some((value) => String(value || "").toLowerCase().includes(query)));
   }, [employees, search]);
-
   const activeEmployees = employees.filter((employee) => employee.enabled !== false && employee.status !== "INACTIVE").length;
   const configuredEmployees = employees.filter((employee) => employee.department || employee.shift || employee.assignedOfficeLocation).length;
   const setupProgress = employees.length ? Math.round((configuredEmployees / employees.length) * 100) : 0;
@@ -348,6 +347,7 @@ export default function AdminPage() {
     correction: approvalItems.filter((item) => item.kind === "correction").length,
     work: approvalItems.filter((item) => item.kind === "work").length,
     compOff: approvalItems.filter((item) => item.kind === "compOff").length,
+    device: approvalItems.filter((item) => item.kind === "device").length,
   };
 
   async function decideApproval(item: ApprovalItem, action: "approve" | "reject") {
@@ -680,6 +680,7 @@ export default function AdminPage() {
               ["correction", "Attendance corrections", approvalCounts.correction],
               ["work", "Work/WFH", approvalCounts.work],
               ["compOff", "Comp-off", approvalCounts.compOff],
+              ["device", "Device requests", approvalCounts.device],
             ].map(([key, label, count]) => (
               <Button key={String(key)} size="small" variant={approvalFilter === key ? "contained" : "outlined"} onClick={() => setApprovalFilter(key as ApprovalKind | "all")} sx={{ borderRadius: "8px", fontWeight: 900 }}>
                 {label} ({count})
