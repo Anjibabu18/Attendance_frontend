@@ -24,24 +24,29 @@ const cardSx = {
   bgcolor: 'background.paper',
   border: '1px solid',
   borderColor: 'divider',
-  borderRadius: '8px',
-  boxShadow: '0 12px 32px rgba(15, 23, 42, 0.05)',
-  transition: 'transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease',
+  borderRadius: '24px',
+  boxShadow: '0 8px 32px rgba(15, 23, 42, 0.04)',
+  transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
   '&:hover': {
-    transform: 'translateY(-2px)',
-    boxShadow: '0 18px 44px rgba(15, 23, 42, 0.09)',
+    transform: 'translateY(-4px) scale(1.02)',
+    boxShadow: '0 20px 48px rgba(37, 99, 235, 0.12)',
     borderColor: 'primary.light',
   },
 };
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.04 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1, delayChildren: 0.05 } },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 16, scale: 0.98 },
-  visible: { opacity: 1, y: 0, scale: 1 },
+  hidden: { opacity: 0, y: 30, scale: 0.9 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    scale: 1,
+    transition: { type: "spring", stiffness: 300, damping: 24 }
+  },
 };
 function dateKey(value?: string | null) {
   return value ? dayjs(value).format('YYYY-MM-DD') : dayjs().format('YYYY-MM-DD');

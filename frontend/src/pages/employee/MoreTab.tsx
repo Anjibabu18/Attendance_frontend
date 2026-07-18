@@ -22,7 +22,6 @@ import { clearAuth } from '../../auth/auth';
 import { disablePushNotifications, enablePushNotifications, isPushEnabled, sendTestNotification } from '../../utils/pushNotifications';
 import { useEmployee } from './EmployeeContext';
 import { registerBiometric, isBiometricSupported } from '../../utils/webauthn';
-import { FaceRegisterOverlay } from './FaceRegisterOverlay';
 
 const MotionBox = motion.create(Box);
 
@@ -46,7 +45,6 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
-  const [showFaceRegister, setShowFaceRegister] = useState(false);
   const biometricSupported = isBiometricSupported();
 
   useEffect(() => {
@@ -242,19 +240,6 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
               <Divider />
             </>
           )}
-          <ListItemButton onClick={() => setShowFaceRegister(true)} sx={{ py: 1.4 }}>
-            <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>
-              <PersonRoundedIcon />
-            </ListItemIcon>
-            <ListItemText
-              primary="Register Face AI"
-              secondary="Set up facial recognition for punching in"
-              primaryTypographyProps={{ fontWeight: 900 }}
-              secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }}
-            />
-            <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.5 }} />
-          </ListItemButton>
-          <Divider />
 
           <ListItemButton onClick={handleLogout} sx={{ py: 1.4 }}>
             <ListItemIcon sx={{ color: '#DC2626', minWidth: 44 }}><LogoutRoundedIcon /></ListItemIcon>
@@ -262,10 +247,6 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
           </ListItemButton>
         </List>
       </Box>
-
-      {showFaceRegister && (
-        <FaceRegisterOverlay onClose={() => setShowFaceRegister(false)} />
-      )}
     </MotionBox>
   );
 }
