@@ -35,6 +35,7 @@ import { motion } from "framer-motion";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import { IconButton, Tooltip } from "@mui/material";
+import ScheduledPushCard from '../components/ScheduledPushCard';
 
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
@@ -1030,7 +1031,9 @@ export default function AdminPage() {
              </Box>
           )}
         </Box>
+        <ScheduledPushCard />
       </MotionBox>
+      
       <Drawer anchor="right" open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2.5 } }}>
         <Box sx={{ display: "grid", gap: 2 }}>
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
