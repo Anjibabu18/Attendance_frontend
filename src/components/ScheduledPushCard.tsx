@@ -4,7 +4,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditRoundedIcon from '@mui/icons-material/EditRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import ScheduleSendRoundedIcon from '@mui/icons-material/ScheduleSendRounded';
-import api from '../utils/api';
+import { api } from '../api/client';
 import { useToast } from './Toast';
 
 interface ScheduledPush {
