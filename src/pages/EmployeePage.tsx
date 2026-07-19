@@ -23,6 +23,7 @@ type QuickRequestMode = 'leave' | 'work' | 'regularization';
 import { MoreTab } from './employee/MoreTab';
 import { LiveVerificationOverlay } from './employee/LiveVerificationOverlay';
 import { api } from '../api/client';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LayoutSkeleton } from '../components/LayoutSkeleton';
 import { useThemeContext } from '../theme/ThemeContext';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
@@ -350,7 +351,9 @@ function EmployeeContent() {
 export default function EmployeePage() {
   return (
     <EmployeeProvider>
-      <EmployeeContent />
+      <ErrorBoundary>
+        <EmployeeContent />
+      </ErrorBoundary>
     </EmployeeProvider>
   );
 }
