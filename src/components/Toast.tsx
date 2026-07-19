@@ -25,11 +25,11 @@ export function useToast() {
   return ctx;
 }
 
-const CFG: Record<ToastType, { border: string; icon: React.ReactNode; color: string; progress: string; bg: string }> = {
-  success: { bg: "rgba(22,163,74,0.06)", border: "rgba(22,163,74,0.28)", icon: <CheckCircleOutlineIcon sx={{ fontSize: 21 }} />, color: "#16a34a", progress: "linear-gradient(90deg,#16a34a,#10b981)" },
-  error:   { bg: "rgba(220,38,38,0.06)",  border: "rgba(220,38,38,0.28)",  icon: <ErrorOutlineIcon sx={{ fontSize: 21 }} />,          color: "#dc2626", progress: "linear-gradient(90deg,#dc2626,#ef4444)" },
-  info:    { bg: "rgba(37,99,235,0.06)",  border: "rgba(37,99,235,0.28)",  icon: <InfoOutlinedIcon sx={{ fontSize: 21 }} />,          color: "#2563eb", progress: "linear-gradient(90deg,#2563eb,#6366f1)" },
-  warning: { bg: "rgba(180,83,9,0.06)",   border: "rgba(180,83,9,0.28)",   icon: <WarningAmberIcon sx={{ fontSize: 21 }} />,          color: "#b45309", progress: "linear-gradient(90deg,#b45309,#f59e0b)" },
+const CFG: Record<ToastType, { icon: React.ReactNode; color: string; bg: string }> = {
+  success: { bg: "rgba(16,185,129,0.15)", icon: <CheckCircleOutlineIcon sx={{ fontSize: 18 }} />, color: "#34D399" }, // Emerald neon
+  error:   { bg: "rgba(239,68,68,0.15)",  icon: <ErrorOutlineIcon sx={{ fontSize: 18 }} />,       color: "#F87171" }, // Rose neon
+  info:    { bg: "rgba(59,130,246,0.15)", icon: <InfoOutlinedIcon sx={{ fontSize: 18 }} />,       color: "#60A5FA" }, // Blue neon
+  warning: { bg: "rgba(245,158,11,0.15)", icon: <WarningAmberIcon sx={{ fontSize: 18 }} />,       color: "#FBBF24" }, // Amber neon
 };
 
 function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) => void }) {
@@ -51,55 +51,56 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
 
   return (
     <Box sx={{
-      position: "relative",
       display: "flex",
-      alignItems: "flex-start",
-      gap: 1.25,
-      p: "12px 14px 14px 16px",
-      minWidth: 290,
-      maxWidth: 380,
-      borderRadius: "14px",
-      background: "rgba(255,255,255,0.97)",
-      backdropFilter: "blur(24px)",
-      border: `1.5px solid ${cfg.border}`,
-      boxShadow: `0 12px 40px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06)`,
-      overflow: "hidden",
-      transform: show && !exit ? "translateX(0) scale(1)" : "translateX(110%) scale(0.92)",
+      alignItems: "center",
+      gap: 1.5,
+      p: "10px 18px 10px 12px",
+      minWidth: "auto",
+      maxWidth: { xs: 320, md: 400 },
+      borderRadius: "9999px", // Pill shape
+      background: "rgba(15,23,42,0.85)", // Deep black/slate glass
+      backdropFilter: "blur(24px) saturate(200%)",
+      border: "1px solid rgba(255,255,255,0.12)",
+      boxShadow: "0 16px 40px rgba(0,0,0,0.35), inset 0 1px 1px rgba(255,255,255,0.15)",
+      transform: show && !exit ? "translateY(0) scale(1)" : "translateY(-150%) scale(0.7)",
       opacity: show && !exit ? 1 : 0,
       transition: exit
-        ? "transform 0.36s cubic-bezier(0.4,0,1,1), opacity 0.32s ease"
-        : "transform 0.42s cubic-bezier(0.22,1,0.36,1), opacity 0.32s ease",
-      "&::before": { content:'""', position:"absolute", inset:0, background: cfg.bg, zIndex:0 },
-    }}>
-      {/* Left accent */}
-      <Box sx={{ position:"absolute", left:0, top:0, bottom:0, width:4, background:cfg.progress }} />
-      {/* Icon */}
-      <Box sx={{ flexShrink:0, color:cfg.color, mt:0.15, zIndex:1, filter:`drop-shadow(0 2px 6px ${cfg.color}55)` }}>
+        ? "transform 0.4s cubic-bezier(0.4,0,1,1), opacity 0.3s ease, padding 0.3s ease"
+        : "transform 0.5s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s ease", // Springy entrance
+      cursor: "pointer",
+    }} onClick={dismiss}>
+      
+      {/* Dynamic Icon Box */}
+      <Box sx={{ 
+        width: 32, height: 32, 
+        borderRadius: "50%", 
+        background: cfg.bg, 
+        color: cfg.color, 
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+        boxShadow: `0 0 12px ${cfg.color}40`,
+      }}>
         {cfg.icon}
       </Box>
-      {/* Text */}
-      <Box sx={{ flex: 1, display: "flex", flexDirection: "column", gap: 0.25, zIndex: 1 }}>
+
+      {/* Text Container */}
+      <Box sx={{ display: "flex", flexDirection: "column", pr: 1, pt: 0.25 }}>
         {toast.title && (
-          <Typography sx={{ fontSize: 13.5, fontWeight: 800, color: "#111827", lineHeight: 1.35 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 900, color: "white", lineHeight: 1.2 }}>
             {toast.title}
           </Typography>
         )}
-        <Typography sx={{ fontSize: 12.5, fontWeight: toast.title ? 500 : 700, color: toast.title ? "text.secondary" : "#111827", lineHeight: 1.4, wordBreak: "break-word" }}>
+        <Typography sx={{ 
+          fontSize: toast.title ? 11.5 : 13, 
+          fontWeight: toast.title ? 600 : 700, 
+          color: toast.title ? "rgba(255,255,255,0.7)" : "white", 
+          lineHeight: 1.2, 
+          wordBreak: "break-word",
+          letterSpacing: "-0.01em"
+        }}>
           {toast.message}
         </Typography>
       </Box>
-      {/* Close */}
-      <IconButton size="small" onClick={dismiss} sx={{ flexShrink:0, mt:-0.5, mr:-0.5, zIndex:1, color:"text.secondary", opacity:0.55, "&:hover":{ opacity:1, bgcolor:"rgba(0,0,0,0.06)" } }}>
-        <CloseIcon sx={{ fontSize:15 }} />
-      </IconButton>
-      {/* Progress bar */}
-      <Box sx={{
-        position:"absolute", bottom:0, left:4, right:0, height:3, background:cfg.progress,
-        transformOrigin:"left", opacity:0.65,
-        animation:`shrink ${dur}ms linear forwards`,
-        "@keyframes shrink":{ from:{ transform:"scaleX(1)" }, to:{ transform:"scaleX(0)" } },
-        zIndex:1,
-      }} />
     </Box>
   );
 }
@@ -123,9 +124,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast, toastSuccess, toastError, toastInfo, toastWarning }}>
       {children}
       <Box sx={{
-        position:"fixed", bottom:24, right:24, zIndex:9999,
-        display:"flex", flexDirection:"column", gap:1.25, alignItems:"flex-end",
-        pointerEvents:"none", "& > *":{ pointerEvents:"auto" },
+        position: "fixed", 
+        top: 24, left: 0, right: 0, 
+        zIndex: 99999,
+        display: "flex", flexDirection: "column", gap: 1, alignItems: "center", // Top center
+        pointerEvents: "none", "& > *": { pointerEvents: "auto" },
       }}>
         {toasts.map(t => <ToastItem key={t.id} toast={t} onRemove={remove} />)}
       </Box>

@@ -25,6 +25,7 @@ import { clearAuth } from '../../auth/auth';
 import { disablePushNotifications, enablePushNotifications, isPushEnabled, sendTestNotification } from '../../utils/pushNotifications';
 import { useEmployee } from './EmployeeContext';
 import { registerBiometric, isBiometricSupported } from '../../utils/webauthn';
+import { hapticTap, hapticPop } from '../../utils/haptics';
 
 const MotionBox = motion.create(Box);
 
@@ -68,6 +69,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
   };
 
   const removeDevice = async (id: number) => {
+    hapticTap();
     if (!window.confirm('Remove this device?')) return;
     try {
       await api.delete(`/api/account/devices/${id}`);
@@ -80,6 +82,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
   };
 
   const registerCurrentDevice = async () => {
+    hapticTap();
     try {
       const deviceId = localStorage.getItem("attendance_device_id_v1") || 'unknown';
       let label = navigator.userAgent;
@@ -258,8 +261,55 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
             <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>
               {mode === 'dark' ? <LightModeRoundedIcon /> : <DarkModeRoundedIcon />}
             </ListItemIcon>
-            <ListItemText primary="Appearance" secondary={mode === 'dark' ? 'Dark Mode' : 'Light Mode'} primaryTypographyProps={{ fontWeight: 900 }} secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }} />
-            <Switch checked={mode === 'dark'} color="primary" />
+            <ListItemText
+              primary="Appearance"
+              secondary={mode === 'dark' ? '🌙 Dark Mode active' : '☀️ Light Mode active'}
+              primaryTypographyProps={{ fontWeight: 900 }}
+              secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }}
+            />
+            {/* Premium animated pill toggle */}
+            <Box
+              component={motion.div}
+              onClick={(e: React.MouseEvent) => { e.stopPropagation(); toggleColorMode(); }}
+              whileTap={{ scale: 0.92 }}
+              sx={{
+                position: 'relative',
+                width: 64,
+                height: 32,
+                borderRadius: 999,
+                bgcolor: mode === 'dark' ? 'rgba(14,165,233,0.25)' : 'rgba(0,0,0,0.08)',
+                border: mode === 'dark' ? '1.5px solid rgba(14,165,233,0.5)' : '1.5px solid rgba(0,0,0,0.12)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                px: 0.5,
+                transition: 'background 0.4s ease, border-color 0.4s ease',
+                boxShadow: mode === 'dark' ? '0 0 12px rgba(14,165,233,0.3)' : 'none',
+                flexShrink: 0,
+              }}
+            >
+              <Box
+                component={motion.div}
+                animate={{ x: mode === 'dark' ? 30 : 0 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                sx={{
+                  width: 26,
+                  height: 26,
+                  borderRadius: '50%',
+                  bgcolor: mode === 'dark' ? '#0EA5E9' : '#F8FAFC',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: mode === 'dark'
+                    ? '0 0 10px rgba(14,165,233,0.6), 0 2px 6px rgba(0,0,0,0.3)'
+                    : '0 2px 6px rgba(0,0,0,0.15)',
+                  color: mode === 'dark' ? 'white' : '#94A3B8',
+                  fontSize: 14,
+                }}
+              >
+                {mode === 'dark' ? '🌙' : '☀️'}
+              </Box>
+            </Box>
           </ListItemButton>
           <Divider />
 

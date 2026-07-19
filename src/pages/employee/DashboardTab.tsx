@@ -11,6 +11,7 @@ import WalletRoundedIcon from '@mui/icons-material/WalletRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
+import Tilt from 'react-parallax-tilt';
 
 import { api } from '../../api/client';
 import { Attendance } from '../../types';
@@ -258,6 +259,7 @@ export function DashboardTab() {
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.4fr 0.6fr' }, gap: 2.5 }}>
 
         {/* Left: Main shift card */}
+        <Tilt tiltMaxAngleX={5} tiltMaxAngleY={5} glareEnable={true} glareMaxOpacity={0.12} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
         <Box sx={{
           ...glassCard,
           background: isDark
@@ -453,9 +455,11 @@ export function DashboardTab() {
             </Box>
           </Box>
         </Box>
+        </Tilt>
 
         {/* Right: Today Details card */}
-        <Box sx={{ ...glassCard, p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        <Tilt tiltMaxAngleX={5} tiltMaxAngleY={5} glareEnable={true} glareMaxOpacity={0.1} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ ...glassCard, p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
           <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 0.5 }}>Today Details</Typography>
 
           {[
@@ -496,13 +500,14 @@ export function DashboardTab() {
             </Typography>
           </Box>
         </Box>
+        </Tilt>
       </MotionBox>
 
       {/* ── Stat Cards ── */}
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 1.5 }}>
         {statCards.map((item, i) => (
+          <Tilt key={item.label} tiltMaxAngleX={8} tiltMaxAngleY={8} glareEnable={true} glareMaxOpacity={0.1} glareBorderRadius="16px" scale={1.03} transitionSpeed={400} style={{ display: 'flex', flexDirection: 'column' }}>
           <MotionBox
-            key={item.label}
             initial={{ opacity: 0, y: 24, scale: 0.92 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.15 + i * 0.07, type: 'spring', stiffness: 260, damping: 22 }}
@@ -518,6 +523,7 @@ export function DashboardTab() {
             <Typography sx={{ fontWeight: 900, fontSize: { xs: 22, md: 28 }, color: item.color, lineHeight: 1 }}>{item.value}</Typography>
             <Typography sx={{ color: 'text.disabled', fontSize: 12, mt: 0.5, fontWeight: 600 }}>{item.helper}</Typography>
           </MotionBox>
+          </Tilt>
         ))}
       </MotionBox>
 
@@ -525,7 +531,8 @@ export function DashboardTab() {
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: streaks ? '1fr 1fr 1.1fr' : '1fr 1.1fr' }, gap: 2.5 }}>
 
         {/* Leave Balances */}
-        <Box sx={{ ...glassCard, p: 2.5 }}>
+        <Tilt tiltMaxAngleX={4} tiltMaxAngleY={4} glareEnable={true} glareMaxOpacity={0.08} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ ...glassCard, p: 2.5, height: '100%' }}>
           <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 2 }}>Leave Balances</Typography>
           <Box sx={{ display: 'grid', gap: 1.25 }}>
             {leaveBalances.length ? leaveBalances.slice(0, 4).map((item, i) => {
@@ -557,14 +564,16 @@ export function DashboardTab() {
             }) : <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>No leave balances assigned yet.</Typography>}
           </Box>
         </Box>
+        </Tilt>
 
         {/* Streaks & Badges */}
         {streaks && (
+          <Tilt tiltMaxAngleX={4} tiltMaxAngleY={4} glareEnable={true} glareMaxOpacity={0.08} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
           <MotionBox
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
-            sx={{ ...glassCard, p: 2.5 }}
+            sx={{ ...glassCard, p: 2.5, height: '100%' }}
           >
             <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 2 }}>Streaks & Badges</Typography>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, mb: 2 }}>
@@ -602,6 +611,7 @@ export function DashboardTab() {
               </Box>
             )}
           </MotionBox>
+          </Tilt>
         )}
 
         {/* Recent Attendance */}

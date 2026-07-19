@@ -8,6 +8,28 @@ import { useEmployee } from './EmployeeContext';
 import dayjs from 'dayjs';
 import jsQR from 'jsqr';
 import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Circle, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import confetti from 'canvas-confetti';
+import { hapticTap, hapticSuccess, hapticError, hapticPop } from '../../utils/haptics';
+
+const playBeep = (freq = 800, duration = 150) => {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+    setTimeout(() => oscillator.stop(), duration);
+  } catch (e) {
+    console.warn("Audio not supported or blocked", e);
+  }
+};
 
 export function PunchOverlay({ 
   open, 
@@ -18,12 +40,14 @@ export function PunchOverlay({
   onClose: () => void; 
   kind: 'checkin' | 'checkout' 
 }) {
-  const { refreshData, deviceStatus, settings } = useEmployee();
+  const { refreshData, deviceStatus, settings, profile } = useEmployee();
   
   const [step, setStep] = useState<number>(0); 
   // 0: Location, 1: QR Scan, 2: Daily Code, 3: Selfie, 4: Success
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string|null>(null);
+  const [isOfflinePunch, setIsOfflinePunch] = useState(false);
+  const [punchResponse, setPunchResponse] = useState<any>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -41,76 +65,96 @@ export function PunchOverlay({
   const faceApiRef = useRef<any>(null);
 
 
-  // Render leaflet map when error occurs and we have location data
-  useEffect(() => {
-    if (!error || !location || !officeLocation || !mapContainerRef.current) return;
-    // Dynamically import leaflet to avoid SSR issues
-    import('leaflet').then(L => {
-      if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; }
-      const map = L.map(mapContainerRef.current!, { zoomControl: true, scrollWheelZoom: false });
-      mapInstanceRef.current = map;
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'Ãƒâ€šÃ‚Â© OpenStreetMap' }).addTo(map);
-      // Office circle
-      L.circle([officeLocation.lat, officeLocation.lng], { radius: officeLocation.radius, color: '#22c55e', fillColor: '#22c55e', fillOpacity: 0.1, weight: 2 }).addTo(map);
-      L.marker([officeLocation.lat, officeLocation.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#22c55e;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ÃƒÂ°Ã…Â¸Ã‚ÂÃ‚Â¢ Office').addTo(map);
-      // Employee position
-      L.marker([location.lat, location.lng], { icon: L.divIcon({ className: '', html: '<div style="background:#3b82f6;width:14px;height:14px;border-radius:50%;border:2px solid white;"></div>', iconSize: [14,14] }) }).bindPopup('ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â You are here').addTo(map);
-      // Fit bounds
-      const bounds = L.latLngBounds([[officeLocation.lat, officeLocation.lng], [location.lat, location.lng]]);
-      map.fitBounds(bounds, { padding: [40, 40] });
-    });
-    return () => { if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; } };
-  }, [error, location, officeLocation]);
+  const [distanceMeters, setDistanceMeters] = useState<number|null>(null);
+  const watchIdRef = useRef<number|null>(null);
 
-  const startFlow = async () => {
+  // Component to auto-center the map when location changes
+  const MapCenterer = ({ center }: { center: [number, number] }) => {
+    const map = useMap();
+    useEffect(() => { map.setView(center, 18, { animate: true }); }, [center, map]);
+    return null;
+  };
+
+  const checkLocationOnServer = async (loc: { lat: number, lng: number }) => {
+    try {
+      const res = await api.get('/api/employee/punch/place', { params: loc });
+      if (res.data.officeLocation) {
+        setOfficeLocation({ 
+          lat: res.data.officeLocation.latitude, 
+          lng: res.data.officeLocation.longitude, 
+          radius: res.data.officeLocation.radiusMeters 
+        });
+      }
+      setDistanceMeters(res.data.distanceMeters);
+      
+      if (res.data.insideRadius) {
+        if (watchIdRef.current !== null) {
+          navigator.geolocation.clearWatch(watchIdRef.current);
+          watchIdRef.current = null;
+        }
+
+        if (deviceStatus && !deviceStatus.approved) {
+          setStep(6);
+          return;
+        }
+
+        // Advance step with a slight delay to let user see the green map pulse
+        setTimeout(() => {
+          if (settings?.requireQrForPunch) {
+            setStep(1);
+            startQrCamera();
+          } else {
+            setStep(3);
+            startSelfieCamera();
+          }
+        }, 1500);
+      } else {
+        setError(`Outside office radius (${Math.round(res.data.distanceMeters)}m)`);
+      }
+    } catch (e: any) {
+      setError(e?.response?.data?.error || e.message || 'Location verification failed');
+    }
+  };
+
+  const startFlow = () => {
     setBusy(true);
     setError(null);
     setQrToken("");
     setQrMode("");
     setDailyCode("");
-    try {
-      const loc = await new Promise<{lat: number, lng: number}>((res, rej) => {
-        navigator.geolocation.getCurrentPosition(
-          p => res({lat: p.coords.latitude, lng: p.coords.longitude}),
-          rej, 
-          { enableHighAccuracy: true, timeout: 15000 }
-        );
-      });
-      setLocation(loc);
-
-      const res = await api.get('/api/employee/punch/place', { params: loc });
-      if (res.data.officeLocation) {
-        setOfficeLocation({ lat: res.data.officeLocation.latitude, lng: res.data.officeLocation.longitude, radius: res.data.officeLocation.radiusMeters });
-      }
-      if (!res.data.insideRadius) {
-        throw new Error(`Outside office radius (${Math.round(res.data.distanceMeters)}m)`);
-      }
-
-      if (deviceStatus && !deviceStatus.approved) {
-        setStep(6);
-        return;
-      }
-
-      // Check if QR is required
-      if (settings?.requireQrForPunch) {
-        setStep(1);
-        startQrCamera();
-      } else {
-        setStep(3);
-        startSelfieCamera();
-      }
-    } catch (e: any) {
-      setError(e?.response?.data?.error || e.message || 'Location verification failed');
-    } finally {
+    
+    // Fallback if browser doesn't support geolocation
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser");
       setBusy(false);
+      return;
     }
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (p) => {
+        const loc = { lat: p.coords.latitude, lng: p.coords.longitude };
+        setLocation(loc);
+        checkLocationOnServer(loc).finally(() => setBusy(false));
+      },
+      (e) => {
+        setError(`Location access error: ${e.message}`);
+        setBusy(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
   };
 
   useEffect(() => {
     if (open && step === 0) {
       startFlow();
     }
-    return () => stopCamera();
+    return () => {
+      stopCamera();
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
   }, [open]);
 
   // Ensure video element receives the stream even if it remounts during step transitions
@@ -157,6 +201,7 @@ export function PunchOverlay({
         const imgData = ctx.getImageData(0, 0, c.width, c.height);
         const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
         if (code) {
+          playBeep(900, 100);
           handleQrScanned(code.data);
           return;
         }
@@ -269,6 +314,7 @@ export function PunchOverlay({
     if (!v) return;
     setBusy(true);
     setError(null);
+    hapticTap();
     try {
       for (let attempt = 0; attempt < 20; attempt++) {
         if (v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) break;
@@ -312,12 +358,71 @@ export function PunchOverlay({
       // Stop the camera since we've captured the photo
       stopCamera();
 
-      await api.post(`/api/employee/punch/${kind}`, fd, { 
-        headers: { "Content-Type": "multipart/form-data" } 
-      });
+      try {
+        const response = await api.post(`/api/employee/punch/${kind}`, fd, { 
+          headers: { "Content-Type": "multipart/form-data" } 
+        });
+        
+        const data = response.data;
+        setPunchResponse(data);
+        hapticSuccess();
+        
+        if (data.isNewStreak || (data.newBadgesEarned && data.newBadgesEarned.length > 0)) {
+          confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#10B981', '#3B82F6', '#F59E0B']
+          });
+        }
+      } catch (e: any) {
+        if (!window.navigator.onLine || e.message === 'Network Error' || e.code === 'ERR_NETWORK') {
+          // Save offline
+          const m = await import('../../utils/offlineSync');
+          await m.savePunchOffline({
+            id: new Date().toISOString(),
+            kind,
+            timestamp: Date.now(),
+            photoBase64: dataUrl,
+            latitude: location ? String(location.lat) : undefined,
+            longitude: location ? String(location.lng) : undefined,
+            deviceId,
+            qrToken: settings?.requireQrForPunch ? qrToken : undefined,
+            dailyCode: settings?.requireQrForPunch && qrMode === "FIXED_QR_DAILY_CODE" ? dailyCode : undefined
+          });
+          setIsOfflinePunch(true);
+        } else {
+          hapticError();
+          throw e; // Rethrow actual API errors (like invalid QR code)
+        }
+      }
+
+      playBeep(1000, 100);
+      setTimeout(() => playBeep(1200, 150), 150);
+
+      // Voice Feedback
+      const firstName = profile?.name?.split(' ')[0] || 'there';
+      if ('speechSynthesis' in window) {
+        // Cancel any pending speech so it plays instantly
+        window.speechSynthesis.cancel();
+        
+        let text = kind === 'checkin' 
+          ? `Punch in successful. Welcome, ${firstName}.` 
+          : `Checkout recorded. Have a great evening, ${firstName}!`;
+          
+        if (!window.navigator.onLine) {
+          text = 'Punch saved offline.';
+        }
+          
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        // Optionally find a premium voice if available, but default is fine
+        window.speechSynthesis.speak(utterance);
+      }
 
       setStep(4); // Success
-      await refreshData();
+      if (!isOfflinePunch) await refreshData();
     } catch (e: any) {
       if (e?.message?.includes('Failed to fetch dynamically imported module') || e?.message?.includes('Importing a module script failed')) {
         if ('serviceWorker' in navigator) {
@@ -327,7 +432,9 @@ export function PunchOverlay({
         }
         return;
       }
+      hapticError();
       setError(e?.response?.data?.error || e.message || 'Punch failed');
+      startSelfieCamera();
     } finally {
       setBusy(false);
     }
@@ -349,41 +456,120 @@ export function PunchOverlay({
       <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', p: 3, pt: 8, textAlign: 'center' }}>
         
         {step === 0 && (
-          <Box sx={{ m: 'auto', width: '100%', maxWidth: 420 }}>
-            {!error ? (
-              <>
-                <CircularProgress sx={{ color: '#0052FF', mb: 3 }} size={60} thickness={4} />
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Verifying Location</Typography>
-                <Typography sx={{ color: '#94A3B8' }}>Getting your GPS coordinates...</Typography>
-              </>
-            ) : (
-              <>
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, color: '#EF4444' }}>ÃƒÂ°Ã…Â¸Ã¢â‚¬Å“Ã‚Â Location Issue</Typography>
-                <Typography sx={{ color: '#94A3B8', mb: 2 }}>{error}</Typography>
-                {location && officeLocation && (
-                  <Box sx={{ borderRadius: 3, overflow: 'hidden', mb: 3, height: 260 }}>
-                    <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
-                  </Box>
-                )}
-                {!location && (
-                  <Box sx={{ bgcolor: 'rgba(239,68,68,0.1)', borderRadius: 2, p: 2, mb: 3 }}>
-                    <Typography sx={{ color: '#FCA5A5', fontSize: 14 }}>Please enable location access in your browser settings and try again.</Typography>
-                  </Box>
-                )}
-                <Button variant="outlined" startIcon={<MyLocationIcon />} sx={{ borderColor: '#0052FF', color: '#60A5FA', mr: 1 }} onClick={startFlow}>Retry</Button>
-              </>
+          <Box sx={{ m: 'auto', width: '100%', maxWidth: 420, display: 'flex', flexDirection: 'column', height: '100%', pt: 2 }}>
+            <Typography variant="h4" sx={{ fontWeight: 900, mb: 1, letterSpacing: '-0.5px', background: 'linear-gradient(135deg, #FFFFFF 0%, #60A5FA 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Locating You
+            </Typography>
+            <Typography sx={{ color: '#94A3B8', fontSize: 15, mb: 3 }}>
+              {error ? 'Location error' : distanceMeters !== null ? (distanceMeters <= (officeLocation?.radius || 50) ? 'Inside office radius! Preparing...' : `You are ${Math.round(distanceMeters)}m away from the office.`) : 'Acquiring high-accuracy GPS signal...'}
+            </Typography>
+            
+            <Box sx={{ flexGrow: 1, minHeight: 300, borderRadius: 4, overflow: 'hidden', border: '2px solid', borderColor: error ? '#EF4444' : (distanceMeters !== null && distanceMeters <= (officeLocation?.radius || 50) ? '#10B981' : '#3B82F6'), boxShadow: error ? '0 0 20px rgba(239, 68, 68, 0.2)' : (distanceMeters !== null && distanceMeters <= (officeLocation?.radius || 50) ? '0 0 30px rgba(16, 185, 129, 0.3)' : '0 0 30px rgba(59, 130, 246, 0.2)'), position: 'relative', mb: 2 }}>
+              
+              {!location && !error && (
+                <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#0F172A', zIndex: 10 }}>
+                   <CircularProgress sx={{ color: '#3B82F6' }} />
+                </Box>
+              )}
+
+              {location && (
+                <MapContainer center={[location.lat, location.lng]} zoom={18} zoomControl={false} scrollWheelZoom={false} dragging={false} style={{ width: '100%', height: '100%' }}>
+                  <TileLayer url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
+                  <MapCenterer center={[location.lat, location.lng]} />
+                  
+                  {officeLocation && (
+                    <>
+                      <Circle 
+                        center={[officeLocation.lat, officeLocation.lng]} 
+                        radius={officeLocation.radius} 
+                        pathOptions={{ 
+                          color: (distanceMeters !== null && distanceMeters <= officeLocation.radius) ? '#10B981' : '#3B82F6', 
+                          fillColor: (distanceMeters !== null && distanceMeters <= officeLocation.radius) ? '#10B981' : '#3B82F6', 
+                          fillOpacity: 0.15, 
+                          weight: 2 
+                        }} 
+                      />
+                      <Marker position={[officeLocation.lat, officeLocation.lng]} icon={L.divIcon({ className: '', html: '<div style="background:rgba(255,255,255,0.2);width:12px;height:12px;border-radius:50%;border:2px solid white;"></div>', iconSize: [12,12] })} />
+                    </>
+                  )}
+                  
+                  <Marker 
+                    position={[location.lat, location.lng]} 
+                    icon={L.divIcon({ 
+                      className: '', 
+                      html: `<div style="position:relative;width:16px;height:16px;">
+                               <div style="position:absolute;inset:0;background:#3B82F6;border-radius:50%;border:2px solid white;z-index:2;"></div>
+                               <div style="position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;background:rgba(59,130,246,0.4);border-radius:50%;animation:pulse 1.5s infinite;z-index:1;"></div>
+                             </div>`, 
+                      iconSize: [16,16] 
+                    })} 
+                  />
+                </MapContainer>
+              )}
+            </Box>
+
+            {error && (
+              <Box sx={{ mt: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', p: 2, borderRadius: 2 }}>
+                <Typography sx={{ color: '#FCA5A5', fontSize: 14 }}>{error}</Typography>
+                <Button variant="outlined" size="small" onClick={startFlow} sx={{ mt: 1, borderColor: '#EF4444', color: '#EF4444' }}>Retry</Button>
+              </Box>
             )}
           </Box>
         )}
 
         {step === 1 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Scan Office QR</Typography>
-            <Typography sx={{ color: '#94A3B8', mb: 2 }}>Point your camera at the office QR code.</Typography>
-            <Typography sx={{ color: '#CBD5E1', mb: 3, fontSize: 13 }}>Keep the QR flat, bright, and inside the blue frame.</Typography>
-            {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
-            <Box sx={{ flex: 1, position: 'relative', borderRadius: 4, overflow: 'hidden', border: '4px solid #0052FF', mb: 2, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black' }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'center' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, background: 'linear-gradient(135deg, #60A5FA, #3B82F6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Scan Office QR</Typography>
+            <Typography sx={{ color: '#94A3B8', mb: 4, fontSize: 15 }}>Position the QR code within the frame</Typography>
+            {error && <Typography sx={{ color: '#EF4444', mb: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', p: 1, borderRadius: 2 }}>{error}</Typography>}
+            <Box sx={{ 
+              position: 'relative', 
+              width: '280px', 
+              height: '280px', 
+              mb: 4, 
+              mx: 'auto', 
+              bgcolor: 'black',
+              borderRadius: '24px',
+              overflow: 'hidden',
+              boxShadow: '0 0 0 8px rgba(59, 130, 246, 0.1), 0 20px 40px rgba(0,0,0,0.4)',
+              '&::before': {
+                content: '""', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+                border: '2px solid rgba(59, 130, 246, 0.5)',
+                borderRadius: '24px',
+                zIndex: 2,
+                pointerEvents: 'none'
+              }
+            }}>
               <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              
+              {/* Corner Markers */}
+              <Box sx={{ position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderTop: '4px solid #3B82F6', borderLeft: '4px solid #3B82F6', borderTopLeftRadius: 12, zIndex: 3 }} />
+              <Box sx={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderTop: '4px solid #3B82F6', borderRight: '4px solid #3B82F6', borderTopRightRadius: 12, zIndex: 3 }} />
+              <Box sx={{ position: 'absolute', bottom: 16, left: 16, width: 40, height: 40, borderBottom: '4px solid #3B82F6', borderLeft: '4px solid #3B82F6', borderBottomLeftRadius: 12, zIndex: 3 }} />
+              <Box sx={{ position: 'absolute', bottom: 16, right: 16, width: 40, height: 40, borderBottom: '4px solid #3B82F6', borderRight: '4px solid #3B82F6', borderBottomRightRadius: 12, zIndex: 3 }} />
+              
+              {/* Scanning Animation Line */}
+              <Box sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: 'linear-gradient(90deg, transparent, #3B82F6, transparent)',
+                boxShadow: '0 0 10px #3B82F6',
+                zIndex: 4,
+                animation: 'scan 2s linear infinite',
+                '@keyframes scan': {
+                  '0%': { transform: 'translateY(16px)' },
+                  '50%': { transform: 'translateY(260px)' },
+                  '100%': { transform: 'translateY(16px)' }
+                }
+              }} />
+            </Box>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, p: 2, bgcolor: 'rgba(255,255,255,0.05)', borderRadius: 4, width: '100%', maxWidth: '280px' }}>
+               <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#3B82F6', animation: 'pulse 1.5s infinite', '@keyframes pulse': { '0%': { opacity: 0.4 }, '50%': { opacity: 1 }, '100%': { opacity: 0.4 } } }} />
+               <Typography sx={{ color: '#94A3B8', fontSize: 13, fontWeight: 600 }}>Scanning for QR code...</Typography>
             </Box>
           </Box>
         )}
@@ -409,26 +595,158 @@ export function PunchOverlay({
         )}
 
         {step === 3 && (
-          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>Take a Selfie</Typography>
-            <Typography sx={{ color: '#94A3B8', mb: 3, fontSize: 14 }}>Position your face clearly inside the green dashed circle.</Typography>
-            {error && <Typography sx={{ color: '#EF4444', mb: 2 }}>{error}</Typography>}
-            <Box sx={{ flex: 1, position: 'relative', borderRadius: '50%', overflow: 'hidden', border: '6px dashed #22C55E', mb: 4, maxHeight: 400, maxWidth: 400, mx: 'auto', width: '100%', bgcolor: 'black', boxShadow: '0 0 30px rgba(34, 197, 94, 0.3)' }}>
-              <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '70%', height: '80%', border: '2px solid rgba(255,255,255,0.2)', borderRadius: '50%', pointerEvents: 'none' }} />
+          <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'center' }}>
+            <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, background: 'linear-gradient(135deg, #10B981, #059669)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Take a Selfie</Typography>
+            <Typography sx={{ color: '#94A3B8', mb: 4, fontSize: 15 }}>Center your face within the circle</Typography>
+            {error && <Typography sx={{ color: '#EF4444', mb: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', p: 1, borderRadius: 2 }}>{error}</Typography>}
+            
+            <Box sx={{ 
+              position: 'relative', 
+              width: '280px', 
+              height: '280px', 
+              mb: 5, 
+              mx: 'auto', 
+              borderRadius: '50%',
+              bgcolor: 'black',
+              padding: '6px',
+              background: 'linear-gradient(45deg, #10B981, #3B82F6)',
+              boxShadow: '0 0 40px rgba(16, 185, 129, 0.3)',
+              animation: 'spin-bg 4s linear infinite',
+              '@keyframes spin-bg': {
+                '0%': { filter: 'hue-rotate(0deg)' },
+                '100%': { filter: 'hue-rotate(360deg)' }
+              }
+            }}>
+              <Box sx={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative', bgcolor: '#0F172A' }}>
+                <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                <Box sx={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
+                
+                {/* Scanning overlay effect */}
+                <Box sx={{ 
+                  position: 'absolute', top: '-50%', left: '-50%', right: '-50%', bottom: '-50%',
+                  background: 'conic-gradient(from 0deg, transparent 0%, rgba(16, 185, 129, 0.3) 10%, transparent 20%)',
+                  animation: 'radar 3s linear infinite',
+                  pointerEvents: 'none',
+                  '@keyframes radar': {
+                    '0%': { transform: 'rotate(0deg)' },
+                    '100%': { transform: 'rotate(360deg)' }
+                  }
+                }} />
+              </Box>
             </Box>
-            <Button variant="contained" onClick={handleCaptureAndPunch} disabled={busy} sx={{ bgcolor: '#0052FF', borderRadius: 8, py: 2, fontSize: 18, fontWeight: 700 }}>
-              {busy ? <CircularProgress size={24} sx={{ color: 'white' }} /> : 'Capture & Punch'}
+            
+            <Button 
+              variant="contained" 
+              onClick={handleCaptureAndPunch} 
+              disabled={busy} 
+              sx={{ 
+                bgcolor: 'white', 
+                color: '#0F172A',
+                borderRadius: '50px', 
+                py: 2, 
+                px: 6,
+                fontSize: 18, 
+                fontWeight: 800,
+                boxShadow: '0 10px 25px rgba(255, 255, 255, 0.2)',
+                transition: 'all 0.2s',
+                width: '100%',
+                maxWidth: '280px',
+                '&:hover': {
+                  bgcolor: '#F8FAFC',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 15px 30px rgba(255, 255, 255, 0.3)',
+                },
+                '&:active': {
+                  transform: 'translateY(1px)'
+                },
+                '&.Mui-disabled': {
+                  bgcolor: 'rgba(255,255,255,0.1)',
+                  color: 'rgba(255,255,255,0.3)'
+                }
+              }}
+            >
+              {busy ? <CircularProgress size={26} sx={{ color: '#0F172A' }} /> : 'Capture & Punch'}
             </Button>
           </Box>
         )}
 
         {step === 4 && (
-          <Box sx={{ m: 'auto' }}>
-            <CheckCircleIcon sx={{ fontSize: 100, color: '#10B981', mb: 2 }} />
-            <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>Success!</Typography>
-            <Typography sx={{ color: '#94A3B8', mb: 4 }}>You have successfully clocked {kind === 'checkin' ? 'in' : 'out'} at {dayjs().format('hh:mm A')}.</Typography>
-            <Button variant="contained" onClick={closeOverlay} sx={{ bgcolor: '#10B981', borderRadius: 8, py: 1.5, px: 6, fontWeight: 700 }}>
+          <Box sx={{ m: 'auto', textAlign: 'center', position: 'relative' }}>
+            {/* Background glowing orb */}
+            <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%)', zIndex: 0, pointerEvents: 'none' }} />
+
+            <Box sx={{ 
+              width: 150, height: 150, mx: 'auto', mb: 5, mt: 2,
+              borderRadius: '50%', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              position: 'relative',
+              zIndex: 1,
+              animation: 'bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+              '@keyframes bounceIn': { 
+                '0%': { transform: 'scale(0)', opacity: 0 }, 
+                '60%': { transform: 'scale(1.1)', opacity: 1 },
+                '100%': { transform: 'scale(1)', opacity: 1 } 
+              }
+            }}>
+              {/* Expanding success wave */}
+              <Box sx={{ position: 'absolute', inset: -20, border: '4px solid #10B981', borderRadius: '50%', animation: 'success-wave 1.5s ease-out forwards', '@keyframes success-wave': { '0%': { transform: 'scale(0.8)', opacity: 0.8 }, '100%': { transform: 'scale(1.6)', opacity: 0 } } }} />
+              
+              {/* Outer decorative dashed ring */}
+              <Box sx={{ position: 'absolute', inset: -10, border: '3px dashed rgba(16, 185, 129, 0.4)', borderRadius: '50%', animation: 'spin-slow 15s linear infinite' }} />
+              
+              {/* Inner glowing circle */}
+              <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', backdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 30px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.4)' }} />
+              
+              <CheckCircleIcon sx={{ fontSize: 80, color: '#10B981', zIndex: 2, filter: 'drop-shadow(0 0 12px rgba(16,185,129,0.8))' }} />
+            </Box>
+
+            <Typography variant="h2" sx={{ 
+              fontWeight: 900, mb: 2, 
+              background: isOfflinePunch ? 'linear-gradient(to right, #FCD34D, #F59E0B, #D97706)' : 'linear-gradient(to right, #34D399, #10B981, #059669)', 
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+              animation: 'fadeInUp 0.6s ease-out 0.3s both',
+              '@keyframes fadeInUp': { '0%': { transform: 'translateY(20px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } }
+            }}>
+              {isOfflinePunch ? 'Saved Offline' : 'Success!'}
+            </Typography>
+            
+            <Typography sx={{ 
+              color: '#94A3B8', mb: 3, fontSize: 17,
+              animation: 'fadeInUp 0.6s ease-out 0.4s both'
+            }}>
+              {isOfflinePunch 
+                ? 'Your punch has been securely saved on your device and will sync automatically when you regain connection.'
+                : <>You are successfully clocked {kind === 'checkin' ? 'in' : 'out'} at <Box component="span" sx={{ color: 'white', fontWeight: 800 }}>{dayjs().format('hh:mm A')}</Box>.</>
+              }
+            </Typography>
+
+            {punchResponse?.streak > 0 && (
+              <Box sx={{ mb: 4, p: 2, bgcolor: 'rgba(245, 158, 11, 0.1)', borderRadius: 3, border: '1px solid rgba(245, 158, 11, 0.3)', animation: 'fadeInUp 0.6s ease-out 0.5s both' }}>
+                 <Typography sx={{ color: '#FCD34D', fontWeight: 800, fontSize: 20 }}>
+                   🔥 {punchResponse.streak} Day On-Time Streak!
+                 </Typography>
+                 {punchResponse?.newBadgesEarned?.length > 0 && (
+                    <Typography sx={{ color: '#10B981', mt: 1, fontWeight: 700 }}>
+                      🎉 Unlocked: {punchResponse.newBadgesEarned.join(', ')}
+                    </Typography>
+                 )}
+              </Box>
+            )}
+            
+            <Button variant="contained" onClick={closeOverlay} sx={{ 
+              bgcolor: 'white', color: '#0F172A', borderRadius: '50px', py: 1.8, px: 8, fontSize: 18, fontWeight: 800, letterSpacing: '0.5px',
+              boxShadow: '0 10px 30px rgba(16, 185, 129, 0.25)',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              animation: 'fadeInUp 0.6s ease-out 0.5s both',
+              '&:hover': { 
+                bgcolor: '#F8FAFC', 
+                transform: 'translateY(-4px) scale(1.02)', 
+                boxShadow: '0 20px 40px rgba(16, 185, 129, 0.4)' 
+              },
+              '&:active': {
+                transform: 'translateY(0) scale(0.98)'
+              }
+            }}>
               Done
             </Button>
           </Box>
