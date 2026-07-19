@@ -75,6 +75,7 @@ function EmployeeContent() {
   const { scrollY } = useScroll();
   const bgY = useTransform(scrollY, [0, 1000], ['0%', '30%']);
   const bgOpacity = useTransform(scrollY, [0, 800], [1, 0.3]);
+  const meshY = useTransform(scrollY, [0, 1000], ['0%', '15%']);
   const active = tabs[activeTab];
 
   React.useEffect(() => {
@@ -159,7 +160,7 @@ function EmployeeContent() {
       {/* Mesh Grid Layer */}
       <Box
         component={motion.div}
-        style={{ y: useTransform(scrollY, [0, 1000], ['0%', '15%']) }}
+        style={{ y: meshY }}
         sx={{
           position: 'absolute',
           inset: '-20%',
