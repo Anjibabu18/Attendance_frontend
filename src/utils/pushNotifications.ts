@@ -55,9 +55,8 @@ export async function enablePushNotifications(): Promise<boolean> {
   }
 
   try {
-    // Register service worker
-    const registration = await navigator.serviceWorker.register('/sw-push.js', { scope: '/' });
-    await navigator.serviceWorker.ready;
+    // Wait for the main service worker (registered by Vite PWA) to be ready
+    const registration = await navigator.serviceWorker.ready;
 
     // Get VAPID key from server if not in env
     let vapidKey = VAPID_PUBLIC_KEY;
