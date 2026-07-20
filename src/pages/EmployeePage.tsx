@@ -26,6 +26,7 @@ import { api } from '../api/client';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LayoutSkeleton } from '../components/LayoutSkeleton';
 import { useThemeContext } from '../theme/ThemeContext';
+import PermissionOnboardingOverlay from './employee/PermissionOnboardingOverlay';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import { IconButton, Tooltip } from '@mui/material';
@@ -72,6 +73,9 @@ function EmployeeContent() {
   const [direction, setDirection] = useState(0);
   const [quickRequestMode, setQuickRequestMode] = useState<QuickRequestMode | null>(null);
   const [pendingVerificationId, setPendingVerificationId] = useState<number | null>(null);
+  const [showPermissionsOverlay, setShowPermissionsOverlay] = useState(() => {
+    return localStorage.getItem('app_permissions_requested') !== 'true';
+  });
   const { scrollY } = useScroll();
   const bgY = useTransform(scrollY, [0, 1000], ['0%', '30%']);
   const bgOpacity = useTransform(scrollY, [0, 800], [1, 0.3]);
@@ -344,6 +348,9 @@ function EmployeeContent() {
           onSuccess={() => setPendingVerificationId(null)}
           onClose={() => setPendingVerificationId(null)}
         />
+      )}
+      {showPermissionsOverlay && (
+        <PermissionOnboardingOverlay onClose={() => setShowPermissionsOverlay(false)} />
       )}
     </Box>
   );
