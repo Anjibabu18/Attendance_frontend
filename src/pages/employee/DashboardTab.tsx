@@ -160,6 +160,12 @@ export function DashboardTab() {
     }
   }, [todayEntry, breaks]);
 
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const openPunch = (kind: 'checkin' | 'checkout') => { setPunchKind(kind); setPunchOpen(true); };
 
   const runBreakAction = async (endpoint: string) => {
@@ -180,6 +186,11 @@ export function DashboardTab() {
   const completed = !!todayEntry?.outTime;
   const greetingName = profile?.name?.split(' ')[0] || 'there';
   const { h, m, s } = secondsLabel(elapsedSeconds);
+
+  const hour = currentTime.getHours();
+  let dynamicGreeting = 'Good evening 🌙';
+  if (hour < 12) dynamicGreeting = 'Good morning ☕';
+  else if (hour < 17) dynamicGreeting = 'Good afternoon ☀️';
 
   const statCards = [
     { label: 'This month', value: `${monthSummary?.presentDays || 0}/${monthSummary?.workingDays || 0}`, helper: 'Present days', icon: <CalendarTodayRoundedIcon />, color: '#38bdf8', bg: 'rgba(56,189,248,0.12)' },
@@ -275,14 +286,14 @@ export function DashboardTab() {
           {/* Header row */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
             <Box>
-              <Typography sx={{ color: 'rgba(148,163,184,0.9)', fontWeight: 700, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
-                TODAY SHIFT
+              <Typography sx={{ color: 'rgba(148,163,184,0.9)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
+                {dayjs(currentTime).format('dddd, DD MMMM YYYY')}
               </Typography>
-              <Typography sx={{ fontWeight: 900, fontSize: { xs: 24, md: 34 }, lineHeight: 1.1, color: '#f8fafc' }}>
-                Good day, {greetingName}
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: 32, md: 48 }, lineHeight: 1.1, color: '#f8fafc', mb: 0.5, letterSpacing: '-0.02em' }}>
+                {dayjs(currentTime).format('hh:mm:ss A')}
               </Typography>
-              <Typography sx={{ color: 'rgba(148,163,184,0.8)', mt: 0.5, fontSize: 13 }}>
-                {dayjs().format('dddd, DD MMMM YYYY')}
+              <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: { xs: 18, md: 20 }, fontWeight: 600 }}>
+                {dynamicGreeting}, {greetingName}
               </Typography>
             </Box>
             <Box
