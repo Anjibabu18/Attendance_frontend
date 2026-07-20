@@ -10,7 +10,7 @@ import WorkHistoryRoundedIcon from '@mui/icons-material/WorkHistoryRounded';
 import WalletRoundedIcon from '@mui/icons-material/WalletRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import dayjs from 'dayjs';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Tilt from 'react-parallax-tilt';
 
 import { api } from '../../api/client';
@@ -46,6 +46,74 @@ function parseTimeValue(value?: string | null) {
   const normalized = trimmed.length === 5 ? `${trimmed}:00` : trimmed;
   const parsed = timeOnly ? dayjs(`2000-01-01T${normalized}`) : dayjs(trimmed);
   return parsed.isValid() ? parsed : null;
+}
+
+function SlideToPunchButton({ type, onTrigger }: { type: 'in' | 'out', onTrigger: () => void }) {
+  const isDark = useThemeContext().mode === 'dark';
+  const bg = type === 'in' ? '#22c55e' : '#ef4444';
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const controls = useAnimation();
+
+  const handleDragEnd = (event: any, info: any) => {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.offsetWidth;
+    const threshold = containerWidth * 0.65; // 65% across to trigger
+    
+    if (info.offset.x >= threshold) {
+      if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
+      onTrigger();
+      // Snap back instantly so it's ready when the modal closes
+      controls.start({ x: 0, transition: { duration: 0 } });
+    } else {
+      if (window.navigator.vibrate) window.navigator.vibrate(10);
+      controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
+    }
+  };
+
+  return (
+    <Box
+      ref={containerRef}
+      sx={{
+        position: 'relative',
+        width: '100%',
+        height: '56px',
+        bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+        borderRadius: '28px',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        boxShadow: `inset 0 2px 4px rgba(0,0,0,0.1)`,
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+      }}
+    >
+      <Typography sx={{ 
+        position: 'absolute', width: '100%', textAlign: 'center', 
+        fontWeight: 800, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+        zIndex: 0, pointerEvents: 'none', userSelect: 'none',
+        pl: 5 // offset for the knob
+      }}>
+        SLIDE TO PUNCH {type === 'in' ? 'IN' : 'OUT'} &gt;&gt;
+      </Typography>
+
+      <motion.div
+        drag="x"
+        dragConstraints={containerRef}
+        dragElastic={0.05}
+        dragSnapToOrigin={false}
+        onDragEnd={handleDragEnd}
+        animate={controls}
+        style={{ zIndex: 1, position: 'absolute' }}
+      >
+        <Box sx={{
+          width: '56px', height: '56px', borderRadius: '28px',
+          bgcolor: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
+          boxShadow: `0 4px 15px ${bg}60`, cursor: 'grab', '&:active': { cursor: 'grabbing' }
+        }}>
+          {type === 'in' ? <LoginRoundedIcon /> : <LogoutRoundedIcon />}
+        </Box>
+      </motion.div>
+    </Box>
+  );
 }
 
 function timeLabel(value?: string | null) {
@@ -411,30 +479,13 @@ export function DashboardTab() {
               </Box>
 
               {/* Action buttons */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 2 }}>
                 {!todayEntry?.inTime ? (
-                  <MotionButton
-                    whileTap={{ scale: 0.97 }}
-                    whileHover={{ scale: 1.02 }}
-                    onClick={() => openPunch('checkin')}
-                    variant="contained"
-                    startIcon={<LoginRoundedIcon />}
-                    sx={{ bgcolor: '#22c55e', color: 'white', borderRadius: '12px', py: 1.4, fontWeight: 900, fontSize: 15, boxShadow: '0 8px 20px rgba(34,197,94,0.4)', '&:hover': { bgcolor: '#16a34a' } }}
-                  >
-                    Punch In
-                  </MotionButton>
+                  <SlideToPunchButton type="in" onTrigger={() => openPunch('checkin')} />
                 ) : !todayEntry.outTime ? (
-                  <MotionButton
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => openPunch('checkout')}
-                    variant="contained"
-                    startIcon={<LogoutRoundedIcon />}
-                    sx={{ bgcolor: '#ef4444', color: 'white', borderRadius: '12px', py: 1.4, fontWeight: 900, fontSize: 15, boxShadow: '0 8px 20px rgba(239,68,68,0.4)', '&:hover': { bgcolor: '#dc2626' } }}
-                  >
-                    Punch Out
-                  </MotionButton>
+                  <SlideToPunchButton type="out" onTrigger={() => openPunch('checkout')} />
                 ) : (
-                  <Button disabled variant="contained" sx={{ borderRadius: '12px', py: 1.4, fontWeight: 900 }}>Completed ✓</Button>
+                  <Button disabled variant="contained" sx={{ borderRadius: '28px', py: 1.6, fontWeight: 900, width: '100%', fontSize: 16 }}>Completed 🎉</Button>
                 )}
 
                 {activeBreak ? (
