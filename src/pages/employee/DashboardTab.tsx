@@ -158,8 +158,8 @@ function sessionDateTime(entry: Attendance, timeValue?: string | null) {
 }
 
 // Circular progress ring SVG component
-function CircularProgress({ progress, size = 220, strokeWidth = 14, children }: {
-  progress: number; size?: number; strokeWidth?: number; children?: React.ReactNode;
+function CircularProgress({ progress, size = 220, strokeWidth = 14, isOvertime = false, children }: {
+  progress: number; size?: number; strokeWidth?: number; isOvertime?: boolean; children?: React.ReactNode;
 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -170,9 +170,9 @@ function CircularProgress({ progress, size = 220, strokeWidth = 14, children }: 
       <svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
         <defs>
           <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#38bdf8" />
-            <stop offset="50%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#22c55e" />
+            <stop offset="0%" stopColor={isOvertime ? "#f59e0b" : "#38bdf8"} />
+            <stop offset="50%" stopColor={isOvertime ? "#f97316" : "#818cf8"} />
+            <stop offset="100%" stopColor={isOvertime ? "#ef4444" : "#22c55e"} />
           </linearGradient>
           <filter id="ring-glow">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -261,7 +261,11 @@ export function DashboardTab() {
   const totalLate = entries.reduce((sum, item) => sum + (item.lateMinutes || 0), 0);
   const totalLeaveBalance = leaveBalances.reduce((sum, item) => sum + (item.remainingDays || 0), 0);
   const targetMinutes = settings?.fullDayMinutes || 480;
-  const progress = targetMinutes ? Math.min(100, Math.round((elapsedSeconds / 60 / targetMinutes) * 100)) : 0;
+  const rawProgress = targetMinutes ? Math.round((elapsedSeconds / 60 / targetMinutes) * 100) : 0;
+  const progress = Math.min(100, rawProgress);
+  const isOvertime = rawProgress > 100;
+  const overtimeSeconds = isOvertime ? elapsedSeconds - (targetMinutes * 60) : 0;
+  const ot = secondsLabel(overtimeSeconds);
   const recentEntries = useMemo(() => [...entries].sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()).slice(0, 5), [entries]);
 
   const clockedIn = !!todayEntry?.inTime && !todayEntry?.outTime;
@@ -406,7 +410,7 @@ export function DashboardTab() {
 
             {/* Circular progress ring */}
             <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
-              <CircularProgress progress={progress} size={190} strokeWidth={13}>
+              <CircularProgress progress={progress} size={190} strokeWidth={13} isOvertime={isOvertime}>
                 <Box sx={{ textAlign: 'center' }}>
                   {todayEntry?.inTime ? (
                     <>
@@ -445,8 +449,8 @@ export function DashboardTab() {
                         </Typography>
                         <Typography sx={{ color: '#64748b', fontSize: 14, fontWeight: 700 }}>s</Typography>
                       </Box>
-                      <Typography sx={{ color: 'rgba(148,163,184,0.6)', fontSize: 11, mt: 0.5, fontWeight: 600 }}>
-                        {progress}% of target
+                      <Typography sx={{ color: isOvertime ? '#f59e0b' : 'rgba(148,163,184,0.6)', fontSize: 11, mt: 0.5, fontWeight: 600 }}>
+                        {isOvertime ? `Overtime: ${ot.h}h ${ot.m}m` : `${progress}% of target`}
                       </Typography>
                     </>
                   ) : (
@@ -467,11 +471,13 @@ export function DashboardTab() {
                   <Typography sx={{ color: 'rgba(148,163,184,0.7)', fontSize: 12, fontWeight: 700 }}>
                     Target: {targetMinutes ? minutesLabel(targetMinutes) : '--'}
                   </Typography>
-                  <Typography sx={{ color: '#38bdf8', fontSize: 12, fontWeight: 800 }}>{progress}%</Typography>
+                  <Typography sx={{ color: isOvertime ? '#f59e0b' : '#38bdf8', fontSize: 12, fontWeight: 800 }}>
+                    {isOvertime ? `${rawProgress}% (OT)` : `${progress}%`}
+                  </Typography>
                 </Box>
                 <Box sx={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
                   <motion.div
-                    style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #38bdf8, #818cf8, #22c55e)' }}
+                    style={{ height: '100%', borderRadius: 3, background: isOvertime ? 'linear-gradient(90deg, #f59e0b, #ef4444)' : 'linear-gradient(90deg, #38bdf8, #818cf8, #22c55e)' }}
                     initial={{ width: '0%' }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 1.2, ease: 'easeOut' }}
