@@ -49,7 +49,7 @@ function parseTimeValue(value?: string | null) {
   return parsed.isValid() ? parsed : null;
 }
 
-function SlideToPunchButton({ type, onTrigger }: { type: 'in' | 'out', onTrigger: () => void }) {
+function SlideToPunchButton({ type, onTrigger, urgent }: { type: 'in' | 'out', onTrigger: () => void, urgent?: boolean }) {
   const isDark = useThemeContext().mode === 'dark';
   const bg = type === 'in' ? '#22c55e' : '#ef4444';
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -83,8 +83,14 @@ function SlideToPunchButton({ type, onTrigger }: { type: 'in' | 'out', onTrigger
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
-        boxShadow: `inset 0 2px 4px rgba(0,0,0,0.1)`,
-        border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`
+        boxShadow: urgent ? `0 0 25px ${bg}60, inset 0 2px 4px rgba(0,0,0,0.1)` : `inset 0 2px 4px rgba(0,0,0,0.1)`,
+        border: urgent ? `2px solid ${bg}` : `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+        animation: urgent ? 'pulse-border 2s infinite' : 'none',
+        '@keyframes pulse-border': {
+          '0%': { boxShadow: `0 0 10px ${bg}40, inset 0 2px 4px rgba(0,0,0,0.1)` },
+          '50%': { boxShadow: `0 0 35px ${bg}80, inset 0 2px 4px rgba(0,0,0,0.1)` },
+          '100%': { boxShadow: `0 0 10px ${bg}40, inset 0 2px 4px rgba(0,0,0,0.1)` }
+        }
       }}
     >
       <Typography sx={{ 
@@ -108,7 +114,14 @@ function SlideToPunchButton({ type, onTrigger }: { type: 'in' | 'out', onTrigger
         <Box sx={{
           width: '56px', height: '56px', borderRadius: '28px',
           bgcolor: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
-          boxShadow: `0 4px 15px ${bg}60`, cursor: 'grab', '&:active': { cursor: 'grabbing' }
+          boxShadow: urgent ? `0 0 20px ${bg}` : `0 4px 15px ${bg}60`, 
+          cursor: 'grab', '&:active': { cursor: 'grabbing' },
+          animation: urgent ? 'pulse-knob 2s infinite' : 'none',
+          '@keyframes pulse-knob': {
+            '0%': { transform: 'scale(1)' },
+            '50%': { transform: 'scale(1.05)' },
+            '100%': { transform: 'scale(1)' }
+          }
         }}>
           {type === 'in' ? <LoginRoundedIcon /> : <LogoutRoundedIcon />}
         </Box>
@@ -484,7 +497,7 @@ export function DashboardTab() {
                 {!todayEntry?.inTime ? (
                   <SlideToPunchButton type="in" onTrigger={() => openPunch('checkin')} />
                 ) : !todayEntry.outTime ? (
-                  <SlideToPunchButton type="out" onTrigger={() => openPunch('checkout')} />
+                  <SlideToPunchButton type="out" onTrigger={() => openPunch('checkout')} urgent={progress >= 95} />
                 ) : (
                   <Button disabled variant="contained" sx={{ borderRadius: '28px', py: 1.6, fontWeight: 900, width: '100%', fontSize: 16 }}>Completed 🎉</Button>
                 )}
