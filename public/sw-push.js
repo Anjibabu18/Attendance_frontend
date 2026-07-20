@@ -9,18 +9,19 @@ self.addEventListener('push', function(event) {
     const options = {
       body: data.body || 'You have a new notification',
       icon: data.icon || '/pwa-192x192.png',
-      badge: '/pwa-192x192.png',
-      vibrate: [200, 100, 200, 100, 200],
+      badge: '/mask-icon.svg',
+      image: data.data?.image || data.image,
+      vibrate: [200, 100, 200, 100, 200, 100, 200],
       data: {
         url: data.url || '/employee',
-        ...data.data
+        ...(data.data || {})
       },
-      actions: data.actions || [
+      actions: data.data?.actions || data.actions || [
         { action: 'open', title: 'Open App' },
       ],
       tag: data.tag || 'attendance-notification',
       renotify: true,
-      requireInteraction: data.requireInteraction || false,
+      requireInteraction: data.data?.requireInteraction || data.requireInteraction || false,
     };
 
     event.waitUntil(
