@@ -13,6 +13,7 @@ import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import PullToRefresh from 'react-simple-pull-to-refresh';
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 
 import { EmployeeProvider, useEmployee } from './employee/EmployeeContext';
@@ -251,8 +252,16 @@ function EmployeeContent() {
           </Box>
         </Box>
 
-        <Box component="main" sx={{ minWidth: 0, pb: { xs: 9, md: 0 } }}>
-          <Box sx={{ position: 'sticky', top: 0, zIndex: 20, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box component="main" sx={{ minWidth: 0, pb: { xs: 9, md: 0 }, minHeight: '100vh' }}>
+          <PullToRefresh 
+            onRefresh={async () => { await refreshData(); hapticPop(); }}
+            pullingContent={<Box sx={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}><RefreshRoundedIcon sx={{ animation: 'spin 2s linear infinite' }} /></Box>}
+            refreshingContent={<Box sx={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main' }}><CircularProgress size={24} thickness={5} /></Box>}
+            pullDownThreshold={70}
+            maxPullDownDistance={95}
+          >
+            <Box sx={{ minHeight: '100vh' }}>
+              <Box sx={{ position: 'sticky', top: 0, zIndex: 20, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
             <Box sx={{ maxWidth: 1220, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 1.5, md: 2 }, display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'center' }}>
               <AnimatePresence mode="wait">
                 <Box component={motion.div} key={active.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} sx={{ minWidth: 0 }}>
@@ -327,8 +336,9 @@ function EmployeeContent() {
               </motion.div>
             </AnimatePresence>
           </Box>
+            </Box>
+          </PullToRefresh>
         </Box>
-      </Box>
 
         <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, px: 1.5, pb: 'calc(env(safe-area-inset-bottom) + 10px)' }}>
           <Box sx={{ 
@@ -401,6 +411,7 @@ function EmployeeContent() {
       {showPermissionsOverlay && (
         <PermissionOnboardingOverlay onClose={() => setShowPermissionsOverlay(false)} />
       )}
+      </Box>
     </Box>
   );
 }
