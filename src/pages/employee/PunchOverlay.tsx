@@ -390,14 +390,30 @@ export function PunchOverlay({
         setPunchResponse(data);
         hapticSuccess();
         
-        if (data.isNewStreak || (data.newBadgesEarned && data.newBadgesEarned.length > 0)) {
+        // Massive, satisfying confetti explosion for every successful punch
+        const end = Date.now() + 1.5 * 1000; // 1.5 seconds of continuous fireworks
+        const colors = ['#10B981', '#3B82F6', '#F59E0B', '#38BDF8', '#8B5CF6'];
+        
+        (function frame() {
           confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#10B981', '#3B82F6', '#F59E0B']
+            particleCount: 5,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: colors
           });
-        }
+          confetti({
+            particleCount: 5,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: colors
+          });
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        }());
       } catch (e: any) {
         if (!window.navigator.onLine || e.message === 'Network Error' || e.code === 'ERR_NETWORK') {
           // Save offline
