@@ -544,7 +544,19 @@ export function PunchOverlay({
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'center' }}>
             <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, background: 'linear-gradient(135deg, #60A5FA, #3B82F6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Scan Office QR</Typography>
             <Typography sx={{ color: '#94A3B8', mb: 4, fontSize: 15 }}>Position the QR code within the frame</Typography>
-            {error && <Typography sx={{ color: '#EF4444', mb: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', p: 1, borderRadius: 2 }}>{error}</Typography>}
+            {error && (
+              <Box sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', p: 2, borderRadius: 2, mb: 3, textAlign: 'center' }}>
+                <Typography sx={{ color: '#EF4444', fontWeight: 600, mb: 1 }}>{error}</Typography>
+                {error.includes('Permission denied') && (
+                  <Typography sx={{ color: '#F87171', fontSize: 13, mb: 2, lineHeight: 1.4 }}>
+                    Your browser has blocked camera access. Please tap the <strong>Lock / Settings icon</strong> in your web address bar above, go to Permissions, and set Camera to <strong>Allow</strong>.
+                  </Typography>
+                )}
+                <Button variant="outlined" size="small" onClick={startQrCamera} sx={{ borderColor: '#EF4444', color: '#EF4444', '&:hover': { borderColor: '#DC2626', bgcolor: 'rgba(239,68,68,0.1)' } }}>
+                  Try Again
+                </Button>
+              </Box>
+            )}
             <Box sx={{ 
               position: 'relative', 
               width: '280px', 
