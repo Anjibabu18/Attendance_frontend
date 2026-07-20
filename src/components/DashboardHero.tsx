@@ -10,10 +10,11 @@ export default function DashboardHero(props: {
   return (
     <Box
       sx={{
-        border: "1px solid rgba(203,213,225,0.95)",
+        border: (theme) => theme.palette.mode === 'light' ? "1px solid rgba(203,213,225,0.95)" : "1px solid rgba(255,255,255,0.08)",
         borderRadius: 1.25,
-        background: "#ffffff",
-        boxShadow: "0 14px 34px rgba(15,23,42,0.08)",
+        background: (theme) => theme.palette.mode === 'light' ? "#ffffff" : "rgba(15,23,42,0.75)",
+        backdropFilter: (theme) => theme.palette.mode === 'dark' ? "blur(24px) saturate(180%)" : "none",
+        boxShadow: (theme) => theme.palette.mode === 'light' ? "0 14px 34px rgba(15,23,42,0.08)" : "0 14px 34px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08)",
         overflow: "hidden",
         position: "relative",
         "&:before": {
