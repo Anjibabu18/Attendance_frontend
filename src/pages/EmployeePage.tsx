@@ -147,7 +147,7 @@ function EmployeeContent() {
         overflow: 'hidden', // Contain the parallax background
       }}
     >
-      {/* Parallax Background Layer */}
+      {/* Parallax Animated Aurora Background Layer */}
       <Box
         component={motion.div}
         style={{ y: bgY, opacity: bgOpacity }}
@@ -157,9 +157,15 @@ function EmployeeContent() {
           zIndex: 0,
           pointerEvents: 'none',
           backgroundImage: mode === 'dark' 
-            ? 'radial-gradient(ellipse at 50% 0%, rgba(14,165,233,0.15) 0%, transparent 60%), linear-gradient(180deg, transparent 0%, rgba(15,23,42,0.8) 100%)'
-            : 'radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.1) 0%, transparent 60%), linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.8) 100%)',
+            ? 'radial-gradient(circle at 15% 50%, rgba(14,165,233,0.12), transparent 45%), radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 45%), linear-gradient(180deg, transparent 0%, rgba(15,23,42,0.9) 100%)'
+            : 'radial-gradient(circle at 15% 50%, rgba(37,99,235,0.08), transparent 45%), radial-gradient(circle at 85% 30%, rgba(139,92,246,0.08), transparent 45%), linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.9) 100%)',
           backgroundSize: '100% 100%',
+          animation: 'aurora 15s ease-in-out infinite alternate',
+          '@keyframes aurora': {
+            '0%': { backgroundPosition: '0% 0%', filter: 'hue-rotate(0deg)' },
+            '50%': { backgroundPosition: '100% 100%', filter: 'hue-rotate(15deg)' },
+            '100%': { backgroundPosition: '0% 0%', filter: 'hue-rotate(0deg)' }
+          }
         }}
       />
       {/* Mesh Grid Layer */}
@@ -168,13 +174,18 @@ function EmployeeContent() {
         style={{ y: meshY }}
         sx={{
           position: 'absolute',
-          inset: '-20%',
+          inset: '-50%', // Larger to allow for pan
           zIndex: 0,
           pointerEvents: 'none',
           backgroundImage: mode === 'dark'
             ? 'linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px)'
             : 'linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px), linear-gradient(180deg, rgba(37,99,235,0.04) 1px, transparent 1px)',
           backgroundSize: '34px 34px',
+          animation: 'mesh-pan 30s linear infinite',
+          '@keyframes mesh-pan': {
+            '0%': { transform: 'translate(0, 0)' },
+            '100%': { transform: 'translate(-34px, -34px)' } // Pan exactly one grid square
+          }
         }}
       />
 
