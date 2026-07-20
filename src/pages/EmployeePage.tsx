@@ -189,7 +189,7 @@ function EmployeeContent() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 1, py: 1.25 }}>
             <Box component={motion.div} whileHover={{ rotate: -6, scale: 1.06 }} sx={{ width: 42, height: 42, borderRadius: '8px', bgcolor: 'primary.main', color: 'white', display: 'grid', placeItems: 'center', fontWeight: 900, boxShadow: '0 14px 28px rgba(37, 99, 235, 0.22)' }}>WT</Box>
             <Box>
-              <Typography sx={{ fontWeight: 900, lineHeight: 1 }}>WorkTrack</Typography>
+              <Typography sx={{ fontWeight: 900, lineHeight: 1 }}>VD Attendance</Typography>
               <Typography sx={{ color: 'text.secondary', fontSize: 12 }}>Employee Portal</Typography>
             </Box>
           </Box>
