@@ -330,29 +330,65 @@ function EmployeeContent() {
         </Box>
       </Box>
 
-      <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, px: 1.5, pb: 'calc(env(safe-area-inset-bottom) + 10px)' }}>
-        <Box sx={{ bgcolor: 'background.paper', backdropFilter: 'blur(16px)', border: '1px solid', borderColor: 'divider', borderRadius: '8px', boxShadow: '0 -18px 42px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-          <BottomNavigation
-            showLabels
-            value={activeTab}
-            onChange={(event, newValue) => {
-              hapticPop();
-              if (newValue !== 2) setQuickRequestMode(null);
-              setDirection(newValue > activeTab ? 1 : newValue < activeTab ? -1 : 0);
-              setActiveTab(newValue);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            sx={{
-              bgcolor: 'transparent', height: 66,
-              '& .MuiBottomNavigationAction-root': { color: 'text.secondary', minWidth: 'auto', px: 0.5 },
-              '& .Mui-selected': { color: 'primary.main' },
-              '& .MuiBottomNavigationAction-label': { fontSize: 11, fontWeight: 800, mt: 0.35 },
-            }}
-          >
-            {tabs.map((tab) => <BottomNavigationAction key={tab.label} label={tab.label} icon={tab.icon} />)}
-          </BottomNavigation>
+        <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, px: 1.5, pb: 'calc(env(safe-area-inset-bottom) + 10px)' }}>
+          <Box sx={{ 
+            bgcolor: 'background.paper', backdropFilter: 'blur(24px) saturate(200%)', 
+            border: '1px solid', borderColor: 'rgba(255,255,255,0.08)', borderRadius: '16px', 
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden',
+            display: 'flex', height: 68, px: 1, alignItems: 'center', justifyContent: 'space-between'
+          }}>
+            {tabs.map((tab, idx) => {
+              const isActive = activeTab === idx;
+              return (
+                <Box
+                  key={tab.label}
+                  onClick={() => {
+                    hapticPop();
+                    if (idx !== 2) setQuickRequestMode(null);
+                    setDirection(idx > activeTab ? 1 : idx < activeTab ? -1 : 0);
+                    setActiveTab(idx);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  sx={{
+                    position: 'relative', flex: 1, height: '100%', 
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', zIndex: 1, WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTabPill"
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      style={{
+                        position: 'absolute', top: 6, bottom: 6, left: 6, right: 6,
+                        backgroundColor: mode === 'dark' ? 'rgba(14,165,233,0.15)' : 'rgba(37,99,235,0.1)',
+                        borderRadius: '12px', zIndex: -1
+                      }}
+                    />
+                  )}
+                  <motion.div
+                    animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.05 : 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    style={{ color: isActive ? (mode === 'dark' ? '#38BDF8' : '#2563EB') : '#94A3B8' }}
+                  >
+                    {tab.icon}
+                  </motion.div>
+                  <motion.div
+                    animate={{ y: isActive ? 0 : 2, opacity: isActive ? 1 : 0.6 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  >
+                    <Typography sx={{ 
+                      fontSize: 10, fontWeight: isActive ? 800 : 600, mt: 0.5,
+                      color: isActive ? (mode === 'dark' ? '#38BDF8' : '#2563EB') : 'text.secondary' 
+                    }}>
+                      {tab.label}
+                    </Typography>
+                  </motion.div>
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
-      </Box>
 
       {pendingVerificationId && (
         <LiveVerificationOverlay
