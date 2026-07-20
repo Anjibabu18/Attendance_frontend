@@ -757,7 +757,7 @@ export default function HrPage() {
           </Box>
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: "grid", gap: 1 }}>
-            {payrollRows.slice(0, 8).map((row) => (
+            { (payrollRows || []).slice(0, 8).map((row) => (
               <Box key={row.employeeId} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "190px 100px 110px 110px 110px 110px 110px" }, gap: 1, alignItems: "center", p: 1.25, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{row.employeeName}</Typography>
@@ -819,7 +819,7 @@ export default function HrPage() {
             <Tab value="DEVICE" label={`Device (${pendingDeviceRequests.length})`} />
           </Tabs>
           <Box sx={{ mt: 2, display: "grid", gap: 1 }}>
-            {inboxItems.slice(0, 12).map((item) => (
+            { (inboxItems || []).slice(0, 12).map((item) => (
               <Box
                 key={`${item.kind}-${item.id}`}
                 onClick={() => setSelectedInboxItem(item)}
@@ -867,7 +867,7 @@ export default function HrPage() {
           </Box>
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: "grid", gap: 1 }}>
-            {attendanceExceptions.slice(0, 10).map((item) => (
+            { (attendanceExceptions || []).slice(0, 10).map((item) => (
               <Box key={item.id} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "170px 180px 1fr auto" }, gap: 1, alignItems: "center", p: 1.2, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#fffaf5" }}>
                 <Chip size="small" label={item.type.replaceAll("_", " ")} color="warning" sx={{ borderRadius: 1, fontWeight: 900, justifySelf: "start" }} />
                 <Typography sx={{ fontWeight: 900, fontSize: 13 }}>
@@ -901,7 +901,7 @@ export default function HrPage() {
 
               {pendingLeaveRequests.length ? (
                 <Box sx={{ display: "grid", gap: 1.25 }}>
-                  {pendingLeaveRequests.slice(0, 8).map((r) => (
+                  { (pendingLeaveRequests || []).slice(0, 8).map((r) => (
                     <Box
                       key={r.id}
                       sx={{
@@ -989,7 +989,7 @@ export default function HrPage() {
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1.25 }}>
-                {pendingRegularizationRequests.slice(0, 8).map((r) => (
+                { (pendingRegularizationRequests || []).slice(0, 8).map((r) => (
                   <Box key={r.id} sx={{ borderRadius: 1, border: "1px solid #e5e7eb", p: 1.25, background: "#f9fafb" }}>
                     <Typography sx={{ fontWeight: 950, fontSize: 13 }}>
                       {r.employeeName} ({r.employeeNumber}) | {r.date}
@@ -1034,7 +1034,7 @@ export default function HrPage() {
               </Box>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1.25 }}>
-                {pendingWorkRequests.slice(0, 8).map((r) => (
+                { (pendingWorkRequests || []).slice(0, 8).map((r) => (
                   <Box key={r.id} sx={{ borderRadius: 1, border: "1px solid #e5e7eb", p: 1.25, background: "#ffffff", display: "grid", gap: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "flex-start", flexWrap: "wrap" }}>
                       <Box>
@@ -1086,7 +1086,7 @@ export default function HrPage() {
               </Box>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1.25 }}>
-                {pendingCompOffRequests.slice(0, 8).map((r) => (
+                { (pendingCompOffRequests || []).slice(0, 8).map((r) => (
                   <Box key={r.id} sx={{ borderRadius: 1, border: "1px solid #e5e7eb", p: 1.25, background: "#ffffff", display: "grid", gap: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
                       <Box>
@@ -1444,7 +1444,7 @@ export default function HrPage() {
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1 }}>
-                {entries
+                {(entries || [])
                   .slice()
                   .sort((a, b) => a.date.localeCompare(b.date))
                   .map((e) => {
