@@ -108,6 +108,7 @@ type AttendanceSettings = {
   requireQrForPunch: boolean;
   permanentOfficeQr: boolean;
   qrTokenValidityMinutes: number;
+  autoAbsentCutoffTime?: string | null;
 };
 
 const cardSx = {
@@ -997,6 +998,7 @@ export default function AdminPage() {
               <TextField size="small" label="Overtime pay/hr (Rs)" type="number" value={settings.overtimePayPerHour} onChange={(e) => setSettings({ ...settings, overtimePayPerHour: Number(e.target.value) })} />
               <TextField size="small" label="Base Salary (Rs)" type="number" value={settings.standardMonthlySalary} onChange={(e) => setSettings({ ...settings, standardMonthlySalary: Number(e.target.value) })} />
               <TextField size="small" label="Weekend days" value={settings.weekendDays} onChange={(e) => setSettings({ ...settings, weekendDays: e.target.value })} />
+              <TextField size="small" label="Auto-absent Cutoff Time" type="time" value={timeOnly(settings.autoAbsentCutoffTime, "")} onChange={(e) => setSettings({ ...settings, autoAbsentCutoffTime: e.target.value ? timePayload(e.target.value) : null })} InputLabelProps={{ shrink: true }} />
               <TextField size="small" label="QR validity minutes" type="number" value={settings.qrTokenValidityMinutes} onChange={(e) => setSettings({ ...settings, qrTokenValidityMinutes: Number(e.target.value) })} />
               <FormControlLabel control={<Switch checked={settings.requireQrForPunch} onChange={(e) => setSettings({ ...settings, requireQrForPunch: e.target.checked })} />} label="Require QR" />
               <FormControlLabel control={<Switch checked={settings.permanentOfficeQr} onChange={(e) => setSettings({ ...settings, permanentOfficeQr: e.target.checked })} />} label="Permanent office QR" />
