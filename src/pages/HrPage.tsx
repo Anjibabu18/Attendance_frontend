@@ -501,7 +501,7 @@ export default function HrPage() {
       entryMap[e.date] = e.status === "PRESENT" ? "P" : e.status === "HALF_DAY" ? "HD" : "L";
     }
 
-    const holidaySet = new Set(holidays.map((h) => h.date));
+    const holidaySet = new Set((holidays || []).map((h) => h.date));
     const weekendSet = new Set(
       (settings?.weekendDays ?? "SUNDAY")
         .split(",")
@@ -653,11 +653,11 @@ export default function HrPage() {
     [payrollRows],
   );
   const inboxItems = useMemo(() => {
-    const leave = pendingLeaveRequests.map((item) => ({ kind: "LEAVE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.mailSubject || item.leaveType || "Leave request", status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const work = pendingWorkRequests.map((item) => ({ kind: "WFH" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.type.replaceAll("_", " "), status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const corrections = pendingRegularizationRequests.map((item) => ({ kind: "CORRECTION" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Attendance correction", status: item.status, summary: `${item.date} | ${item.inTime ?? "--"} -> ${item.outTime ?? "--"}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const comp = pendingCompOffRequests.map((item) => ({ kind: "COMP_OFF" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Comp-off request", status: item.status, summary: `${item.overtimeDate} -> ${item.requestedDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const devices = pendingDeviceRequests.map((item) => ({ kind: "DEVICE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.username, employeeNumber: "Device", title: item.label || "Registered device", status: item.approved ? "APPROVED" : "PENDING", summary: item.deviceId, reason: "Device approval request", raw: item }));
+    const leave = (pendingLeaveRequests || []).map((item) => ({ kind: "LEAVE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.mailSubject || item.leaveType || "Leave request", status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const work = (pendingWorkRequests || []).map((item) => ({ kind: "WFH" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.type.replaceAll("_", " "), status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const corrections = (pendingRegularizationRequests || []).map((item) => ({ kind: "CORRECTION" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Attendance correction", status: item.status, summary: `${item.date} | ${item.inTime ?? "--"} -> ${item.outTime ?? "--"}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const comp = (pendingCompOffRequests || []).map((item) => ({ kind: "COMP_OFF" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Comp-off request", status: item.status, summary: `${item.overtimeDate} -> ${item.requestedDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const devices = (pendingDeviceRequests || []).map((item) => ({ kind: "DEVICE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.username, employeeNumber: "Device", title: item.label || "Registered device", status: item.approved ? "APPROVED" : "PENDING", summary: item.deviceId, reason: "Device approval request", raw: item }));
     return [...leave, ...work, ...corrections, ...comp, ...devices]
       .filter((item) => inboxFilter === "ALL" || item.kind === inboxFilter)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
