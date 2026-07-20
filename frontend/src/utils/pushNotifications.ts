@@ -55,8 +55,8 @@ export async function enablePushNotifications(): Promise<boolean> {
   }
 
   try {
-    // Register service worker
-    const registration = await navigator.serviceWorker.register('/sw-push.js', { scope: '/' });
+    // Register the main service worker (which includes our push logic via importScripts)
+    const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
     await navigator.serviceWorker.ready;
 
     // Get VAPID key from server if not in env

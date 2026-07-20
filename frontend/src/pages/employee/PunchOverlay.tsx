@@ -176,7 +176,19 @@ export function PunchOverlay({
     try {
       stopCamera();
       qrScanActiveRef.current = true;
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      } catch(err) {
+        // Fallback for older phones or strict constraints
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+        } catch(err2) {
+          // Ultimate fallback
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+      }
+      
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
@@ -184,7 +196,7 @@ export function PunchOverlay({
       }
       scanQrLoop();
     } catch (e: any) {
-      setError("Camera unavailable for QR");
+      setError("Camera unavailable: " + (e?.message || 'Permission denied'));
     }
   };
 
@@ -283,14 +295,25 @@ export function PunchOverlay({
   const startSelfieCamera = async () => {
     try {
       stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      qrScanActiveRef.current = false;
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
+      } catch(err) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        } catch (err2) {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+      }
+      
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         await videoRef.current.play();
       }
     } catch (e: any) {
-      setError("Camera unavailable for selfie");
+      setError("Camera unavailable: " + (e?.message || 'Permission denied'));
     }
   };
 
@@ -367,14 +390,30 @@ export function PunchOverlay({
         setPunchResponse(data);
         hapticSuccess();
         
-        if (data.isNewStreak || (data.newBadgesEarned && data.newBadgesEarned.length > 0)) {
+        // Massive, satisfying confetti explosion for every successful punch
+        const end = Date.now() + 1.5 * 1000; // 1.5 seconds of continuous fireworks
+        const colors = ['#10B981', '#3B82F6', '#F59E0B', '#38BDF8', '#8B5CF6'];
+        
+        (function frame() {
           confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#10B981', '#3B82F6', '#F59E0B']
+            particleCount: 5,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: colors
           });
-        }
+          confetti({
+            particleCount: 5,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: colors
+          });
+
+          if (Date.now() < end) {
+            requestAnimationFrame(frame);
+          }
+        }());
       } catch (e: any) {
         if (!window.navigator.onLine || e.message === 'Network Error' || e.code === 'ERR_NETWORK') {
           // Save offline
@@ -521,7 +560,19 @@ export function PunchOverlay({
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'center' }}>
             <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, background: 'linear-gradient(135deg, #60A5FA, #3B82F6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Scan Office QR</Typography>
             <Typography sx={{ color: '#94A3B8', mb: 4, fontSize: 15 }}>Position the QR code within the frame</Typography>
-            {error && <Typography sx={{ color: '#EF4444', mb: 2, bgcolor: 'rgba(239, 68, 68, 0.1)', p: 1, borderRadius: 2 }}>{error}</Typography>}
+            {error && (
+              <Box sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', p: 2, borderRadius: 2, mb: 3, textAlign: 'center' }}>
+                <Typography sx={{ color: '#EF4444', fontWeight: 600, mb: 1 }}>{error}</Typography>
+                {error.includes('Permission denied') && (
+                  <Typography sx={{ color: '#F87171', fontSize: 13, mb: 2, lineHeight: 1.4 }}>
+                    Your browser has blocked camera access. Please tap the <strong>Lock / Settings icon</strong> in your web address bar above, go to Permissions, and set Camera to <strong>Allow</strong>.
+                  </Typography>
+                )}
+                <Button variant="outlined" size="small" onClick={startQrCamera} sx={{ borderColor: '#EF4444', color: '#EF4444', '&:hover': { borderColor: '#DC2626', bgcolor: 'rgba(239,68,68,0.1)' } }}>
+                  Try Again
+                </Button>
+              </Box>
+            )}
             <Box sx={{ 
               position: 'relative', 
               width: '280px', 

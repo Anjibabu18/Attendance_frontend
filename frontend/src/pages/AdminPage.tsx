@@ -35,12 +35,15 @@ import { motion } from "framer-motion";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 import { IconButton, Tooltip } from "@mui/material";
+import ScheduledPushCard from '../components/ScheduledPushCard';
 
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { clearAuth } from "../auth/auth";
 import { GlobalLoader } from "../components/GlobalLoader";
 import { useThemeContext } from "../theme/ThemeContext";
+import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
+import { enablePushNotifications, disablePushNotifications, isPushEnabled, sendTestNotification } from "../utils/pushNotifications";
 
 const MotionBox = motion.create(Box);
 
@@ -105,6 +108,7 @@ type AttendanceSettings = {
   requireQrForPunch: boolean;
   permanentOfficeQr: boolean;
   qrTokenValidityMinutes: number;
+  autoAbsentCutoffTime?: string | null;
 };
 
 const cardSx = {
@@ -182,6 +186,8 @@ export default function AdminPage() {
   const [officeRadius, setOfficeRadius] = useState("100");
   const [officeIp, setOfficeIp] = useState("");
   const [editOfficeId, setEditOfficeId] = useState<number | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const [employeeForm, setEmployeeForm] = useState({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
 
@@ -337,6 +343,38 @@ export default function AdminPage() {
   }
 
   useEffect(() => { refresh(); }, [month]);
+  useEffect(() => { setPushEnabled(isPushEnabled()); }, []);
+
+  const handleTogglePush = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPushBusy(true);
+    try {
+      if (event.target.checked) {
+        await enablePushNotifications();
+        setPushEnabled(true);
+        toastSuccess("Push notifications enabled");
+      } else {
+        await disablePushNotifications();
+        setPushEnabled(false);
+        toastSuccess("Push notifications disabled");
+      }
+    } catch (err: any) {
+      toastError(err?.message || "Failed to toggle push notifications");
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setPushBusy(true);
+    try {
+      await sendTestNotification();
+      toastSuccess("Test notification sent");
+    } catch (err: any) {
+      toastError(err?.message || "Failed to send test notification");
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const filteredEmployees = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -960,13 +998,44 @@ export default function AdminPage() {
               <TextField size="small" label="Overtime pay/hr (Rs)" type="number" value={settings.overtimePayPerHour} onChange={(e) => setSettings({ ...settings, overtimePayPerHour: Number(e.target.value) })} />
               <TextField size="small" label="Base Salary (Rs)" type="number" value={settings.standardMonthlySalary} onChange={(e) => setSettings({ ...settings, standardMonthlySalary: Number(e.target.value) })} />
               <TextField size="small" label="Weekend days" value={settings.weekendDays} onChange={(e) => setSettings({ ...settings, weekendDays: e.target.value })} />
+              <TextField size="small" label="Auto-absent Cutoff Time" type="time" value={timeOnly(settings.autoAbsentCutoffTime, "")} onChange={(e) => setSettings({ ...settings, autoAbsentCutoffTime: e.target.value ? timePayload(e.target.value) : null })} InputLabelProps={{ shrink: true }} />
               <TextField size="small" label="QR validity minutes" type="number" value={settings.qrTokenValidityMinutes} onChange={(e) => setSettings({ ...settings, qrTokenValidityMinutes: Number(e.target.value) })} />
               <FormControlLabel control={<Switch checked={settings.requireQrForPunch} onChange={(e) => setSettings({ ...settings, requireQrForPunch: e.target.checked })} />} label="Require QR" />
               <FormControlLabel control={<Switch checked={settings.permanentOfficeQr} onChange={(e) => setSettings({ ...settings, permanentOfficeQr: e.target.checked })} />} label="Permanent office QR" />
             </Box>
           </Box>
         )}
+
+        {/* Push Notifications Section */}
+        <Box sx={{ ...cardSx, p: 2.25 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap", mb: 2 }}>
+            <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+              <Avatar sx={{ bgcolor: "rgba(59,130,246,0.1)", color: "#3B82F6", borderRadius: "8px" }}><NotificationsActiveRoundedIcon /></Avatar>
+              <Box>
+                <Typography sx={{ fontWeight: 950, fontSize: 22 }}>Push Notifications</Typography>
+                <Typography sx={{ color: "#64748B", fontSize: 13 }}>Configure browser push notifications for Admin alerts.</Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <FormControlLabel 
+                control={<Switch checked={pushEnabled} onChange={handleTogglePush} disabled={pushBusy} color="primary" />} 
+                label={<Typography sx={{ fontWeight: 700, fontSize: 14 }}>Enable Push</Typography>} 
+                sx={{ mr: 2 }}
+              />
+              <Button onClick={handleTestPush} disabled={!pushEnabled || pushBusy} variant="outlined" startIcon={<NotificationsActiveRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 800 }}>
+                Test Notification
+              </Button>
+            </Box>
+          </Box>
+          {!pushEnabled && (
+             <Box sx={{ bgcolor: "rgba(239,68,68,0.05)", p: 1.5, borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)" }}>
+               <Typography sx={{ fontSize: 13, color: "#991B1B" }}>Push notifications are currently disabled on this browser. Enable them to receive real-time admin alerts.</Typography>
+             </Box>
+          )}
+        </Box>
+        <ScheduledPushCard />
       </MotionBox>
+      
       <Drawer anchor="right" open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2.5 } }}>
         <Box sx={{ display: "grid", gap: 2 }}>
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>

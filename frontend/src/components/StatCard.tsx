@@ -15,11 +15,14 @@ export default function StatCard(props: {
       sx={{
         position: "relative",
         overflow: "hidden",
-        background: "rgba(255,255,255,0.98)",
-        border: "1px solid rgba(226,232,240,0.8)",
+        background: (theme) => theme.palette.mode === 'light' ? "rgba(255,255,255,0.98)" : "rgba(15,23,42,0.75)",
+        backdropFilter: (theme) => theme.palette.mode === 'dark' ? "blur(24px) saturate(180%)" : "none",
+        border: (theme) => theme.palette.mode === 'light' ? "1px solid rgba(226,232,240,0.8)" : "1px solid rgba(255,255,255,0.08)",
         borderRadius: "16px",
         p: { xs: 2, md: 2.5 },
-        boxShadow: "0 4px 20px rgba(15,23,42,0.06)",
+        boxShadow: (theme) => theme.palette.mode === 'light' 
+          ? "0 4px 20px rgba(15,23,42,0.06)" 
+          : "0 8px 32px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.08)",
         transition: "all 0.25s cubic-bezier(0.2,0.8,0.2,1)",
         cursor: "default",
         // Gradient bottom accent bar
@@ -88,7 +91,7 @@ export default function StatCard(props: {
               fontSize: { xs: 26, md: 32 },
               lineHeight: 1,
               fontWeight: 900,
-              color: "#0f172a",
+              color: (theme) => theme.palette.mode === 'light' ? "#0f172a" : "#f8fafc",
               wordBreak: "break-word",
               fontVariantNumeric: "tabular-nums",
               transition: "color 0.25s ease",

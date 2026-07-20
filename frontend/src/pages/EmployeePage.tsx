@@ -13,6 +13,7 @@ import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
+import PullToRefresh from 'react-simple-pull-to-refresh';
 import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 
 import { EmployeeProvider, useEmployee } from './employee/EmployeeContext';
@@ -23,9 +24,12 @@ type QuickRequestMode = 'leave' | 'work' | 'regularization';
 import { MoreTab } from './employee/MoreTab';
 import { LiveVerificationOverlay } from './employee/LiveVerificationOverlay';
 import { api } from '../api/client';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LayoutSkeleton } from '../components/LayoutSkeleton';
 import { useThemeContext } from '../theme/ThemeContext';
+import PermissionOnboardingOverlay from './employee/PermissionOnboardingOverlay';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import { hapticPop } from '../utils/haptics';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import { IconButton, Tooltip } from '@mui/material';
 
@@ -71,9 +75,13 @@ function EmployeeContent() {
   const [direction, setDirection] = useState(0);
   const [quickRequestMode, setQuickRequestMode] = useState<QuickRequestMode | null>(null);
   const [pendingVerificationId, setPendingVerificationId] = useState<number | null>(null);
+  const [showPermissionsOverlay, setShowPermissionsOverlay] = useState(() => {
+    return localStorage.getItem('app_permissions_requested') !== 'true';
+  });
   const { scrollY } = useScroll();
   const bgY = useTransform(scrollY, [0, 1000], ['0%', '30%']);
   const bgOpacity = useTransform(scrollY, [0, 800], [1, 0.3]);
+  const meshY = useTransform(scrollY, [0, 1000], ['0%', '15%']);
   const active = tabs[activeTab];
 
   React.useEffect(() => {
@@ -140,7 +148,7 @@ function EmployeeContent() {
         overflow: 'hidden', // Contain the parallax background
       }}
     >
-      {/* Parallax Background Layer */}
+      {/* Parallax Animated Aurora Background Layer */}
       <Box
         component={motion.div}
         style={{ y: bgY, opacity: bgOpacity }}
@@ -150,24 +158,35 @@ function EmployeeContent() {
           zIndex: 0,
           pointerEvents: 'none',
           backgroundImage: mode === 'dark' 
-            ? 'radial-gradient(ellipse at 50% 0%, rgba(14,165,233,0.15) 0%, transparent 60%), linear-gradient(180deg, transparent 0%, rgba(15,23,42,0.8) 100%)'
-            : 'radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.1) 0%, transparent 60%), linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.8) 100%)',
+            ? 'radial-gradient(circle at 15% 50%, rgba(14,165,233,0.12), transparent 45%), radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 45%), linear-gradient(180deg, transparent 0%, rgba(15,23,42,0.9) 100%)'
+            : 'radial-gradient(circle at 15% 50%, rgba(37,99,235,0.08), transparent 45%), radial-gradient(circle at 85% 30%, rgba(139,92,246,0.08), transparent 45%), linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.9) 100%)',
           backgroundSize: '100% 100%',
+          animation: 'aurora 15s ease-in-out infinite alternate',
+          '@keyframes aurora': {
+            '0%': { backgroundPosition: '0% 0%', filter: 'hue-rotate(0deg)' },
+            '50%': { backgroundPosition: '100% 100%', filter: 'hue-rotate(15deg)' },
+            '100%': { backgroundPosition: '0% 0%', filter: 'hue-rotate(0deg)' }
+          }
         }}
       />
       {/* Mesh Grid Layer */}
       <Box
         component={motion.div}
-        style={{ y: useTransform(scrollY, [0, 1000], ['0%', '15%']) }}
+        style={{ y: meshY }}
         sx={{
           position: 'absolute',
-          inset: '-20%',
+          inset: '-50%', // Larger to allow for pan
           zIndex: 0,
           pointerEvents: 'none',
           backgroundImage: mode === 'dark'
             ? 'linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px)'
             : 'linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px), linear-gradient(180deg, rgba(37,99,235,0.04) 1px, transparent 1px)',
           backgroundSize: '34px 34px',
+          animation: 'mesh-pan 30s linear infinite',
+          '@keyframes mesh-pan': {
+            '0%': { transform: 'translate(0, 0)' },
+            '100%': { transform: 'translate(-34px, -34px)' } // Pan exactly one grid square
+          }
         }}
       />
 
@@ -187,7 +206,7 @@ function EmployeeContent() {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 1, py: 1.25 }}>
             <Box component={motion.div} whileHover={{ rotate: -6, scale: 1.06 }} sx={{ width: 42, height: 42, borderRadius: '8px', bgcolor: 'primary.main', color: 'white', display: 'grid', placeItems: 'center', fontWeight: 900, boxShadow: '0 14px 28px rgba(37, 99, 235, 0.22)' }}>WT</Box>
             <Box>
-              <Typography sx={{ fontWeight: 900, lineHeight: 1 }}>WorkTrack</Typography>
+              <Typography sx={{ fontWeight: 900, lineHeight: 1 }}>VD Attendance</Typography>
               <Typography sx={{ color: 'text.secondary', fontSize: 12 }}>Employee Portal</Typography>
             </Box>
           </Box>
@@ -233,8 +252,16 @@ function EmployeeContent() {
           </Box>
         </Box>
 
-        <Box component="main" sx={{ minWidth: 0, pb: { xs: 9, md: 0 } }}>
-          <Box sx={{ position: 'sticky', top: 0, zIndex: 20, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box component="main" sx={{ minWidth: 0, pb: { xs: 9, md: 0 }, minHeight: '100vh' }}>
+          <PullToRefresh 
+            onRefresh={async () => { await refreshData(); hapticPop(); }}
+            pullingContent={<Box sx={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'text.secondary' }}><RefreshRoundedIcon sx={{ animation: 'spin 2s linear infinite' }} /></Box>}
+            refreshingContent={<Box sx={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main' }}><CircularProgress size={24} thickness={5} /></Box>}
+            pullDownThreshold={70}
+            maxPullDownDistance={95}
+          >
+            <Box sx={{ minHeight: '100vh' }}>
+              <Box sx={{ position: 'sticky', top: 0, zIndex: 20, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
             <Box sx={{ maxWidth: 1220, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 1.5, md: 2 }, display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'center' }}>
               <AnimatePresence mode="wait">
                 <Box component={motion.div} key={active.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} sx={{ minWidth: 0 }}>
@@ -309,31 +336,69 @@ function EmployeeContent() {
               </motion.div>
             </AnimatePresence>
           </Box>
+            </Box>
+          </PullToRefresh>
         </Box>
-      </Box>
 
-      <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, px: 1.5, pb: 'calc(env(safe-area-inset-bottom) + 10px)' }}>
-        <Box sx={{ bgcolor: 'background.paper', backdropFilter: 'blur(16px)', border: '1px solid', borderColor: 'divider', borderRadius: '8px', boxShadow: '0 -18px 42px rgba(0,0,0,0.12)', overflow: 'hidden' }}>
-          <BottomNavigation
-            showLabels
-            value={activeTab}
-            onChange={(event, newValue) => {
-              if (newValue !== 2) setQuickRequestMode(null);
-              setDirection(newValue > activeTab ? 1 : newValue < activeTab ? -1 : 0);
-              setActiveTab(newValue);
-              window.scrollTo({ top: 0, behavior: 'smooth' });
-            }}
-            sx={{
-              bgcolor: 'transparent', height: 66,
-              '& .MuiBottomNavigationAction-root': { color: 'text.secondary', minWidth: 'auto', px: 0.5 },
-              '& .Mui-selected': { color: 'primary.main' },
-              '& .MuiBottomNavigationAction-label': { fontSize: 11, fontWeight: 800, mt: 0.35 },
-            }}
-          >
-            {tabs.map((tab) => <BottomNavigationAction key={tab.label} label={tab.label} icon={tab.icon} />)}
-          </BottomNavigation>
+        <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 50, px: 1.5, pb: 'calc(env(safe-area-inset-bottom) + 10px)' }}>
+          <Box sx={{ 
+            bgcolor: 'background.paper', backdropFilter: 'blur(24px) saturate(200%)', 
+            border: '1px solid', borderColor: 'rgba(255,255,255,0.08)', borderRadius: '16px', 
+            boxShadow: '0 20px 40px rgba(0,0,0,0.2)', overflow: 'hidden',
+            display: 'flex', height: 68, px: 1, alignItems: 'center', justifyContent: 'space-between'
+          }}>
+            {tabs.map((tab, idx) => {
+              const isActive = activeTab === idx;
+              return (
+                <Box
+                  key={tab.label}
+                  onClick={() => {
+                    hapticPop();
+                    if (idx !== 2) setQuickRequestMode(null);
+                    setDirection(idx > activeTab ? 1 : idx < activeTab ? -1 : 0);
+                    setActiveTab(idx);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  sx={{
+                    position: 'relative', flex: 1, height: '100%', 
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', zIndex: 1, WebkitTapHighlightColor: 'transparent'
+                  }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeTabPill"
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      style={{
+                        position: 'absolute', top: 6, bottom: 6, left: 6, right: 6,
+                        backgroundColor: mode === 'dark' ? 'rgba(14,165,233,0.15)' : 'rgba(37,99,235,0.1)',
+                        borderRadius: '12px', zIndex: -1
+                      }}
+                    />
+                  )}
+                  <motion.div
+                    animate={{ y: isActive ? -2 : 0, scale: isActive ? 1.05 : 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    style={{ color: isActive ? (mode === 'dark' ? '#38BDF8' : '#2563EB') : '#94A3B8' }}
+                  >
+                    {tab.icon}
+                  </motion.div>
+                  <motion.div
+                    animate={{ y: isActive ? 0 : 2, opacity: isActive ? 1 : 0.6 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                  >
+                    <Typography sx={{ 
+                      fontSize: 10, fontWeight: isActive ? 800 : 600, mt: 0.5,
+                      color: isActive ? (mode === 'dark' ? '#38BDF8' : '#2563EB') : 'text.secondary' 
+                    }}>
+                      {tab.label}
+                    </Typography>
+                  </motion.div>
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
-      </Box>
 
       {pendingVerificationId && (
         <LiveVerificationOverlay
@@ -343,6 +408,10 @@ function EmployeeContent() {
           onClose={() => setPendingVerificationId(null)}
         />
       )}
+      {showPermissionsOverlay && (
+        <PermissionOnboardingOverlay onClose={() => setShowPermissionsOverlay(false)} />
+      )}
+      </Box>
     </Box>
   );
 }
@@ -350,7 +419,9 @@ function EmployeeContent() {
 export default function EmployeePage() {
   return (
     <EmployeeProvider>
-      <EmployeeContent />
+      <ErrorBoundary>
+        <EmployeeContent />
+      </ErrorBoundary>
     </EmployeeProvider>
   );
 }

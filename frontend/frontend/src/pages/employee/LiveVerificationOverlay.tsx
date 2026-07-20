@@ -4,6 +4,24 @@ import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded';
 import { api } from '../../api/client';
 
+const playBeep = (freq = 800, duration = 150) => {
+  try {
+    const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+    setTimeout(() => oscillator.stop(), duration);
+  } catch (e) {
+    console.warn("Audio not supported or blocked", e);
+  }
+};
+
 interface Props {
   requestId: number;
   open: boolean;
@@ -75,13 +93,25 @@ export function LiveVerificationOverlay({ requestId, open, onSuccess, onClose }:
 
     try {
       // Just submit the photo directly for verification without local face checks
-      const result = await api.post(`/api/requests/${requestId}/verify-photo`, { photoData: base64Data });
+      const result = await api.post(`/api/employee/live-verify/${requestId}/submit`, { photoData: base64Data });
       if (result.data?.success || result.status === 200) {
         setSuccess(true);
+        playBeep(1000, 100);
+        setTimeout(() => playBeep(1200, 150), 150);
+
+        // Voice Feedback
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance('Live verification successful. You are confirmed.');
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          window.speechSynthesis.speak(utterance);
+        }
+        
         setTimeout(() => {
           onSuccess();
           onClose();
-        }, 1500);
+        }, 2000);
       } else {
         setError(result.data?.message || 'Verification failed.');
       }

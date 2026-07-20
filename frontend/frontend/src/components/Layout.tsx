@@ -7,12 +7,16 @@ import ManageSearchIcon from "@mui/icons-material/ManageSearch";
 import MenuIcon from "@mui/icons-material/Menu";
 import NotificationsIcon from "@mui/icons-material/Notifications";
 import ShieldOutlinedIcon from "@mui/icons-material/ShieldOutlined";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import { clearAuth, ensureLoginStartedAt, getAuth } from "../auth/auth";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { useEffect, useState } from "react";
 import { useToast } from "./Toast";
 import dayjs from "dayjs";
+import { useThemeContext } from "../theme/ThemeContext";
+import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
+import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
 
 type CompanyProfile = { groupPhotoUrl?: string | null };
 type Notification = { id: number; title: string; message: string; read: boolean; createdAt: string };
@@ -22,6 +26,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const location = useLocation();
   const auth = getAuth();
   const loginStartedAtIso = ensureLoginStartedAt();
+  const { mode, toggleColorMode } = useThemeContext();
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [passwordOpen, setPasswordOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
@@ -102,18 +107,37 @@ export default function Layout(props: { title: string; children: React.ReactNode
 
   useEffect(() => {
     if (!auth) return;
-    const interval = setInterval(() => {
-      api.get<Notification[]>("/api/notifications")
-        .then((r) => setNotifications(r.data))
-        .catch(() => { });
 
+    const token = localStorage.getItem("attendance_token_v1");
+    if (!token) return;
+
+    const baseURL = api.defaults.baseURL || (window.location.hostname === 'localhost' ? 'http://localhost:3000' : '');
+    const sse = new EventSource(`${baseURL}/api/notifications/stream?token=${token}`);
+    
+    sse.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.id) {
+          setNotifications(prev => {
+            if (prev.find(n => n.id === data.id)) return prev;
+            return [data, ...prev];
+          });
+        }
+      } catch (err) {}
+    };
+
+    const punchInterval = setInterval(() => {
       if (auth.role === "ROLE_EMPLOYEE") {
         api.get<any>("/api/employee/punch/today")
           .then((r) => setTodayPunch(r.data))
           .catch(() => { });
       }
     }, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+      sse.close();
+      clearInterval(punchInterval);
+    };
   }, [auth]);
 
   useEffect(() => {
@@ -201,18 +225,19 @@ export default function Layout(props: { title: string; children: React.ReactNode
   const activeSecs = activeSeconds % 60;
   const activeTimeText = `${String(activeHours).padStart(2, "0")}:${String(activeMinutes).padStart(2, "0")}:${String(activeSecs).padStart(2, "0")}`;
   const sidebar = (
-    <Box
-      sx={{
-        display: "grid",
-        gap: 0.75,
-        p: 1.5,
-        border: "1px solid rgba(226,232,240,0.7)",
-        borderRadius: 3,
-        bgcolor: "rgba(255,255,255,0.90)",
-        backdropFilter: "blur(16px)",
-        boxShadow: "0 8px 32px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04)",
-      }}
-    >
+      <Box
+        sx={{
+          display: "grid",
+          gap: 0.75,
+          p: 1.5,
+          border: mode === 'dark' ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(226,232,240,0.7)",
+          borderRadius: 3,
+          bgcolor: mode === 'dark' ? "rgba(10,15,30,0.90)" : "rgba(255,255,255,0.90)",
+          backdropFilter: "blur(16px)",
+          boxShadow: mode === 'dark' ? "0 8px 32px rgba(0,0,0,0.4)" : "0 8px 32px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04)",
+          transition: "background 0.4s ease, border-color 0.4s ease",
+        }}
+      >
       {/* Brand */}
       <Box sx={{ px: 1, pt: 0.5, pb: 1.25, display: "flex", alignItems: "center", gap: 1.25 }}>
         <Box sx={{ width: 32, height: 32, borderRadius: 2, background: "linear-gradient(135deg, #4f46e5, #2563eb)", display: "grid", placeItems: "center", boxShadow: "0 4px 12px rgba(79,70,229,0.3)" }}>
@@ -309,12 +334,17 @@ export default function Layout(props: { title: string; children: React.ReactNode
         position="sticky"
         elevation={0}
         sx={{
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(24px) saturate(180%)",
-          WebkitBackdropFilter: "blur(24px) saturate(180%)",
-          color: "text.primary",
-          borderBottom: "1px solid rgba(226,232,240,0.7)",
-          boxShadow: "0 4px 24px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04)",
+          background: mode === 'dark'
+            ? 'rgba(10, 15, 30, 0.85)'
+            : 'rgba(255,255,255,0.85)',
+          backdropFilter: 'blur(24px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+          color: 'text.primary',
+          borderBottom: mode === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(226,232,240,0.7)',
+          boxShadow: mode === 'dark'
+            ? '0 4px 24px rgba(0,0,0,0.4)'
+            : '0 4px 24px rgba(15,23,42,0.08), 0 1px 4px rgba(15,23,42,0.04)',
+          transition: 'background 0.4s ease, border-color 0.4s ease',
         }}
       >
         {booting ? <LinearProgress sx={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 2 }} /> : null}
@@ -415,6 +445,23 @@ export default function Layout(props: { title: string; children: React.ReactNode
               </Badge>
             </IconButton>
           </Tooltip>
+          <Tooltip title={mode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'} arrow>
+            <IconButton
+              onClick={toggleColorMode}
+              sx={{
+                display: { xs: 'none', md: 'inline-flex' },
+                width: 40, height: 40,
+                borderRadius: '10px',
+                bgcolor: mode === 'dark' ? 'rgba(14,165,233,0.15)' : 'rgba(0,0,0,0.04)',
+                border: mode === 'dark' ? '1px solid rgba(14,165,233,0.4)' : '1px solid #e5e7eb',
+                color: mode === 'dark' ? '#38BDF8' : '#64748B',
+                transition: 'all 0.35s ease',
+                boxShadow: mode === 'dark' ? '0 0 12px rgba(14,165,233,0.25)' : 'none',
+              }}
+            >
+              {mode === 'dark' ? <LightModeRoundedIcon fontSize="small" /> : <DarkModeRoundedIcon fontSize="small" />}
+            </IconButton>
+          </Tooltip>
           <Button
             variant="outlined"
             startIcon={<LogoutIcon fontSize="small" />}
@@ -500,9 +547,12 @@ export default function Layout(props: { title: string; children: React.ReactNode
         </DialogActions>
       </Dialog>
 
-      <Dialog open={notificationsOpen} onClose={() => setNotificationsOpen(false)} fullWidth maxWidth="sm">
-        <DialogTitle sx={{ fontWeight: 950, pb: 1 }}>Notifications</DialogTitle>
-        <DialogContent sx={{ display: "grid", gap: 1.25, pt: 1 }}>
+      <Drawer anchor="right" open={notificationsOpen} onClose={() => setNotificationsOpen(false)} PaperProps={{ sx: { width: { xs: '100%', sm: 400 }, p: 0, bgcolor: '#f8fafc' } }}>
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #e2e8f0', bgcolor: '#fff' }}>
+          <Typography sx={{ fontWeight: 950, fontSize: 18 }}>Notifications</Typography>
+          <IconButton onClick={() => setNotificationsOpen(false)} size="small" sx={{ bgcolor: '#f1f5f9' }}><CloseRoundedIcon fontSize="small" /></IconButton>
+        </Box>
+        <Box sx={{ p: 2, display: "grid", gap: 1.5, overflowY: 'auto' }}>
           {notifications.length ? (
             <Box sx={{ p: 1.5, borderRadius: 2.5, background: "linear-gradient(135deg, rgba(99,102,241,0.06), rgba(37,99,235,0.04))", border: "1px solid rgba(99,102,241,0.12)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
               <Typography sx={{ fontWeight: 800, fontSize: 14 }}>Inbox</Typography>
@@ -514,26 +564,24 @@ export default function Layout(props: { title: string; children: React.ReactNode
               key={n.id}
               sx={{
                 p: 2, border: `1px solid ${n.read ? "rgba(226,232,240,0.8)" : "rgba(37,99,235,0.2)"}`,
-                borderRadius: 2.5, bgcolor: n.read ? "#fafbfc" : "rgba(37,99,235,0.04)",
+                borderRadius: 2.5, bgcolor: n.read ? "#ffffff" : "rgba(37,99,235,0.04)",
                 animation: `slideUp 0.35s cubic-bezier(0.2,0.8,0.2,1) ${i * 0.05}s both`,
                 transition: "all 0.2s ease",
-                "&:hover": { transform: "translateX(3px)", boxShadow: "0 4px 14px rgba(15,23,42,0.08)" },
+                "&:hover": { transform: "translateX(-3px)", boxShadow: "0 8px 20px rgba(15,23,42,0.06)" },
+                boxShadow: n.read ? 'none' : "0 2px 8px rgba(37,99,235,0.06)"
               }}
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "center", mb: 0.5 }}>
-                <Typography sx={{ fontWeight: 800, fontSize: 14 }}>{n.title}</Typography>
-                {!n.read ? <Chip size="small" label="New" sx={{ bgcolor: "rgba(37,99,235,0.1)", color: "#2563eb", fontWeight: 800 }} /> : null}
+                <Typography sx={{ fontWeight: 800, fontSize: 14, color: n.read ? '#334155' : '#0f172a' }}>{n.title}</Typography>
+                {!n.read ? <Chip size="small" label="New" sx={{ height: 20, fontSize: 10, bgcolor: "#3b82f6", color: "#fff", fontWeight: 800 }} /> : null}
               </Box>
               <Typography sx={{ color: "text.secondary", fontSize: 13, lineHeight: 1.5 }}>{n.message}</Typography>
-              <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 11.5, fontWeight: 500 }}>{new Date(n.createdAt).toLocaleString()}</Typography>
+              <Typography sx={{ mt: 1, color: "text.secondary", fontSize: 11, fontWeight: 600 }}>{dayjs(n.createdAt).format('MMM D, YYYY h:mm A')}</Typography>
             </Box>
           ))}
-          {!notifications.length ? <Typography sx={{ color: "text.secondary", fontSize: 13 }}>No notifications yet.</Typography> : null}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setNotificationsOpen(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
+          {!notifications.length ? <Typography sx={{ color: "text.secondary", fontSize: 13, textAlign: 'center', mt: 4 }}>No notifications yet.</Typography> : null}
+        </Box>
+      </Drawer>
     </div>
   );
 }

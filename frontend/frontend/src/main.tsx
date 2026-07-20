@@ -20,6 +20,7 @@ import "./styles/tailwind.css";
 import App from "./router/App";
 import { ToastProvider } from "./components/Toast";
 import { ThemeContextProvider } from "./theme/ThemeContext";
+import { OfflineSyncManager } from "./components/OfflineSyncManager";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
@@ -27,6 +28,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <CssBaseline />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ToastProvider>
+          <OfflineSyncManager />
           <App />
         </ToastProvider>
       </BrowserRouter>

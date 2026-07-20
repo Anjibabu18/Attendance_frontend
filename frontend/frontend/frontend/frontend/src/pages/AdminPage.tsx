@@ -201,7 +201,18 @@ export default function AdminPage() {
       if (departmentRes.status === "fulfilled") setDepartments(departmentRes.value.data);
       if (shiftRes.status === "fulfilled") setShifts(shiftRes.value.data);
       if (managerRes.status === "fulfilled") setManagers(managerRes.value.data);
-      if (officeRes.status === "fulfilled") setOffices(officeRes.value.data);
+      if (officeRes.status === "fulfilled") {
+        setOffices(officeRes.value.data);
+        if (officeRes.value.data.length > 0 && !editOfficeId && !officeLat) {
+          const off = officeRes.value.data[0];
+          setEditOfficeId(off.id);
+          setOfficeName(off.officeName || "");
+          setOfficeLat(String(off.latitude));
+          setOfficeLng(String(off.longitude));
+          setOfficeRadius(String(off.radiusMeters));
+          setOfficeIp(off.officeIpAddress || "");
+        }
+      }
       if (holidayRes.status === "fulfilled") setHolidays(holidayRes.value.data);
       if (settingsRes.status === "fulfilled") setSettings(settingsRes.value.data);
       if (analyticsRes.status === "fulfilled") setAnalytics(analyticsRes.value.data);

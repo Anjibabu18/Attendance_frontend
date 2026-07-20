@@ -13,7 +13,7 @@ import CalendarMonthRoundedIcon from '@mui/icons-material/CalendarMonthRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion';
 
 import { EmployeeProvider, useEmployee } from './employee/EmployeeContext';
 import { DashboardTab } from './employee/DashboardTab';
@@ -23,7 +23,11 @@ type QuickRequestMode = 'leave' | 'work' | 'regularization';
 import { MoreTab } from './employee/MoreTab';
 import { LiveVerificationOverlay } from './employee/LiveVerificationOverlay';
 import { api } from '../api/client';
-import { GlobalLoader } from '../components/GlobalLoader';
+import { LayoutSkeleton } from '../components/LayoutSkeleton';
+import { useThemeContext } from '../theme/ThemeContext';
+import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
+import { IconButton, Tooltip } from '@mui/material';
 
 const tabs = [
   { label: 'Dashboard', subtitle: 'Today overview', icon: <DashboardRoundedIcon fontSize="small" /> },
@@ -33,16 +37,43 @@ const tabs = [
 ];
 
 const pageVariants = {
-  initial: { opacity: 0, y: 18, filter: 'blur(8px)' },
-  animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
-  exit: { opacity: 0, y: -12, filter: 'blur(6px)' },
+  initial: (direction: number) => ({
+    x: direction > 0 ? '100%' : direction < 0 ? '-100%' : 0,
+    opacity: 0,
+    scale: 0.92,
+    filter: 'blur(10px)',
+  }),
+  animate: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
+    transition: { type: 'spring', stiffness: 350, damping: 35, mass: 0.8 },
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? '100%' : direction > 0 ? '-100%' : 0,
+    opacity: 0,
+    scale: 0.92,
+    filter: 'blur(10px)',
+    transition: { duration: 0.3, ease: 'easeInOut' },
+  }),
+};
+
+const swipeConfidenceThreshold = 10000;
+const swipePower = (offset: number, velocity: number) => {
+  return Math.abs(offset) * velocity;
 };
 
 function EmployeeContent() {
   const { loading, error, profile, refreshData } = useEmployee();
+  const { mode, toggleColorMode } = useThemeContext();
   const [activeTab, setActiveTab] = useState(0);
+  const [direction, setDirection] = useState(0);
   const [quickRequestMode, setQuickRequestMode] = useState<QuickRequestMode | null>(null);
   const [pendingVerificationId, setPendingVerificationId] = useState<number | null>(null);
+  const { scrollY } = useScroll();
+  const bgY = useTransform(scrollY, [0, 1000], ['0%', '30%']);
+  const bgOpacity = useTransform(scrollY, [0, 800], [1, 0.3]);
   const active = tabs[activeTab];
 
   React.useEffect(() => {
@@ -67,7 +98,7 @@ function EmployeeContent() {
   }, [loading, error]);
 
   if (loading) {
-    return <GlobalLoader message="Loading workspace..." />;
+    return <LayoutSkeleton />;
   }
 
   if (error) {
@@ -88,7 +119,16 @@ function EmployeeContent() {
     if (activeTab === 0) return <DashboardTab />;
     if (activeTab === 1) return <AttendanceTab />;
     if (activeTab === 2) return <RequestsTab initialMode={quickRequestMode} />;
-    return <MoreTab onQuickRequest={(mode) => { setQuickRequestMode(mode); setActiveTab(2); }} />;
+    return <MoreTab onQuickRequest={(mode) => { setQuickRequestMode(mode); setDirection(1); setActiveTab(2); }} />;
+  };
+
+  const paginate = (newDirection: number) => {
+    const nextTab = activeTab + newDirection;
+    if (nextTab >= 0 && nextTab < tabs.length) {
+      setDirection(newDirection);
+      setActiveTab(nextTab);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   };
 
   return (
@@ -96,9 +136,42 @@ function EmployeeContent() {
       sx={{
         minHeight: '100vh', color: 'text.primary',
         backgroundColor: 'background.default',
+        position: 'relative',
+        overflow: 'hidden', // Contain the parallax background
       }}
     >
-      <Box sx={{ display: { xs: 'block', md: 'grid' }, gridTemplateColumns: { md: '280px 1fr' }, minHeight: '100vh' }}>
+      {/* Parallax Background Layer */}
+      <Box
+        component={motion.div}
+        style={{ y: bgY, opacity: bgOpacity }}
+        sx={{
+          position: 'absolute',
+          inset: '-20%', // Make it larger than screen so it doesn't clip when scrolling
+          zIndex: 0,
+          pointerEvents: 'none',
+          backgroundImage: mode === 'dark' 
+            ? 'radial-gradient(ellipse at 50% 0%, rgba(14,165,233,0.15) 0%, transparent 60%), linear-gradient(180deg, transparent 0%, rgba(15,23,42,0.8) 100%)'
+            : 'radial-gradient(ellipse at 50% 0%, rgba(37,99,235,0.1) 0%, transparent 60%), linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.8) 100%)',
+          backgroundSize: '100% 100%',
+        }}
+      />
+      {/* Mesh Grid Layer */}
+      <Box
+        component={motion.div}
+        style={{ y: useTransform(scrollY, [0, 1000], ['0%', '15%']) }}
+        sx={{
+          position: 'absolute',
+          inset: '-20%',
+          zIndex: 0,
+          pointerEvents: 'none',
+          backgroundImage: mode === 'dark'
+            ? 'linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px)'
+            : 'linear-gradient(90deg, rgba(37,99,235,0.04) 1px, transparent 1px), linear-gradient(180deg, rgba(37,99,235,0.04) 1px, transparent 1px)',
+          backgroundSize: '34px 34px',
+        }}
+      />
+
+      <Box sx={{ position: 'relative', zIndex: 1, display: { xs: 'block', md: 'grid' }, gridTemplateColumns: { md: '280px 1fr' }, minHeight: '100vh' }}>
         <Box
           component={motion.aside}
           initial={{ x: -18, opacity: 0 }}
@@ -125,7 +198,11 @@ function EmployeeContent() {
               return (
                 <Button
                   key={tab.label}
-                  onClick={() => { if (index !== 2) setQuickRequestMode(null); setActiveTab(index); }}
+                  onClick={() => { 
+                    if (index !== 2) setQuickRequestMode(null); 
+                    setDirection(index > activeTab ? 1 : index < activeTab ? -1 : 0);
+                    setActiveTab(index); 
+                  }}
                   sx={{
                     position: 'relative', justifyContent: 'flex-start', textTransform: 'none', borderRadius: '8px', px: 1.3, py: 1.15,
                     color: selected ? 'primary.main' : 'text.secondary', bgcolor: 'transparent', fontWeight: 900, overflow: 'hidden',
@@ -169,20 +246,64 @@ function EmployeeContent() {
                 <Button component={motion.button} whileTap={{ scale: 0.96 }} onClick={refreshData} variant="outlined" startIcon={<RefreshRoundedIcon />} sx={{ display: { xs: 'none', sm: 'inline-flex' }, borderRadius: '8px', textTransform: 'none', fontWeight: 900 }}>
                   Refresh
                 </Button>
+
+                {/* Dark Mode Toggle */}
+                <Tooltip title={mode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'} arrow>
+                  <IconButton
+                    component={motion.button}
+                    onClick={toggleColorMode}
+                    whileTap={{ scale: 0.85, rotate: 30 }}
+                    whileHover={{ scale: 1.1 }}
+                    sx={{
+                      width: 40, height: 40,
+                      borderRadius: '10px',
+                      bgcolor: mode === 'dark' ? 'rgba(14,165,233,0.15)' : 'rgba(0,0,0,0.05)',
+                      border: mode === 'dark' ? '1px solid rgba(14,165,233,0.4)' : '1px solid rgba(0,0,0,0.08)',
+                      color: mode === 'dark' ? '#38BDF8' : '#64748B',
+                      transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
+                      boxShadow: mode === 'dark' ? '0 0 12px rgba(14,165,233,0.25)' : 'none',
+                    }}
+                  >
+                    <AnimatePresence mode="wait">
+                      {mode === 'dark' ? (
+                        <motion.span key="light" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }} transition={{ duration: 0.2 }} style={{ display: 'flex' }}>
+                          <LightModeRoundedIcon fontSize="small" />
+                        </motion.span>
+                      ) : (
+                        <motion.span key="dark" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }} transition={{ duration: 0.2 }} style={{ display: 'flex' }}>
+                          <DarkModeRoundedIcon fontSize="small" />
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                  </IconButton>
+                </Tooltip>
+
                 <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 40, height: 40, display: { md: 'none' } }} />
               </Box>
             </Box>
           </Box>
 
-          <Box sx={{ maxWidth: 1220, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 2, md: 3 } }}>
-            <AnimatePresence mode="wait">
+          <Box sx={{ maxWidth: 1220, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 2, md: 3 }, overflowX: 'hidden' }}>
+            <AnimatePresence mode="wait" custom={direction}>
               <motion.div
                 key={activeTab}
+                custom={direction}
                 variants={pageVariants}
                 initial="initial"
                 animate="animate"
                 exit="exit"
-                transition={{ duration: 0.28, ease: 'easeOut' }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.8} // Liquid stretch effect
+                onDragEnd={(e, { offset, velocity }) => {
+                  const swipe = swipePower(offset.x, velocity.x);
+                  if (swipe < -swipeConfidenceThreshold) {
+                    paginate(1);
+                  } else if (swipe > swipeConfidenceThreshold) {
+                    paginate(-1);
+                  }
+                }}
+                style={{ touchAction: 'pan-y' }} // Allow vertical scroll, hijack horizontal
               >
                 {renderTab()}
               </motion.div>
@@ -198,6 +319,7 @@ function EmployeeContent() {
             value={activeTab}
             onChange={(event, newValue) => {
               if (newValue !== 2) setQuickRequestMode(null);
+              setDirection(newValue > activeTab ? 1 : newValue < activeTab ? -1 : 0);
               setActiveTab(newValue);
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}

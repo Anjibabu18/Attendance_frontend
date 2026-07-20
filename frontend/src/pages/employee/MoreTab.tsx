@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Avatar, Box, Button, Divider, List, ListItemButton, ListItemIcon, ListItemText, Switch, Typography, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress } from '@mui/material';
+import { Avatar, Box, Button, Divider, List, ListItemButton, ListItemIcon, ListItemText, Switch, Typography, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress, Badge } from '@mui/material';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import InsertDriveFileRoundedIcon from '@mui/icons-material/InsertDriveFileRounded';
@@ -15,6 +15,7 @@ import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import DevicesRoundedIcon from '@mui/icons-material/DevicesRounded';
 import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import CameraAltRoundedIcon from '@mui/icons-material/CameraAltRounded';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
 
@@ -53,6 +54,9 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
   
   const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
   const [devicesLoading, setDevicesLoading] = useState(false);
+  const [deviceToRemove, setDeviceToRemove] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [userDevices, setUserDevices] = useState<any[]>([]);
 
   const openDeviceDialog = async () => {
@@ -156,6 +160,25 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
     window.location.replace('/login');
   };
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingPhoto(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      await api.post('/api/employee/profile/photo', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      await refreshData();
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   const totalLeave = leaveBalances.reduce((sum, item) => sum + item.remainingDays, 0);
   const quickActions: Array<{ label: string; mode: 'leave' | 'work' | 'regularization' }> = [
     { label: 'Apply Leave', mode: 'leave' },
@@ -167,7 +190,18 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
     <MotionBox initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }} sx={{ display: 'grid', gap: 2.5 }}>
       <Box sx={{ ...cardSx, p: { xs: 2, md: 2.5 }, display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr auto' }, gap: 2, alignItems: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.75, minWidth: 0 }}>
-          <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 72, height: 72, border: '4px solid #EFF6FF' }} />
+          <input type="file" accept="image/*" ref={fileInputRef} style={{ display: 'none' }} onChange={handlePhotoUpload} />
+          <Badge
+            overlap="circular"
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            badgeContent={
+              <IconButton onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto} size="small" sx={{ bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' }, width: 26, height: 26, border: '2px solid white' }}>
+                {uploadingPhoto ? <CircularProgress size={14} color="inherit" /> : <CameraAltRoundedIcon sx={{ fontSize: 14 }} />}
+              </IconButton>
+            }
+          >
+            <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 72, height: 72, border: '4px solid #EFF6FF' }} />
+          </Badge>
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ fontWeight: 900, fontSize: { xs: 24, md: 30 }, lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile?.name || 'Employee'}</Typography>
             <Typography sx={{ color: '#64748B', mt: 0.5 }}>{profile?.employeeNumber || '--'} - {profile?.department?.name || 'Department not assigned'}</Typography>

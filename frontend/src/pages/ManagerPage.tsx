@@ -21,6 +21,7 @@ import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import AppCard from "../components/AppCard";
 import DashboardHero from "../components/DashboardHero";
+import { EmptyState } from "../components/EmptyState";
 import Layout from "../components/Layout";
 import StatCard from "../components/StatCard";
 import { GlobalLoader } from "../components/GlobalLoader";
@@ -365,7 +366,7 @@ export default function ManagerPage() {
                   </Box>
                 ))
               ) : (
-                <Typography sx={{ opacity: 0.72, fontSize: 13 }}>No team members match this search yet.</Typography>
+                <EmptyState title="No Team Members Found" description="No team members match this search yet." icon={<GroupsIcon fontSize="large" />} />
               )}
             </Box>
           </AppCard>
@@ -437,7 +438,7 @@ export default function ManagerPage() {
                   </Box>
                 ))
               ) : (
-                <Typography sx={{ opacity: 0.72, fontSize: 13 }}>No requests are waiting for manager action.</Typography>
+                <EmptyState title="All Caught Up!" description="No requests are waiting for manager action." icon={<PendingActionsIcon fontSize="large" />} />
               )}
             </Box>
           </AppCard>
@@ -489,7 +490,7 @@ export default function ManagerPage() {
                 </Box>
               );
             })}
-            {!teamAttendance.length ? <Typography sx={{ opacity: 0.72, fontSize: 13 }}>No team attendance available.</Typography> : null}
+            {!teamAttendance.length ? <EmptyState title="No Attendance Data" description="No team attendance available." icon={<WorkHistoryIcon fontSize="large" />} /> : null}
           </Box>
         </AppCard>
         <AppCard>

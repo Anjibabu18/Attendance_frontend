@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Avatar, Box, Button, Divider, List, ListItemButton, ListItemIcon, ListItemText, Switch, Typography } from '@mui/material';
+import { Avatar, Box, Button, Divider, List, ListItemButton, ListItemIcon, ListItemText, Switch, Typography, Dialog, DialogTitle, DialogContent, IconButton, CircularProgress } from '@mui/material';
 import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
 import AccessTimeRoundedIcon from '@mui/icons-material/AccessTimeRounded';
 import InsertDriveFileRoundedIcon from '@mui/icons-material/InsertDriveFileRounded';
@@ -12,6 +12,9 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import DownloadRoundedIcon from '@mui/icons-material/DownloadRounded';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
+import DevicesRoundedIcon from '@mui/icons-material/DevicesRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
 
@@ -22,7 +25,6 @@ import { clearAuth } from '../../auth/auth';
 import { disablePushNotifications, enablePushNotifications, isPushEnabled, sendTestNotification } from '../../utils/pushNotifications';
 import { useEmployee } from './EmployeeContext';
 import { registerBiometric, isBiometricSupported } from '../../utils/webauthn';
-import { FaceRegisterOverlay } from './FaceRegisterOverlay';
 
 const MotionBox = motion.create(Box);
 
@@ -46,8 +48,34 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushLoading, setPushLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
-  const [showFaceRegister, setShowFaceRegister] = useState(false);
   const biometricSupported = isBiometricSupported();
+  
+  const [deviceDialogOpen, setDeviceDialogOpen] = useState(false);
+  const [devicesLoading, setDevicesLoading] = useState(false);
+  const [userDevices, setUserDevices] = useState<any[]>([]);
+
+  const openDeviceDialog = async () => {
+    setDeviceDialogOpen(true);
+    setDevicesLoading(true);
+    try {
+      const res = await api.get('/api/account/devices/all');
+      setUserDevices(res.data);
+    } catch (e) {
+      alert('Failed to load devices');
+    } finally {
+      setDevicesLoading(false);
+    }
+  };
+
+  const removeDevice = async (id: number) => {
+    if (!window.confirm('Remove this device?')) return;
+    try {
+      await api.delete(`/api/account/devices/${id}`);
+      setUserDevices(prev => prev.filter(d => d.id !== id));
+    } catch (e: any) {
+      alert(e.response?.data?.error || e.message);
+    }
+  };
 
   useEffect(() => {
     setPushEnabled(isPushEnabled());
@@ -64,7 +92,7 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
         setPushEnabled(false);
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to toggle push notifications');
+      alert(err.response?.data?.error || err.message || 'Failed to toggle push notifications');
     } finally {
       setPushLoading(false);
     }
@@ -224,7 +252,20 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
               <ListItemText primary="Test notification" primaryTypographyProps={{ color: 'primary.main', fontWeight: 900 }} />
             </ListItemButton>
           )}
+          <ListItemButton onClick={openDeviceDialog} sx={{ py: 1.4 }}>
+            <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>
+              <DevicesRoundedIcon />
+            </ListItemIcon>
+            <ListItemText
+              primary="Manage Devices"
+              secondary={`${deviceStatus?.registered ? 'This device is registered' : 'This device is NOT registered'}`}
+              primaryTypographyProps={{ fontWeight: 900 }}
+              secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }}
+            />
+            <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.5 }} />
+          </ListItemButton>
           <Divider />
+
           {biometricSupported && (
             <>
               <ListItemButton onClick={handleRegisterBiometric} disabled={biometricLoading} sx={{ py: 1.4 }}>
@@ -242,19 +283,6 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
               <Divider />
             </>
           )}
-          <ListItemButton onClick={() => setShowFaceRegister(true)} sx={{ py: 1.4 }}>
-            <ListItemIcon sx={{ color: 'primary.main', minWidth: 44 }}>
-              <PersonRoundedIcon />
-            </ListItemIcon>
-            <ListItemText
-              primary="Register Face AI"
-              secondary="Set up facial recognition for punching in"
-              primaryTypographyProps={{ fontWeight: 900 }}
-              secondaryTypographyProps={{ color: 'text.secondary', fontSize: 13 }}
-            />
-            <ArrowForwardIosRoundedIcon sx={{ fontSize: 14, color: 'text.secondary', opacity: 0.5 }} />
-          </ListItemButton>
-          <Divider />
 
           <ListItemButton onClick={handleLogout} sx={{ py: 1.4 }}>
             <ListItemIcon sx={{ color: '#DC2626', minWidth: 44 }}><LogoutRoundedIcon /></ListItemIcon>
@@ -263,9 +291,33 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
         </List>
       </Box>
 
-      {showFaceRegister && (
-        <FaceRegisterOverlay onClose={() => setShowFaceRegister(false)} />
-      )}
+      <Dialog open={deviceDialogOpen} onClose={() => setDeviceDialogOpen(false)} fullWidth maxWidth="sm" PaperProps={{ sx: { borderRadius: '16px' } }}>
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 900 }}>
+          Manage Devices ({userDevices.length}/3)
+          <IconButton onClick={() => setDeviceDialogOpen(false)} size="small"><CloseRoundedIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          {devicesLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}><CircularProgress /></Box>
+          ) : userDevices.length === 0 ? (
+            <Typography sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>No devices registered yet.</Typography>
+          ) : (
+            <List disablePadding>
+              {userDevices.map(d => (
+                <Box key={d.id} sx={{ mb: 1, border: '1px solid', borderColor: 'divider', borderRadius: '12px', p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: d.deviceId === deviceStatus?.deviceId ? 'primary.50' : 'transparent' }}>
+                  <Box>
+                    <Typography sx={{ fontWeight: 800 }}>{d.label || 'Mobile Device'}</Typography>
+                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Status: {d.approved ? 'Approved' : 'Pending'}</Typography>
+                    {d.deviceId === deviceStatus?.deviceId && <Typography sx={{ fontSize: 11, color: 'primary.main', fontWeight: 800 }}>CURRENT DEVICE</Typography>}
+                  </Box>
+                  <IconButton color="error" onClick={() => removeDevice(d.id)}><DeleteRoundedIcon /></IconButton>
+                </Box>
+              ))}
+            </List>
+          )}
+          <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 2, textAlign: 'center' }}>You can register up to 3 devices to punch in from.</Typography>
+        </DialogContent>
+      </Dialog>
     </MotionBox>
   );
 }

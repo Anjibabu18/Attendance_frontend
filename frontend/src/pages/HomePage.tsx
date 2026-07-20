@@ -82,7 +82,7 @@ export default function HomePage() {
               <VDLogo size={160} />
             </Box>
 
-            {/* WorkTrack name */}
+            {/* VD Attendance name */}
             <Box
               component={motion.div}
               initial={{ opacity: 0, y: 24 }}
@@ -293,7 +293,7 @@ export default function HomePage() {
       {/* ── Footer ── */}
       <Box sx={{ textAlign: "center", py: 4, color: "#94a3b8", fontSize: 13 }}>
         <Typography sx={{ fontSize: 13, color: "#94a3b8" }}>
-          © 2026 WorkTrack. All rights reserved.
+          © 2026 VD Attendance. All rights reserved.
         </Typography>
       </Box>
     </Box>
