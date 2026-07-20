@@ -28,6 +28,7 @@ import { LayoutSkeleton } from '../components/LayoutSkeleton';
 import { useThemeContext } from '../theme/ThemeContext';
 import PermissionOnboardingOverlay from './employee/PermissionOnboardingOverlay';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
+import { hapticPop } from '../utils/haptics';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import { IconButton, Tooltip } from '@mui/material';
 
@@ -324,6 +325,7 @@ function EmployeeContent() {
             showLabels
             value={activeTab}
             onChange={(event, newValue) => {
+              hapticPop();
               if (newValue !== 2) setQuickRequestMode(null);
               setDirection(newValue > activeTab ? 1 : newValue < activeTab ? -1 : 0);
               setActiveTab(newValue);

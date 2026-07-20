@@ -18,6 +18,7 @@ import { Attendance } from '../../types';
 import { useEmployee } from './EmployeeContext';
 import { PunchOverlay } from './PunchOverlay';
 import { useThemeContext } from '../../theme/ThemeContext';
+import { hapticPop, hapticSuccess, hapticTap } from '../../utils/haptics';
 
 const MotionBox = motion.create(Box);
 const MotionButton = motion.create(Button);
@@ -60,12 +61,12 @@ function SlideToPunchButton({ type, onTrigger }: { type: 'in' | 'out', onTrigger
     const threshold = containerWidth * 0.65; // 65% across to trigger
     
     if (info.offset.x >= threshold) {
-      if (window.navigator.vibrate) window.navigator.vibrate([30, 50, 30]);
+      hapticSuccess();
       onTrigger();
       // Snap back instantly so it's ready when the modal closes
       controls.start({ x: 0, transition: { duration: 0 } });
     } else {
-      if (window.navigator.vibrate) window.navigator.vibrate(10);
+      hapticPop();
       controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
     }
   };
