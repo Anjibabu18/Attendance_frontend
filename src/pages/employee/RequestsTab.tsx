@@ -6,11 +6,13 @@ import HomeWorkRoundedIcon from '@mui/icons-material/HomeWorkRounded';
 import EditCalendarRoundedIcon from '@mui/icons-material/EditCalendarRounded';
 import PaidRoundedIcon from '@mui/icons-material/PaidRounded';
 import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import dayjs from 'dayjs';
 import { motion } from 'framer-motion';
 
 import { api } from '../../api/client';
 import { useEmployee } from './EmployeeContext';
+import { EmptyState } from '../../components/EmptyState';
 
 const MotionBox = motion.create(Box);
 
@@ -312,10 +314,11 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
             </MotionBox>
           );
         }) : (
-          <Box sx={{ ...cardSx, p: 4, textAlign: 'center' }}>
-            <Typography sx={{ fontWeight: 900, mb: 0.75 }}>No requests found</Typography>
-            <Typography sx={{ color: 'text.secondary' }}>When you submit a request, its approval status will appear here.</Typography>
-          </Box>
+          <EmptyState 
+            title="No requests found" 
+            description="When you submit a request, its approval status will appear here." 
+            icon={<FactCheckRoundedIcon fontSize="large" />} 
+          />
         )}
       </MotionBox>
 
