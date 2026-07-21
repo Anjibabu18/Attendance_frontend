@@ -498,7 +498,8 @@ export default function HrPage() {
 
     const entryMap: Record<string, DayStatus> = {};
     for (const e of entries) {
-      entryMap[e.date] = e.status === "PRESENT" ? "P" : e.status === "HALF_DAY" ? "HD" : "L";
+      const dateStr = typeof e.date === "string" ? e.date.split("T")[0] : String(e.date);
+      entryMap[dateStr] = e.status === "PRESENT" ? "P" : e.status === "HALF_DAY" ? "HD" : "L";
     }
 
     const holidaySet = new Set((holidays || []).map((h) => h.date));
