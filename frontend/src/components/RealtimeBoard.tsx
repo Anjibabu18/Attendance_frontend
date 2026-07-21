@@ -404,7 +404,7 @@ function LiveMap(props: { points: Array<Record<string, any>>; occupancy: Record<
       })}
       <Box sx={{ position: "absolute", left: 12, right: 12, bottom: 10, zIndex: 2, display: "grid", gap: 0.6 }}>
         <Box sx={{ display: "flex", gap: 0.6, flexWrap: "wrap" }}>
-          {Object.entries(props.occupancy).slice(0, 4).map(([name, count]) => (
+          {Object.entries(props.occupancy || {}).slice(0, 4).map(([name, count]) => (
             <Chip key={name} size="small" label={`${name}: ${count}`} sx={{ borderRadius: 1, bgcolor: "rgba(255,255,255,0.82)", fontWeight: 800 }} />
           ))}
         </Box>
@@ -483,7 +483,7 @@ function PayrollView(props: { payroll: PayrollPreview | null; onExport: () => vo
         <Button size="small" startIcon={<FileDownloadIcon />} variant="contained" onClick={props.onExport}>Export CSV</Button>
       </Box>
       <Box sx={{ p: 1.25, display: "grid", gap: 1, gridTemplateColumns: { xs: "1fr 1fr", md: "repeat(6,1fr)" } }}>
-        {Object.entries(props.payroll.totals).map(([k, v]) => <MetricBox key={k} label={label(k)} value={v} />)}
+        {Object.entries(props.payroll?.totals || {}).map(([k, v]) => <MetricBox key={k} label={label(k)} value={v as number} />)}
       </Box>
       <Divider />
       <Box sx={{ display: { xs: "none", md: "grid" }, gridTemplateColumns: "1.4fr repeat(6, 0.7fr)", gap: 1, px: 1.25, py: 1, bgcolor: "#f8fafc" }}>
