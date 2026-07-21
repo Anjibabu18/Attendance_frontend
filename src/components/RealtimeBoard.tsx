@@ -386,29 +386,115 @@ function LiveMap(props: { points: Array<Record<string, any>>; occupancy: Record<
   const pointsList = props.points || [];
   const bounds = mapBounds(pointsList);
   return (
-    <Box sx={{ border: "1px solid #dbeafe", borderRadius: 1, bgcolor: "#eef6f1", minHeight: 330, position: "relative", overflow: "hidden" }}>
-      <Box sx={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(#d8e7dc 1px, transparent 1px), linear-gradient(90deg, #d8e7dc 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
-      <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 30% 24%, rgba(22,163,74,0.12), transparent 28%), radial-gradient(circle at 80% 70%, rgba(37,99,235,0.10), transparent 30%)" }} />
-      <Box sx={{ position: "absolute", left: 12, right: 12, top: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, zIndex: 2 }}>
-        <Typography sx={{ fontWeight: 950, fontSize: 13, display: "flex", alignItems: "center", gap: 0.8 }}>
-          <MyLocationIcon fontSize="small" /> Punch locations
+    <Box sx={{ 
+      border: (theme) => theme.palette.mode === 'light' ? "1px solid rgba(226,232,240,0.8)" : "1px solid rgba(255,255,255,0.08)", 
+      borderRadius: "16px", 
+      background: (theme) => theme.palette.mode === 'light' ? "#f1f5f9" : "#0f172a", 
+      minHeight: 340, 
+      position: "relative", 
+      overflow: "hidden",
+      boxShadow: (theme) => theme.palette.mode === 'light' ? "inset 0 2px 10px rgba(0,0,0,0.02)" : "inset 0 4px 20px rgba(0,0,0,0.3)"
+    }}>
+      {/* Neon Grid Pattern */}
+      <Box sx={{ 
+        position: "absolute", 
+        inset: 0, 
+        backgroundImage: (theme) => theme.palette.mode === 'light' 
+          ? "linear-gradient(rgba(148, 163, 184, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 163, 184, 0.2) 1px, transparent 1px)"
+          : "linear-gradient(rgba(51, 65, 85, 0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(51, 65, 85, 0.4) 1px, transparent 1px)", 
+        backgroundSize: "32px 32px",
+        transform: "perspective(500px) rotateX(40deg) scale(1.5) translateY(-20%)",
+        transformOrigin: "top",
+        opacity: 0.6
+      }} />
+      <Box sx={{ position: "absolute", inset: 0, background: "radial-gradient(circle at 50% 50%, transparent 20%, var(--app-bg) 100%)" }} />
+      
+      {/* Premium Header */}
+      <Box sx={{ position: "absolute", left: 16, right: 16, top: 16, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, zIndex: 2 }}>
+        <Typography sx={{ 
+          fontWeight: 900, 
+          fontSize: 14, 
+          display: "flex", 
+          alignItems: "center", 
+          gap: 1,
+          color: (theme) => theme.palette.mode === 'light' ? "#334155" : "#f8fafc",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em"
+        }}>
+          <WifiTetheringIcon fontSize="small" sx={{ color: "#3b82f6", animation: "pulseGlow 2s infinite" }} /> Global Punches
         </Typography>
-        <Chip size="small" label={`${pointsList.length} points`} sx={{ borderRadius: 1, bgcolor: "rgba(255,255,255,0.78)", fontWeight: 900 }} />
+        <Chip size="small" label={`${pointsList.length} Active`} sx={{ 
+          borderRadius: 2, 
+          background: "linear-gradient(90deg, rgba(37,99,235,0.15), rgba(16,185,129,0.15))", 
+          color: (theme) => theme.palette.mode === 'light' ? "#0f172a" : "#f8fafc",
+          border: "1px solid rgba(59, 130, 246, 0.3)",
+          fontWeight: 800,
+          backdropFilter: "blur(8px)"
+        }} />
       </Box>
+
+      {/* Floating Markers */}
       {pointsList.map((p, i) => {
         const x = ((Number(p.longitude) - bounds.minLng) / bounds.lngSpan) * 82 + 9;
         const y = (1 - (Number(p.latitude) - bounds.minLat) / bounds.latSpan) * 72 + 16;
         return (
-          <Box key={`${p.employeeName}-${p.type}-${i}`} title={`${p.employeeName} ${p.type}`} sx={{ position: "absolute", left: `${x}%`, top: `${y}%`, transform: "translate(-50%, -50%)", width: 14, height: 14, borderRadius: "50%", bgcolor: p.type === "CHECK_OUT" ? "#f97316" : "#16a34a", border: "2px solid white", boxShadow: "0 2px 10px rgba(15,23,42,0.25)", zIndex: 2 }} />
+          <Box
+            key={i}
+            sx={{
+              position: "absolute",
+              left: `${x}%`,
+              top: `${y}%`,
+              width: 12,
+              height: 12,
+              bgcolor: p.status === "IN" ? "#10b981" : "#3b82f6",
+              borderRadius: "50%",
+              transform: "translate(-50%, -50%)",
+              boxShadow: `0 0 16px ${p.status === "IN" ? "#10b981" : "#3b82f6"}`,
+              animation: `fadeSlideUp 0.5s ease ${i * 0.05}s backwards, pulseGlow 3s infinite ${i * 0.2}s`,
+            }}
+          />
         );
       })}
-      <Box sx={{ position: "absolute", left: 12, right: 12, bottom: 10, zIndex: 2, display: "grid", gap: 0.6 }}>
-        <Box sx={{ display: "flex", gap: 0.6, flexWrap: "wrap" }}>
-          {Object.entries(props.occupancy || {}).slice(0, 4).map(([name, count]) => (
-            <Chip key={name} size="small" label={`${name}: ${count}`} sx={{ borderRadius: 1, bgcolor: "rgba(255,255,255,0.82)", fontWeight: 800 }} />
+
+      {/* HUD Occupancy Display */}
+      <Box sx={{ position: "absolute", left: 16, right: 16, bottom: 16, zIndex: 2, display: "grid", gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center" }}>
+          {Object.entries(props.occupancy || {}).slice(0, 4).map(([name, count], i) => (
+            <Chip 
+              key={name} 
+              size="small" 
+              label={`${name}: ${count}`} 
+              sx={{ 
+                borderRadius: "10px", 
+                background: (theme) => theme.palette.mode === 'light' ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.85)",
+                border: (theme) => theme.palette.mode === 'light' ? "1px solid rgba(226,232,240,0.9)" : "1px solid rgba(255,255,255,0.1)",
+                color: (theme) => theme.palette.mode === 'light' ? "#334155" : "#cbd5e1",
+                fontWeight: 800,
+                backdropFilter: "blur(12px)",
+                animation: `fadeSlideUp 0.4s ease ${0.2 + (i * 0.05)}s backwards`,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.05)"
+              }} 
+            />
           ))}
         </Box>
-        {!pointsList.length ? <Typography sx={{ fontSize: 12, color: "text.secondary", bgcolor: "rgba(255,255,255,0.72)", px: 1, py: 0.5, borderRadius: 1 }}>No punch locations yet.</Typography> : null}
+        {!pointsList.length ? (
+          <Typography sx={{ 
+            fontSize: 13, 
+            color: "text.secondary", 
+            textAlign: "center",
+            background: (theme) => theme.palette.mode === 'light' ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.85)", 
+            px: 2, 
+            py: 1, 
+            borderRadius: 2,
+            backdropFilter: "blur(8px)",
+            border: (theme) => theme.palette.mode === 'light' ? "1px solid rgba(226,232,240,0.9)" : "1px solid rgba(255,255,255,0.1)",
+            width: "fit-content",
+            margin: "0 auto",
+            fontWeight: 600
+          }}>
+            Waiting for punch signals...
+          </Typography>
+        ) : null}
       </Box>
     </Box>
   );
