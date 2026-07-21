@@ -383,7 +383,8 @@ function EmployeeRoster(props: { rows: BoardRow[] }) {
 }
 
 function LiveMap(props: { points: Array<Record<string, any>>; occupancy: Record<string, number> }) {
-  const bounds = mapBounds(props.points);
+  const pointsList = props.points || [];
+  const bounds = mapBounds(pointsList);
   return (
     <Box sx={{ border: "1px solid #dbeafe", borderRadius: 1, bgcolor: "#eef6f1", minHeight: 330, position: "relative", overflow: "hidden" }}>
       <Box sx={{ position: "absolute", inset: 0, backgroundImage: "linear-gradient(#d8e7dc 1px, transparent 1px), linear-gradient(90deg, #d8e7dc 1px, transparent 1px)", backgroundSize: "28px 28px" }} />
@@ -392,9 +393,9 @@ function LiveMap(props: { points: Array<Record<string, any>>; occupancy: Record<
         <Typography sx={{ fontWeight: 950, fontSize: 13, display: "flex", alignItems: "center", gap: 0.8 }}>
           <MyLocationIcon fontSize="small" /> Punch locations
         </Typography>
-        <Chip size="small" label={`${props.points.length} points`} sx={{ borderRadius: 1, bgcolor: "rgba(255,255,255,0.78)", fontWeight: 900 }} />
+        <Chip size="small" label={`${pointsList.length} points`} sx={{ borderRadius: 1, bgcolor: "rgba(255,255,255,0.78)", fontWeight: 900 }} />
       </Box>
-      {props.points.map((p, i) => {
+      {pointsList.map((p, i) => {
         const x = ((Number(p.longitude) - bounds.minLng) / bounds.lngSpan) * 82 + 9;
         const y = (1 - (Number(p.latitude) - bounds.minLat) / bounds.latSpan) * 72 + 16;
         return (
@@ -524,8 +525,9 @@ function EmptyState(props: { title: string; detail: string; compact?: boolean })
 }
 
 function mapBounds(points: Array<Record<string, any>>) {
-  const lats = points.map((p) => Number(p.latitude)).filter(Number.isFinite);
-  const lngs = points.map((p) => Number(p.longitude)).filter(Number.isFinite);
+  const pts = points || [];
+  const lats = pts.map((p) => Number(p.latitude)).filter(Number.isFinite);
+  const lngs = pts.map((p) => Number(p.longitude)).filter(Number.isFinite);
   const minLat = lats.length ? Math.min(...lats) : 0;
   const maxLat = lats.length ? Math.max(...lats) : 0;
   const minLng = lngs.length ? Math.min(...lngs) : 0;
