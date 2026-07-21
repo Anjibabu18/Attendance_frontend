@@ -408,7 +408,7 @@ function LiveMap(props: { points: Array<Record<string, any>>; occupancy: Record<
             <Chip key={name} size="small" label={`${name}: ${count}`} sx={{ borderRadius: 1, bgcolor: "rgba(255,255,255,0.82)", fontWeight: 800 }} />
           ))}
         </Box>
-        {!props.points.length ? <Typography sx={{ fontSize: 12, color: "text.secondary", bgcolor: "rgba(255,255,255,0.72)", px: 1, py: 0.5, borderRadius: 1 }}>No punch locations yet.</Typography> : null}
+        {!pointsList.length ? <Typography sx={{ fontSize: 12, color: "text.secondary", bgcolor: "rgba(255,255,255,0.72)", px: 1, py: 0.5, borderRadius: 1 }}>No punch locations yet.</Typography> : null}
       </Box>
     </Box>
   );
