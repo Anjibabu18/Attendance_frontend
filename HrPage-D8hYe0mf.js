@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Attendance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        const params = new URLSearchParams(window.location.search);
+        const qrToken = params.get("qrToken");
+        if (qrToken) {
+          localStorage.setItem("scannedQrToken", qrToken.trim());
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-DqN_RIUW.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-BMRrpRf7.css">
+  <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
+

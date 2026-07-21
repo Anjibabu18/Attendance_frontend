@@ -217,8 +217,8 @@ export default function HrPage() {
 
   async function loadEmployees() {
     const res = await api.get<Employee[]>("/api/hr/employees");
-    setEmployees(res.data);
-    if (res.data.length && employeeId === "") setEmployeeId(res.data[0].id);
+    setEmployees(res.data || []);
+    if ((res.data || []).length && employeeId === "") setEmployeeId(res.data[0].id);
   }
 
   async function loadSettings() {
@@ -230,42 +230,42 @@ export default function HrPage() {
 
   async function loadHolidays(m: string) {
     const res = await api.get<Holiday[]>("/api/holidays", { params: { month: m } });
-    setHolidays(res.data);
+    setHolidays(res.data || []);
   }
 
   async function loadDailyPhotos(m: string) {
     const res = await api.get<DailyGroupPhoto[]>("/api/daily-group-photos", { params: { month: m } });
-    setDailyPhotos(res.data);
+    setDailyPhotos(res.data || []);
   }
 
   async function loadPendingLeaveRequests() {
     const res = await api.get<LeaveRequest[]>("/api/hr/leave-requests/pending");
-    setPendingLeaveRequests(res.data);
+    setPendingLeaveRequests(res.data || []);
   }
 
   async function loadPendingRegularizationRequests() {
     const res = await api.get<RegularizationRequest[]>("/api/hr/regularization-requests/pending");
-    setPendingRegularizationRequests(res.data);
+    setPendingRegularizationRequests(res.data || []);
   }
 
   async function loadPendingWorkRequests() {
     const res = await api.get<WorkRequest[]>("/api/hr/work-requests/pending");
-    setPendingWorkRequests(res.data);
+    setPendingWorkRequests(res.data || []);
   }
 
   async function loadPendingCompOffRequests() {
     const res = await api.get<CompOffRequest[]>("/api/hr/comp-off-requests/pending");
-    setPendingCompOffRequests(res.data);
+    setPendingCompOffRequests(res.data || []);
   }
 
   async function loadPendingDeviceRequests() {
     const res = await api.get<DeviceRequest[]>("/api/hr/device-requests/pending");
-    setPendingDeviceRequests(res.data);
+    setPendingDeviceRequests(res.data || []);
   }
 
   async function loadExceptions() {
     const res = await api.get<ExceptionItem[]>("/api/hr/exceptions");
-    setAttendanceExceptions(res.data);
+    setAttendanceExceptions(res.data || []);
   }
 
   async function loadPayroll(m: string) {
@@ -273,7 +273,7 @@ export default function HrPage() {
       api.get<PayrollRow[]>("/api/hr/payroll", { params: { month: m } }),
       api.get<PayrollLock>("/api/hr/payroll-lock", { params: { month: m } }),
     ]);
-    setPayrollRows(rows.data);
+    setPayrollRows(rows.data || []);
     setPayrollLock(lock.data);
   }
 
@@ -423,7 +423,7 @@ export default function HrPage() {
 
   async function loadAttendance(empId: number, m: string) {
     const res = await api.get<Attendance[]>("/api/hr/attendance", { params: { employeeId: empId, month: m } });
-    setEntries(res.data);
+    setEntries(res.data || []);
   }
 
   async function loadSummary(empId: number, m: string) {
