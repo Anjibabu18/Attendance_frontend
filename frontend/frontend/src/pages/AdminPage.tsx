@@ -5,6 +5,8 @@ import {
   Button,
   Chip,
   Divider,
+  Dialog,
+  DialogTitle,
   Drawer,
   FormControlLabel,
   LinearProgress,
@@ -580,7 +582,7 @@ export default function AdminPage() {
     
     // Refresh detail drawer if open
     if (selectedEmployee && selectedEmployee.id === id) {
-      loadEmployeeDetail(selectedEmployee);
+      openEmployeeDetail(selectedEmployee);
     }
   }
 
