@@ -32,10 +32,18 @@ import WorkHistoryRoundedIcon from "@mui/icons-material/WorkHistoryRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
 import { motion } from "framer-motion";
+import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
+import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
+import { IconButton, Tooltip } from "@mui/material";
+import ScheduledPushCard from '../components/ScheduledPushCard';
 
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import { clearAuth } from "../auth/auth";
+import { GlobalLoader } from "../components/GlobalLoader";
+import { useThemeContext } from "../theme/ThemeContext";
+import NotificationsActiveRoundedIcon from "@mui/icons-material/NotificationsActiveRounded";
+import { enablePushNotifications, disablePushNotifications, isPushEnabled, sendTestNotification } from "../utils/pushNotifications";
 
 const MotionBox = motion.create(Box);
 
@@ -70,7 +78,7 @@ type EmployeeDetail = {
   exceptions: Array<{ id: number; type: string; message: string; resolved: boolean; createdAt: string }>;
   requests: Array<{ id: number; type: string; status: string; date: string; title: string }>;
 };
-type ApprovalKind = "leave" | "correction" | "work" | "compOff";
+type ApprovalKind = "leave" | "correction" | "work" | "compOff" | "device";
 type ApprovalItem = {
   id: number;
   kind: ApprovalKind;
@@ -100,16 +108,18 @@ type AttendanceSettings = {
   requireQrForPunch: boolean;
   permanentOfficeQr: boolean;
   qrTokenValidityMinutes: number;
+  autoAbsentCutoffTime?: string | null;
 };
 
 const cardSx = {
-  bgcolor: "rgba(255,255,255,0.94)",
-  border: "1px solid rgba(203,213,225,0.86)",
+  bgcolor: "background.paper",
+  border: "1px solid",
+  borderColor: "divider",
   borderRadius: "8px",
-  boxShadow: "0 18px 46px rgba(15,23,42,0.08)",
+  boxShadow: "0 18px 46px rgba(0,0,0,0.08)",
   transition: "transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease",
   minWidth: 0,
-  "&:hover": { transform: "translateY(-2px)", borderColor: "#AFC5FF", boxShadow: "0 24px 70px rgba(15,23,42,0.12)" },
+  "&:hover": { transform: "translateY(-2px)", borderColor: "primary.light", boxShadow: "0 24px 70px rgba(0,0,0,0.12)" },
 };
 
 const timeOnly = (value?: string | null, fallback = "09:00") => {
@@ -126,11 +136,13 @@ const requestTone = (kind: ApprovalKind) => {
   if (kind === "leave") return { bg: "#EFF6FF", color: "#1D4ED8", label: "Leave" };
   if (kind === "correction") return { bg: "#F0FDFA", color: "#0F766E", label: "Correction" };
   if (kind === "work") return { bg: "#F5F3FF", color: "#6D28D9", label: "Work" };
+  if (kind === "device") return { bg: "#FDF4FF", color: "#C026D3", label: "Device" };
   return { bg: "#FFF7ED", color: "#C2410C", label: "Comp off" };
 };
 
 export default function AdminPage() {
   const { toastSuccess, toastError } = useToast();
+  const { mode, toggleColorMode } = useThemeContext();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -174,13 +186,17 @@ export default function AdminPage() {
   const [officeRadius, setOfficeRadius] = useState("100");
   const [officeIp, setOfficeIp] = useState("");
   const [editOfficeId, setEditOfficeId] = useState<number | null>(null);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   const [employeeForm, setEmployeeForm] = useState({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
+  const [editEmployeeForm, setEditEmployeeForm] = useState({ id: 0, employeeNumber: "", name: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
+  const [editEmployeeDialogOpen, setEditEmployeeDialogOpen] = useState(false);
 
   async function refresh() {
     setBusy(true);
     try {
-      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes] = await Promise.allSettled([
+      const [employeeRes, roleRes, departmentRes, shiftRes, managerRes, officeRes, holidayRes, settingsRes, analyticsRes, payrollLockRes, leaveReqRes, correctionReqRes, workReqRes, compOffReqRes, deviceReqRes] = await Promise.allSettled([
         api.get<Employee[]>("/api/admin/employees"),
         api.get<CompanyRole[]>("/api/admin/company-roles"),
         api.get<Department[]>("/api/admin/departments"),
@@ -195,6 +211,7 @@ export default function AdminPage() {
         api.get<any[]>("/api/hr/regularization-requests/pending"),
         api.get<any[]>("/api/hr/work-requests/pending"),
         api.get<any[]>("/api/hr/comp-off-requests/pending"),
+        api.get<any[]>("/api/hr/device-requests/pending"),
       ]);
       if (employeeRes.status === "fulfilled") setEmployees(employeeRes.value.data);
       if (roleRes.status === "fulfilled") setRoles(roleRes.value.data);
@@ -278,6 +295,20 @@ export default function AdminPage() {
           attachmentUrl: item.attachmentUrl,
         })));
       }
+      if (deviceReqRes.status === "fulfilled") {
+        approvalRows.push(...deviceReqRes.value.data.map((item: any) => ({
+          id: item.id,
+          kind: "device" as const,
+          title: "Device registration",
+          employeeName: item.employee?.name || item.username || "Employee",
+          employeeNumber: item.employee?.employeeNumber || "--",
+          dateText: `Device: ${item.label || "Mobile Device"}`,
+          detail: `Device ID: ${item.deviceId}`,
+          reason: item.model || "--",
+          status: item.approved ? "APPROVED" : "PENDING",
+          createdAt: item.createdAt,
+        })));
+      }
       const requestResults = [
         { label: "Employees", result: employeeRes },
         { label: "Roles", result: roleRes },
@@ -293,6 +324,7 @@ export default function AdminPage() {
         { label: "Corrections", result: correctionReqRes },
         { label: "Work requests", result: workReqRes },
         { label: "Comp-off requests", result: compOffReqRes },
+        { label: "Device requests", result: deviceReqRes },
       ];
       const rejected = requestResults.filter((item): item is { label: string; result: PromiseRejectedResult } => item.result.status === "rejected");
       const failedList = rejected.map((item) => `${item.label} (${item.result.reason?.response?.status || "network"})`).join(", ");
@@ -313,13 +345,44 @@ export default function AdminPage() {
   }
 
   useEffect(() => { refresh(); }, [month]);
+  useEffect(() => { setPushEnabled(isPushEnabled()); }, []);
+
+  const handleTogglePush = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPushBusy(true);
+    try {
+      if (event.target.checked) {
+        await enablePushNotifications();
+        setPushEnabled(true);
+        toastSuccess("Push notifications enabled");
+      } else {
+        await disablePushNotifications();
+        setPushEnabled(false);
+        toastSuccess("Push notifications disabled");
+      }
+    } catch (err: any) {
+      toastError(err?.message || "Failed to toggle push notifications");
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleTestPush = async () => {
+    setPushBusy(true);
+    try {
+      await sendTestNotification();
+      toastSuccess("Test notification sent");
+    } catch (err: any) {
+      toastError(err?.message || "Failed to send test notification");
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   const filteredEmployees = useMemo(() => {
     const query = search.trim().toLowerCase();
     if (!query) return employees;
     return employees.filter((employee) => [employee.name, employee.employeeNumber, employee.username, employee.department?.name, employee.companyRole?.name].some((value) => String(value || "").toLowerCase().includes(query)));
   }, [employees, search]);
-
   const activeEmployees = employees.filter((employee) => employee.enabled !== false && employee.status !== "INACTIVE").length;
   const configuredEmployees = employees.filter((employee) => employee.department || employee.shift || employee.assignedOfficeLocation).length;
   const setupProgress = employees.length ? Math.round((configuredEmployees / employees.length) * 100) : 0;
@@ -330,6 +393,7 @@ export default function AdminPage() {
     correction: approvalItems.filter((item) => item.kind === "correction").length,
     work: approvalItems.filter((item) => item.kind === "work").length,
     compOff: approvalItems.filter((item) => item.kind === "compOff").length,
+    device: approvalItems.filter((item) => item.kind === "device").length,
   };
 
   async function decideApproval(item: ApprovalItem, action: "approve" | "reject") {
@@ -339,7 +403,9 @@ export default function AdminPage() {
         ? "regularization-requests"
         : item.kind === "work"
           ? "work-requests"
-          : "comp-off-requests";
+          : item.kind === "device"
+            ? "device-requests"
+            : "comp-off-requests";
     const key = `${item.kind}-${item.id}`;
     setApprovalBusyId(`${key}-${action}`);
     try {
@@ -497,6 +563,27 @@ export default function AdminPage() {
     await refresh();
   }
 
+  async function updateEmployeeProfile() {
+    const { id, employeeNumber, name } = editEmployeeForm;
+    if (!employeeNumber.trim() || !name.trim()) return;
+    await api.post(`/api/admin/employees/${id}`, {
+      employeeNumber: employeeNumber.trim(),
+      name: name.trim(),
+      companyRoleId: editEmployeeForm.companyRoleId ? Number(editEmployeeForm.companyRoleId) : null,
+      departmentId: editEmployeeForm.departmentId ? Number(editEmployeeForm.departmentId) : null,
+      shiftId: editEmployeeForm.shiftId ? Number(editEmployeeForm.shiftId) : null,
+      officeLocationId: editEmployeeForm.officeLocationId ? Number(editEmployeeForm.officeLocationId) : null,
+    });
+    setEditEmployeeDialogOpen(false);
+    toastSuccess("Profile updated");
+    await refresh();
+    
+    // Refresh detail drawer if open
+    if (selectedEmployee && selectedEmployee.id === id) {
+      loadEmployeeDetail(selectedEmployee);
+    }
+  }
+
   async function saveSettings() {
     if (!settings) return;
     await api.post("/api/admin/settings/attendance", settings);
@@ -593,8 +680,9 @@ export default function AdminPage() {
   ];
 
   return (
-    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "#F5F7FB", backgroundImage: "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "#0F172A" }}>
-      <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "rgba(245,247,251,0.88)", backdropFilter: "blur(18px)", borderBottom: "1px solid #E2E8F0" }}>
+    <Box sx={{ minHeight: "100vh", overflowX: "hidden", bgcolor: "background.default", backgroundImage: mode === 'dark' ? "linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(180deg, rgba(255,255,255,0.03) 1px, transparent 1px)" : "linear-gradient(90deg, rgba(37,99,235,0.045) 1px, transparent 1px), linear-gradient(180deg, rgba(15,23,42,0.035) 1px, transparent 1px)", backgroundSize: "34px 34px", color: "text.primary" }}>
+      {busy && <GlobalLoader message="Loading Admin Workspace..." />}
+      <Box sx={{ position: "sticky", top: 0, zIndex: 20, bgcolor: "background.paper", backdropFilter: "blur(18px)", borderBottom: "1px solid", borderColor: "divider" }}>
         <Box sx={{ maxWidth: 1440, mx: "auto", px: { xs: 2, md: 3 }, py: 2, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
             <Avatar sx={{ bgcolor: "#0F2F5F", borderRadius: "8px" }}><AdminPanelSettingsRoundedIcon /></Avatar>
@@ -603,9 +691,24 @@ export default function AdminPage() {
               <Typography sx={{ color: "#64748B", fontSize: 13 }}>People, policies, holidays, shifts, managers, and setup health.</Typography>
             </Box>
           </Box>
-          <Box sx={{ display: "flex", gap: 1 }}>
-            <Button onClick={refresh} startIcon={<RefreshRoundedIcon />} variant="outlined" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }} disabled={busy}>Refresh</Button>
-            <Button onClick={handleLogout} startIcon={<LogoutRoundedIcon />} variant="outlined" color="error" sx={{ borderRadius: "8px", bgcolor: "white", fontWeight: 900 }}>Logout</Button>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+            <Button onClick={refresh} startIcon={<RefreshRoundedIcon />} variant="outlined" sx={{ borderRadius: "8px", fontWeight: 900 }} disabled={busy}>Refresh</Button>
+            <Tooltip title={mode === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'} arrow>
+              <IconButton
+                onClick={toggleColorMode}
+                sx={{
+                  width: 40, height: 40, borderRadius: '10px',
+                  bgcolor: mode === 'dark' ? 'rgba(14,165,233,0.15)' : 'rgba(0,0,0,0.05)',
+                  border: mode === 'dark' ? '1px solid rgba(14,165,233,0.4)' : '1px solid rgba(0,0,0,0.1)',
+                  color: mode === 'dark' ? '#38BDF8' : '#64748B',
+                  transition: 'all 0.35s ease',
+                  boxShadow: mode === 'dark' ? '0 0 12px rgba(14,165,233,0.25)' : 'none',
+                }}
+              >
+                {mode === 'dark' ? <LightModeRoundedIcon fontSize="small" /> : <DarkModeRoundedIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+            <Button onClick={handleLogout} startIcon={<LogoutRoundedIcon />} variant="outlined" color="error" sx={{ borderRadius: "8px", fontWeight: 900 }}>Logout</Button>
           </Box>
         </Box>
       </Box>
@@ -659,6 +762,7 @@ export default function AdminPage() {
               ["correction", "Attendance corrections", approvalCounts.correction],
               ["work", "Work/WFH", approvalCounts.work],
               ["compOff", "Comp-off", approvalCounts.compOff],
+              ["device", "Device requests", approvalCounts.device],
             ].map(([key, label, count]) => (
               <Button key={String(key)} size="small" variant={approvalFilter === key ? "contained" : "outlined"} onClick={() => setApprovalFilter(key as ApprovalKind | "all")} sx={{ borderRadius: "8px", fontWeight: 900 }}>
                 {label} ({count})
@@ -917,13 +1021,44 @@ export default function AdminPage() {
               <TextField size="small" label="Overtime pay/hr (Rs)" type="number" value={settings.overtimePayPerHour} onChange={(e) => setSettings({ ...settings, overtimePayPerHour: Number(e.target.value) })} />
               <TextField size="small" label="Base Salary (Rs)" type="number" value={settings.standardMonthlySalary} onChange={(e) => setSettings({ ...settings, standardMonthlySalary: Number(e.target.value) })} />
               <TextField size="small" label="Weekend days" value={settings.weekendDays} onChange={(e) => setSettings({ ...settings, weekendDays: e.target.value })} />
+              <TextField size="small" label="Auto-absent Cutoff Time" type="time" value={timeOnly(settings.autoAbsentCutoffTime, "")} onChange={(e) => setSettings({ ...settings, autoAbsentCutoffTime: e.target.value ? timePayload(e.target.value) : null })} InputLabelProps={{ shrink: true }} />
               <TextField size="small" label="QR validity minutes" type="number" value={settings.qrTokenValidityMinutes} onChange={(e) => setSettings({ ...settings, qrTokenValidityMinutes: Number(e.target.value) })} />
               <FormControlLabel control={<Switch checked={settings.requireQrForPunch} onChange={(e) => setSettings({ ...settings, requireQrForPunch: e.target.checked })} />} label="Require QR" />
               <FormControlLabel control={<Switch checked={settings.permanentOfficeQr} onChange={(e) => setSettings({ ...settings, permanentOfficeQr: e.target.checked })} />} label="Permanent office QR" />
             </Box>
           </Box>
         )}
+
+        {/* Push Notifications Section */}
+        <Box sx={{ ...cardSx, p: 2.25 }}>
+          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap", mb: 2 }}>
+            <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+              <Avatar sx={{ bgcolor: "rgba(59,130,246,0.1)", color: "#3B82F6", borderRadius: "8px" }}><NotificationsActiveRoundedIcon /></Avatar>
+              <Box>
+                <Typography sx={{ fontWeight: 950, fontSize: 22 }}>Push Notifications</Typography>
+                <Typography sx={{ color: "#64748B", fontSize: 13 }}>Configure browser push notifications for Admin alerts.</Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <FormControlLabel 
+                control={<Switch checked={pushEnabled} onChange={handleTogglePush} disabled={pushBusy} color="primary" />} 
+                label={<Typography sx={{ fontWeight: 700, fontSize: 14 }}>Enable Push</Typography>} 
+                sx={{ mr: 2 }}
+              />
+              <Button onClick={handleTestPush} disabled={!pushEnabled || pushBusy} variant="outlined" startIcon={<NotificationsActiveRoundedIcon />} sx={{ borderRadius: "8px", fontWeight: 800 }}>
+                Test Notification
+              </Button>
+            </Box>
+          </Box>
+          {!pushEnabled && (
+             <Box sx={{ bgcolor: "rgba(239,68,68,0.05)", p: 1.5, borderRadius: "8px", border: "1px solid rgba(239,68,68,0.2)" }}>
+               <Typography sx={{ fontSize: 13, color: "#991B1B" }}>Push notifications are currently disabled on this browser. Enable them to receive real-time admin alerts.</Typography>
+             </Box>
+          )}
+        </Box>
+        <ScheduledPushCard />
       </MotionBox>
+      
       <Drawer anchor="right" open={!!selectedEmployee} onClose={() => setSelectedEmployee(null)} PaperProps={{ sx: { width: { xs: "100%", sm: 520 }, p: 2.5 } }}>
         <Box sx={{ display: "grid", gap: 2 }}>
           <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
@@ -945,7 +1080,28 @@ export default function AdminPage() {
                 ].map(([label, value, bg, color]) => <Box key={String(label)} sx={{ borderRadius: "8px", bgcolor: String(bg), p: 1.25 }}><Typography sx={{ color: String(color), fontWeight: 900, fontSize: 11 }}>{label}</Typography><Typography sx={{ color: String(color), fontWeight: 950, fontSize: 22 }}>{value}</Typography></Box>)}
               </Box>
               <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5 }}>
-                <Typography sx={{ fontWeight: 950, mb: 1 }}>Profile and assignment</Typography>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                  <Typography sx={{ fontWeight: 950 }}>Profile and assignment</Typography>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    sx={{ borderRadius: '6px', py: 0.25, fontSize: 12, fontWeight: 800 }}
+                    onClick={() => {
+                      setEditEmployeeForm({
+                        id: employeeDetail.employee.id,
+                        employeeNumber: employeeDetail.employee.employeeNumber,
+                        name: employeeDetail.employee.name,
+                        companyRoleId: employeeDetail.employee.companyRole?.id ? String(employeeDetail.employee.companyRole.id) : "",
+                        departmentId: employeeDetail.employee.department?.id ? String(employeeDetail.employee.department.id) : "",
+                        shiftId: employeeDetail.employee.shift?.id ? String(employeeDetail.employee.shift.id) : "",
+                        officeLocationId: employeeDetail.employee.assignedOfficeLocation?.id ? String(employeeDetail.employee.assignedOfficeLocation.id) : "",
+                      });
+                      setEditEmployeeDialogOpen(true);
+                    }}
+                  >
+                    Edit Profile
+                  </Button>
+                </Box>
                 <Typography sx={{ color: "#475569", fontSize: 13 }}>Username: {employeeDetail.employee.username || "--"}</Typography>
                 <Typography sx={{ color: "#475569", fontSize: 13 }}>Role: {employeeDetail.employee.companyRole?.name || "Unassigned"}</Typography>
                 <Typography sx={{ color: "#475569", fontSize: 13 }}>Shift: {employeeDetail.employee.shift?.name || "Unassigned"}</Typography>
@@ -993,6 +1149,33 @@ export default function AdminPage() {
           ) : !detailBusy ? <Typography sx={{ color: "#64748B", fontSize: 13 }}>Open an employee to load detail.</Typography> : null}
         </Box>
       </Drawer>
+      <Dialog open={editEmployeeDialogOpen} onClose={() => setEditEmployeeDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900 }}>Edit Employee Profile</DialogTitle>
+        <Box sx={{ p: 3, pt: 1, display: "grid", gap: 2 }}>
+          <TextField size="small" label="Employee ID" value={editEmployeeForm.employeeNumber} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, employeeNumber: e.target.value })} fullWidth />
+          <TextField size="small" label="Full name" value={editEmployeeForm.name} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, name: e.target.value })} fullWidth />
+          <TextField select size="small" label="Role" value={editEmployeeForm.companyRoleId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, companyRoleId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {roles.map((r) => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Department" value={editEmployeeForm.departmentId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, departmentId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Shift" value={editEmployeeForm.shiftId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, shiftId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Default Office" value={editEmployeeForm.officeLocationId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, officeLocationId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {offices.map((o) => <MenuItem key={o.id} value={o.id}>{o.officeName || o.id}</MenuItem>)}
+          </TextField>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 1 }}>
+            <Button onClick={() => setEditEmployeeDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => updateEmployeeProfile().catch((err) => toastError(err?.response?.data?.error || "Failed to update profile"))} variant="contained" sx={{ fontWeight: 900 }}>Save Changes</Button>
+          </Box>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
