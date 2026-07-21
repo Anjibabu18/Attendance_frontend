@@ -190,6 +190,8 @@ export default function AdminPage() {
   const [pushBusy, setPushBusy] = useState(false);
 
   const [employeeForm, setEmployeeForm] = useState({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
+  const [editEmployeeForm, setEditEmployeeForm] = useState({ id: 0, employeeNumber: "", name: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
+  const [editEmployeeDialogOpen, setEditEmployeeDialogOpen] = useState(false);
 
   async function refresh() {
     setBusy(true);
@@ -559,6 +561,27 @@ export default function AdminPage() {
     setEmployeeForm({ employeeNumber: "", name: "", username: "", password: "", companyRoleId: "", departmentId: "", shiftId: "", officeLocationId: "" });
     toastSuccess("Employee created");
     await refresh();
+  }
+
+  async function updateEmployeeProfile() {
+    const { id, employeeNumber, name } = editEmployeeForm;
+    if (!employeeNumber.trim() || !name.trim()) return;
+    await api.post(`/api/admin/employees/${id}`, {
+      employeeNumber: employeeNumber.trim(),
+      name: name.trim(),
+      companyRoleId: editEmployeeForm.companyRoleId ? Number(editEmployeeForm.companyRoleId) : null,
+      departmentId: editEmployeeForm.departmentId ? Number(editEmployeeForm.departmentId) : null,
+      shiftId: editEmployeeForm.shiftId ? Number(editEmployeeForm.shiftId) : null,
+      officeLocationId: editEmployeeForm.officeLocationId ? Number(editEmployeeForm.officeLocationId) : null,
+    });
+    setEditEmployeeDialogOpen(false);
+    toastSuccess("Profile updated");
+    await refresh();
+    
+    // Refresh detail drawer if open
+    if (selectedEmployee && selectedEmployee.id === id) {
+      loadEmployeeDetail(selectedEmployee);
+    }
   }
 
   async function saveSettings() {
@@ -1057,7 +1080,28 @@ export default function AdminPage() {
                 ].map(([label, value, bg, color]) => <Box key={String(label)} sx={{ borderRadius: "8px", bgcolor: String(bg), p: 1.25 }}><Typography sx={{ color: String(color), fontWeight: 900, fontSize: 11 }}>{label}</Typography><Typography sx={{ color: String(color), fontWeight: 950, fontSize: 22 }}>{value}</Typography></Box>)}
               </Box>
               <Box sx={{ border: "1px solid #E2E8F0", borderRadius: "8px", p: 1.5 }}>
-                <Typography sx={{ fontWeight: 950, mb: 1 }}>Profile and assignment</Typography>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1 }}>
+                  <Typography sx={{ fontWeight: 950 }}>Profile and assignment</Typography>
+                  <Button 
+                    size="small" 
+                    variant="outlined" 
+                    sx={{ borderRadius: '6px', py: 0.25, fontSize: 12, fontWeight: 800 }}
+                    onClick={() => {
+                      setEditEmployeeForm({
+                        id: employeeDetail.employee.id,
+                        employeeNumber: employeeDetail.employee.employeeNumber,
+                        name: employeeDetail.employee.name,
+                        companyRoleId: employeeDetail.employee.companyRole?.id ? String(employeeDetail.employee.companyRole.id) : "",
+                        departmentId: employeeDetail.employee.department?.id ? String(employeeDetail.employee.department.id) : "",
+                        shiftId: employeeDetail.employee.shift?.id ? String(employeeDetail.employee.shift.id) : "",
+                        officeLocationId: employeeDetail.employee.assignedOfficeLocation?.id ? String(employeeDetail.employee.assignedOfficeLocation.id) : "",
+                      });
+                      setEditEmployeeDialogOpen(true);
+                    }}
+                  >
+                    Edit Profile
+                  </Button>
+                </Box>
                 <Typography sx={{ color: "#475569", fontSize: 13 }}>Username: {employeeDetail.employee.username || "--"}</Typography>
                 <Typography sx={{ color: "#475569", fontSize: 13 }}>Role: {employeeDetail.employee.companyRole?.name || "Unassigned"}</Typography>
                 <Typography sx={{ color: "#475569", fontSize: 13 }}>Shift: {employeeDetail.employee.shift?.name || "Unassigned"}</Typography>
@@ -1105,6 +1149,33 @@ export default function AdminPage() {
           ) : !detailBusy ? <Typography sx={{ color: "#64748B", fontSize: 13 }}>Open an employee to load detail.</Typography> : null}
         </Box>
       </Drawer>
+      <Dialog open={editEmployeeDialogOpen} onClose={() => setEditEmployeeDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900 }}>Edit Employee Profile</DialogTitle>
+        <Box sx={{ p: 3, pt: 1, display: "grid", gap: 2 }}>
+          <TextField size="small" label="Employee ID" value={editEmployeeForm.employeeNumber} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, employeeNumber: e.target.value })} fullWidth />
+          <TextField size="small" label="Full name" value={editEmployeeForm.name} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, name: e.target.value })} fullWidth />
+          <TextField select size="small" label="Role" value={editEmployeeForm.companyRoleId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, companyRoleId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {roles.map((r) => <MenuItem key={r.id} value={r.id}>{r.name}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Department" value={editEmployeeForm.departmentId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, departmentId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {departments.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Shift" value={editEmployeeForm.shiftId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, shiftId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {shifts.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+          </TextField>
+          <TextField select size="small" label="Default Office" value={editEmployeeForm.officeLocationId} onChange={(e) => setEditEmployeeForm({ ...editEmployeeForm, officeLocationId: e.target.value })}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {offices.map((o) => <MenuItem key={o.id} value={o.id}>{o.officeName || o.id}</MenuItem>)}
+          </TextField>
+          <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 1 }}>
+            <Button onClick={() => setEditEmployeeDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => updateEmployeeProfile().catch((err) => toastError(err?.response?.data?.error || "Failed to update profile"))} variant="contained" sx={{ fontWeight: 900 }}>Save Changes</Button>
+          </Box>
+        </Box>
+      </Dialog>
     </Box>
   );
 }
