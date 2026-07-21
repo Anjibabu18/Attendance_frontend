@@ -67,6 +67,7 @@ const views = [
 ];
 
 export default function RealtimeBoard(props: { month: string }) {
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [board, setBoard] = useState<Board | null>(null);
   const [payroll, setPayroll] = useState<PayrollPreview | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -85,7 +86,7 @@ export default function RealtimeBoard(props: { month: string }) {
     if (!boardAllowed) return;
     setLoading(true);
     try {
-      const res = await api.get<Board>("/api/realtime/board");
+      const res = await api.get<Board>("/api/realtime/board", { params: { date } });
       setBoard(res.data);
       setErr(null);
     } catch (e: any) {
@@ -125,7 +126,7 @@ export default function RealtimeBoard(props: { month: string }) {
     if (!boardAllowed) return;
     refreshAll();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [boardAllowed, props.month]);
+  }, [boardAllowed, props.month, date]);
 
   useEffect(() => {
     const token = getAuth()?.token;
@@ -202,6 +203,8 @@ export default function RealtimeBoard(props: { month: string }) {
         loading={loading}
         pushState={pushState}
         view={view}
+        date={date}
+        onDate={setDate}
         onView={setView}
         onRefresh={() => refreshAll().catch(() => { })}
         onExport={() => exportPayroll().catch(() => { })}
@@ -247,6 +250,8 @@ function BoardHeader(props: {
   loading: boolean;
   pushState: "connecting" | "live" | "fallback";
   view: string;
+  date: string;
+  onDate: (value: string) => void;
   onView: (value: string) => void;
   onRefresh: () => void;
   onExport: () => void;
@@ -274,6 +279,15 @@ function BoardHeader(props: {
         </Typography>
       </Box>
       <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap", justifyContent: { xs: "flex-start", lg: "flex-end" } }}>
+        <TextField
+          type="date"
+          size="small"
+          value={props.date}
+          onChange={(e) => props.onDate(e.target.value)}
+          sx={{ 
+            "& .MuiInputBase-root": { borderRadius: "10px", height: 36, bgcolor: (theme) => theme.palette.mode === 'light' ? "#ffffff" : "#0f172a" } 
+          }}
+        />
         <ToggleButtonGroup
           exclusive
           size="small"
@@ -283,10 +297,10 @@ function BoardHeader(props: {
         >
           {views.map((v) => <ToggleButton key={v.id} value={v.id}>{v.label}</ToggleButton>)}
         </ToggleButtonGroup>
-        <Button startIcon={<RefreshIcon />} variant="outlined" onClick={props.onRefresh} disabled={props.loading}>
+        <Button startIcon={<RefreshIcon />} variant="outlined" onClick={props.onRefresh} disabled={props.loading} sx={{ height: 36, borderRadius: "10px", fontWeight: 800 }}>
           Refresh
         </Button>
-        <Button startIcon={<FileDownloadIcon />} variant="contained" onClick={props.onExport}>
+        <Button startIcon={<FileDownloadIcon />} variant="contained" onClick={props.onExport} sx={{ height: 36, borderRadius: "10px", fontWeight: 800 }}>
           CSV
         </Button>
       </Box>
