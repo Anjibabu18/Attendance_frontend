@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
-import AnalyticsPanel from "../components/AnalyticsPanel";
+
 import AppCard from "../components/AppCard";
 import DashboardHero from "../components/DashboardHero";
 import Layout from "../components/Layout";
@@ -727,10 +727,6 @@ export default function HrPage() {
         </div>
 
         <RealtimeBoard month={month} />
-
-        {analytics ? (
-          <AnalyticsPanel title="Company analytics" subtitle={`Attendance movement for ${month}`} analytics={analytics} />
-        ) : null}
 
         <AppCard>
           <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "flex-start", flexWrap: "wrap" }}>
