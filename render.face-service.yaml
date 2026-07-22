@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: attendance-face-service
+    env: docker
+    plan: starter
+    rootDir: face-service
+    healthCheckPath: /health
+    envVars:
+      - key: FACE_MODEL_NAME
+        value: Facenet512
+      - key: FACE_DETECTOR_BACKEND
+        value: opencv
+      - key: FACE_DISTANCE_METRIC
+        value: cosine
+      - key: FACE_MIN_SCORE
+        value: "0.70"
+      - key: FACE_MIN_BRIGHTNESS
+        value: "35"
+      - key: FACE_MIN_BLUR
+        value: "18"
+      - key: FACE_MIN_FACE_AREA_RATIO
+        value: "0.015"

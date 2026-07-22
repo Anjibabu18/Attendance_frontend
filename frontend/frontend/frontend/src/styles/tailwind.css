@@ -1,0 +1,261 @@
+/* Google Fonts: keep before Tailwind */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --app-bg: #f0f4ff;
+    --app-surface: #ffffff;
+    --app-line: #e2e8f0;
+    --app-ink: #0f172a;
+    --app-muted: #64748b;
+    --app-blue: #2563eb;
+    --app-indigo: #4f46e5;
+    --app-teal: #0f766e;
+    --app-violet: #7c3aed;
+    --app-shadow: 0 10px 40px rgba(15, 23, 42, 0.10);
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    color: var(--app-ink);
+    background: var(--app-bg);
+  }
+
+  * {
+    @apply border-slate-200;
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  
+  body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+    color: var(--app-ink);
+    background:
+      radial-gradient(ellipse 80% 50% at 20% -10%, rgba(99, 102, 241, 0.12) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(15, 118, 110, 0.10) 0%, transparent 60%),
+      linear-gradient(180deg, #eef2ff 0px, #f0f4ff 300px, #f4f7fb 100%);
+    background-attachment: fixed;
+  }
+
+  
+  .app-shell {
+    min-height: 100vh;
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.6) 0px, transparent 300px),
+      linear-gradient(90deg, rgba(99,102,241,0.025) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(99,102,241,0.025) 1px, transparent 1px),
+      transparent;
+    background-size: auto, 48px 48px, 48px 48px, auto;
+  }
+
+  
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: rgba(226,232,240,0.5); border-radius: 99px; }
+  *::-webkit-scrollbar-thumb { background: linear-gradient(180deg, #94a3b8, #cbd5e1); border-radius: 99px; border: 2px solid transparent; background-clip: content-box; }
+  *::-webkit-scrollbar-thumb:hover { background: linear-gradient(180deg, #64748b, #94a3b8); background-clip: content-box; }
+
+  #root { min-height: 100vh; }
+
+  img, video, canvas { max-width: 100%; }
+
+  .MuiTypography-root,
+  .MuiButton-root,
+  .MuiChip-label,
+  .MuiInputBase-input { min-width: 0; }
+
+  ::selection { background: rgba(99, 102, 241, 0.18); color: #0f172a; }
+
+  
+
+  /* Page entrance */
+  @keyframes attendancePageIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  /* Card fade up */
+  @keyframes attendanceFadeUp {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+  }
+
+  /* Float loop */
+  @keyframes attendanceFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%       { transform: translateY(-10px) scale(1.02); }
+  }
+
+  /* Scan line */
+  @keyframes attendanceScan {
+    0%   { top: 8%; opacity: 0.6; }
+    50%  { top: 82%; opacity: 1;   }
+    100% { top: 8%; opacity: 0.6; }
+  }
+
+  /* Pulse ring */
+  @keyframes pulseRing {
+    0%   { transform: scale(0.9); opacity: 0.8; }
+    50%  { transform: scale(1.1); opacity: 0.3; }
+    100% { transform: scale(0.9); opacity: 0.8; }
+  }
+
+  /* Live dot */
+  @keyframes livePulse {
+    0%, 100% { transform: scale(0.85); opacity: 0.5; }
+    50%       { transform: scale(1.25); opacity: 1;   }
+  }
+
+  /* Shimmer (loading skeleton) */
+  @keyframes shimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position:  400px 0; }
+  }
+
+  /* Slide up with stagger */
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  /* Slide in from right */
+  @keyframes slideInRight {
+    from { opacity: 0; transform: translateX(30px); }
+    to   { opacity: 1; transform: translateX(0);    }
+  }
+
+  /* Count bounce on digit change */
+  @keyframes countBounce {
+    0%, 100% { transform: scale(1); }
+    15%       { transform: scale(1.08) translateY(-2px); }
+    30%       { transform: scale(0.96); }
+  }
+
+  /* Gradient rotate */
+  @keyframes gradientRotate {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Progress shrink for toast */
+  @keyframes toastShrink {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+  }
+
+  /* Glow pulse */
+  @keyframes glowPulse {
+    0%, 100% { box-shadow: 0 0 20px rgba(99,102,241,0.3); }
+    50%       { box-shadow: 0 0 40px rgba(99,102,241,0.6); }
+  }
+
+  /* Blob morph */
+  @keyframes blobMorph {
+    0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+    25%       { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+    50%       { border-radius: 50% 60% 30% 60% / 30% 40% 70% 50%; }
+    75%       { border-radius: 40% 60% 50% 30% / 60% 40% 50% 60%; }
+  }
+
+  /* Dash run */
+  @keyframes dashRun {
+    to { stroke-dashoffset: 0; }
+  }
+
+  
+
+  /* Staggered card animations */
+  .stat-card-anim { animation: slideUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+  .stat-card-anim:nth-child(1) { animation-delay: 0.05s; }
+  .stat-card-anim:nth-child(2) { animation-delay: 0.10s; }
+  .stat-card-anim:nth-child(3) { animation-delay: 0.15s; }
+  .stat-card-anim:nth-child(4) { animation-delay: 0.20s; }
+  .stat-card-anim:nth-child(5) { animation-delay: 0.25s; }
+  .stat-card-anim:nth-child(6) { animation-delay: 0.30s; }
+  .stat-card-anim:nth-child(7) { animation-delay: 0.35s; }
+  .stat-card-anim:nth-child(8) { animation-delay: 0.40s; }
+
+  /* Section enter */
+  .emp-section { animation: slideUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+
+  /* Nav button slide */
+  .emp-nav-btn { transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) !important; }
+  .emp-nav-btn:hover { transform: translateX(3px) !important; }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #0f766e 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass surface */
+  .glass {
+    background: rgba(255, 255, 255, 0.80);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.55);
+  }
+
+  /* Shimmer loading skeleton */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f4ff 25%, #e8eeff 50%, #f0f4ff 75%);
+    background-size: 400px 100%;
+    animation: shimmer 1.6s infinite;
+    border-radius: 8px;
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: -1.5px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #2563eb, #7c3aed, #0f766e);
+    background-size: 200% 200%;
+    animation: gradientRotate 4s ease infinite;
+    z-index: -1;
+  }
+
+  /* Hover lift */
+  .hover-lift {
+    transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.25s ease !important;
+  }
+  .hover-lift:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.14) !important;
+  }
+
+  
+  @media (max-width: 640px) {
+    body { background-attachment: scroll; }
+    .MuiButton-root { min-height: 42px; }
+    .MuiDialog-paper { margin: 10px; width: calc(100% - 20px); }
+  }
+
+  
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
