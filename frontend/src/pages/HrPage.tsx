@@ -1146,7 +1146,10 @@ export default function HrPage() {
                   onChange={(_, v) => setEmployeeId(v ? v.id : "")}
                   renderOption={(props, opt) => (
                     <Box component="li" {...props} sx={{ display: "flex", alignItems: "center", gap: 1.5, py: 1 }}>
-                      <Avatar src={opt.profilePhotoUrl || opt.companyRole?.photoUrl || undefined} sx={{ width: 32, height: 32 }}>
+                      <Avatar 
+                        src={(opt.profilePhotoUrl?.trim() ? opt.profilePhotoUrl : undefined) || (opt.companyRole?.photoUrl?.trim() ? opt.companyRole.photoUrl : undefined)} 
+                        sx={{ width: 32, height: 32, bgcolor: "primary.main", color: "white", fontSize: 14, fontWeight: 900 }}
+                      >
                         {opt.name[0]}
                       </Avatar>
                       <Box sx={{ flexGrow: 1, minWidth: 0 }}>
@@ -1166,7 +1169,10 @@ export default function HrPage() {
                 {selected ? (
                   <AppCard contentSx={{ p: 2, "&:last-child": { pb: 2 } }}>
                     <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-                      <Avatar src={selected.profilePhotoUrl || selected.companyRole?.photoUrl || undefined} sx={{ width: 52, height: 52 }}>
+                      <Avatar 
+                        src={(selected.profilePhotoUrl?.trim() ? selected.profilePhotoUrl : undefined) || (selected.companyRole?.photoUrl?.trim() ? selected.companyRole.photoUrl : undefined)} 
+                        sx={{ width: 52, height: 52, bgcolor: "primary.main", color: "white", fontWeight: 900 }}
+                      >
                         {selected.name[0]}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>

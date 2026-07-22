@@ -344,7 +344,10 @@ export default function ManagerPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <Avatar src={employee.profilePhotoUrl || employee.companyRole?.photoUrl || undefined} sx={{ width: 44, height: 44 }}>
+                    <Avatar 
+                      src={(employee.profilePhotoUrl?.trim() ? employee.profilePhotoUrl : undefined) || (employee.companyRole?.photoUrl?.trim() ? employee.companyRole.photoUrl : undefined)} 
+                      sx={{ width: 44, height: 44, bgcolor: "primary.main", color: "white", fontWeight: 900 }}
+                    >
                       {employee.name[0]}
                     </Avatar>
                     <Box sx={{ minWidth: 0 }}>
