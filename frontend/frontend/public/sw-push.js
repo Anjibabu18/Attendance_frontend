@@ -13,8 +13,9 @@ self.addEventListener('push', function(event) {
       vibrate: [200, 100, 200, 100, 200],
       data: {
         url: data.url || '/employee',
+        ...data.data
       },
-      actions: [
+      actions: data.actions || [
         { action: 'open', title: 'Open App' },
       ],
       tag: data.tag || 'attendance-notification',

@@ -7,8 +7,9 @@ const PUSH_ENABLED_KEY = 'attendance_push_enabled_v1';
  * Convert a base64 VAPID key to Uint8Array for the browser API
  */
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const cleanStr = base64String.trim();
+  const padding = '='.repeat((4 - (cleanStr.length % 4)) % 4);
+  const base64 = (cleanStr + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = window.atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
@@ -89,9 +90,19 @@ export async function enablePushNotifications(): Promise<boolean> {
 
     localStorage.setItem(PUSH_ENABLED_KEY, 'true');
     return true;
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Push] Enable failed:', error);
-    throw error;
+    
+    // Provide a more descriptive error if it's an HTTP context issue
+    if (error.name === 'NotAllowedError' || error.message.includes('permission denied')) {
+      throw new Error('You must allow notifications in your browser settings.');
+    }
+    
+    if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+      throw new Error('Push notifications require HTTPS or localhost. If you are on a local network IP, it will not work.');
+    }
+
+    throw new Error(error.response?.data?.error || error.message || 'Unknown push setup error');
   }
 }
 

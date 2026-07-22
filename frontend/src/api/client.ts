@@ -62,8 +62,13 @@ api.interceptors.response.use(
     const method = err?.config?.method;
     const isLoginRequest = url && (url.includes("/api/auth/login") || url.includes("/api/auth/refresh"));
 
-    if (status === 401 && !isLoginRequest && !originalRequest._retry) {
+    const hasRetried = originalRequest._retry || originalRequest.headers?.['x-retry'] === 'true';
+
+    if (status === 401 && !isLoginRequest && !hasRetried) {
       originalRequest._retry = true;
+      if (!originalRequest.headers) originalRequest.headers = new AxiosHeaders();
+      (originalRequest.headers as any)['x-retry'] = 'true';
+      
       const auth = getAuth();
       if (auth?.refreshToken) {
         try {

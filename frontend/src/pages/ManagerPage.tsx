@@ -21,6 +21,7 @@ import { api } from "../api/client";
 import { useToast } from "../components/Toast";
 import AppCard from "../components/AppCard";
 import DashboardHero from "../components/DashboardHero";
+import { EmptyState } from "../components/EmptyState";
 import Layout from "../components/Layout";
 import StatCard from "../components/StatCard";
 import { GlobalLoader } from "../components/GlobalLoader";
@@ -30,6 +31,7 @@ type Employee = {
   employeeNumber: string;
   name: string;
   loginRole: string;
+  profilePhotoUrl?: string | null;
   companyRole?: { name?: string | null; photoUrl?: string | null } | null;
   assignedOfficeLocation?: { officeName?: string | null } | null;
   status?: string | null;
@@ -342,7 +344,7 @@ export default function ManagerPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <Avatar src={employee.companyRole?.photoUrl ?? undefined} sx={{ width: 44, height: 44 }}>
+                    <Avatar src={employee.profilePhotoUrl ?? employee.companyRole?.photoUrl ?? undefined} sx={{ width: 44, height: 44 }}>
                       {employee.name[0]}
                     </Avatar>
                     <Box sx={{ minWidth: 0 }}>
@@ -365,7 +367,7 @@ export default function ManagerPage() {
                   </Box>
                 ))
               ) : (
-                <Typography sx={{ opacity: 0.72, fontSize: 13 }}>No team members match this search yet.</Typography>
+                <EmptyState title="No Team Members Found" description="No team members match this search yet." icon={<GroupsIcon fontSize="large" />} />
               )}
             </Box>
           </AppCard>
@@ -437,7 +439,7 @@ export default function ManagerPage() {
                   </Box>
                 ))
               ) : (
-                <Typography sx={{ opacity: 0.72, fontSize: 13 }}>No requests are waiting for manager action.</Typography>
+                <EmptyState title="All Caught Up!" description="No requests are waiting for manager action." icon={<PendingActionsIcon fontSize="large" />} />
               )}
             </Box>
           </AppCard>
@@ -489,7 +491,7 @@ export default function ManagerPage() {
                 </Box>
               );
             })}
-            {!teamAttendance.length ? <Typography sx={{ opacity: 0.72, fontSize: 13 }}>No team attendance available.</Typography> : null}
+            {!teamAttendance.length ? <EmptyState title="No Attendance Data" description="No team attendance available." icon={<WorkHistoryIcon fontSize="large" />} /> : null}
           </Box>
         </AppCard>
         <AppCard>
@@ -598,7 +600,7 @@ export default function ManagerPage() {
           {selectedEmployee ? (
             <>
               <Box sx={{ display: "grid", gridTemplateColumns: "56px 1fr", gap: 1.2, alignItems: "center" }}>
-                <Avatar src={selectedEmployee.companyRole?.photoUrl ?? undefined} sx={{ width: 56, height: 56 }}>
+                <Avatar src={selectedEmployee.profilePhotoUrl ?? selectedEmployee.companyRole?.photoUrl ?? undefined} sx={{ width: 56, height: 56 }}>
                   {selectedEmployee.name[0]}
                 </Avatar>
                 <Box>
