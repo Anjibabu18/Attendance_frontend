@@ -1475,9 +1475,11 @@ export default function HrPage() {
                         >
                           {letter}
                         </Typography>
-                        <Typography sx={{ fontWeight: 900, width: 110 }}>{e.date}</Typography>
+                        <Typography sx={{ fontWeight: 900, width: 110 }}>
+                          {typeof e.date === "string" ? e.date.split("T")[0] : e.date}
+                        </Typography>
                         <Typography sx={{ opacity: 0.85, width: 170 }}>
-                          {e.inTime ?? "--"} {"->"} {e.outTime ?? "--"}
+                          {e.inTime ? (e.inTime.includes("T") ? e.inTime.substring(11, 16) : e.inTime.substring(0, 5)) : "--"} {"->"} {e.outTime ? (e.outTime.includes("T") ? e.outTime.substring(11, 16) : e.outTime.substring(0, 5)) : "--"}
                           {e.inTime && e.outTime && e.outTime.startsWith("23:59") && e.checkOutFaceVerified == null && (
                             <span style={{ color: "#b45309", fontSize: 10, fontWeight: 900, display: "block" }}>
                               (Auto-Checkout)
