@@ -591,7 +591,7 @@ export function PunchOverlay({
                 pointerEvents: 'none'
               }
             }}>
-              <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               
               {/* Corner Markers */}
               <Box sx={{ position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderTop: '4px solid #3B82F6', borderLeft: '4px solid #3B82F6', borderTopLeftRadius: 12, zIndex: 3 }} />
@@ -669,7 +669,7 @@ export function PunchOverlay({
               }
             }}>
               <Box sx={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative', bgcolor: '#0F172A' }}>
-                <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
                 <Box sx={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
                 
                 {/* Scanning overlay effect */}

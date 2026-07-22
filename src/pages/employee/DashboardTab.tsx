@@ -485,11 +485,12 @@ export function DashboardTab() {
                 </Box>
               </Box>
 
-              {/* Today's punch times */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+              {/* Today's punch times & OT */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: isOvertime ? '1fr 1fr 1fr' : '1fr 1fr', gap: 1 }}>
                 {[
                   { label: 'In', value: timeLabel(todayEntry?.inTime), color: '#22c55e' },
                   { label: 'Out', value: timeLabel(todayEntry?.outTime), color: '#ef4444' },
+                  ...(isOvertime ? [{ label: 'OT', value: `${ot.h}h ${ot.m}m`, color: '#f59e0b' }] : []),
                 ].map(({ label, value, color }) => (
                   <Box key={label} sx={{ bgcolor: 'rgba(255,255,255,0.07)', borderRadius: '12px', p: 1.25, textAlign: 'center' }}>
                     <Typography sx={{ color: 'rgba(148,163,184,0.7)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</Typography>
@@ -731,6 +732,9 @@ export function DashboardTab() {
                       <Typography sx={{ fontWeight: 800, fontSize: 11, color: statusColor }}>{item.status.replace('_', ' ')}</Typography>
                     </Box>
                     <Typography sx={{ fontWeight: 900, fontSize: 13, color: 'text.secondary' }}>{minutesLabel(item.workedMinutes)}</Typography>
+                    {(item.overtimeMinutes ?? 0) > 0 && (
+                      <Typography sx={{ fontWeight: 900, fontSize: 11, color: '#f59e0b' }}>OT: {minutesLabel(item.overtimeMinutes)}</Typography>
+                    )}
                   </Box>
                 </MotionBox>
               );

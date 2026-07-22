@@ -217,8 +217,8 @@ export default function HrPage() {
 
   async function loadEmployees() {
     const res = await api.get<Employee[]>("/api/hr/employees");
-    setEmployees(res.data);
-    if (res.data.length && employeeId === "") setEmployeeId(res.data[0].id);
+    setEmployees(res.data || []);
+    if ((res.data || []).length && employeeId === "") setEmployeeId(res.data[0].id);
   }
 
   async function loadSettings() {
@@ -230,42 +230,42 @@ export default function HrPage() {
 
   async function loadHolidays(m: string) {
     const res = await api.get<Holiday[]>("/api/holidays", { params: { month: m } });
-    setHolidays(res.data);
+    setHolidays(res.data || []);
   }
 
   async function loadDailyPhotos(m: string) {
     const res = await api.get<DailyGroupPhoto[]>("/api/daily-group-photos", { params: { month: m } });
-    setDailyPhotos(res.data);
+    setDailyPhotos(res.data || []);
   }
 
   async function loadPendingLeaveRequests() {
     const res = await api.get<LeaveRequest[]>("/api/hr/leave-requests/pending");
-    setPendingLeaveRequests(res.data);
+    setPendingLeaveRequests(res.data || []);
   }
 
   async function loadPendingRegularizationRequests() {
     const res = await api.get<RegularizationRequest[]>("/api/hr/regularization-requests/pending");
-    setPendingRegularizationRequests(res.data);
+    setPendingRegularizationRequests(res.data || []);
   }
 
   async function loadPendingWorkRequests() {
     const res = await api.get<WorkRequest[]>("/api/hr/work-requests/pending");
-    setPendingWorkRequests(res.data);
+    setPendingWorkRequests(res.data || []);
   }
 
   async function loadPendingCompOffRequests() {
     const res = await api.get<CompOffRequest[]>("/api/hr/comp-off-requests/pending");
-    setPendingCompOffRequests(res.data);
+    setPendingCompOffRequests(res.data || []);
   }
 
   async function loadPendingDeviceRequests() {
     const res = await api.get<DeviceRequest[]>("/api/hr/device-requests/pending");
-    setPendingDeviceRequests(res.data);
+    setPendingDeviceRequests(res.data || []);
   }
 
   async function loadExceptions() {
     const res = await api.get<ExceptionItem[]>("/api/hr/exceptions");
-    setAttendanceExceptions(res.data);
+    setAttendanceExceptions(res.data || []);
   }
 
   async function loadPayroll(m: string) {
@@ -273,7 +273,7 @@ export default function HrPage() {
       api.get<PayrollRow[]>("/api/hr/payroll", { params: { month: m } }),
       api.get<PayrollLock>("/api/hr/payroll-lock", { params: { month: m } }),
     ]);
-    setPayrollRows(rows.data);
+    setPayrollRows(rows.data || []);
     setPayrollLock(lock.data);
   }
 
@@ -423,7 +423,7 @@ export default function HrPage() {
 
   async function loadAttendance(empId: number, m: string) {
     const res = await api.get<Attendance[]>("/api/hr/attendance", { params: { employeeId: empId, month: m } });
-    setEntries(res.data);
+    setEntries(res.data || []);
   }
 
   async function loadSummary(empId: number, m: string) {
@@ -501,7 +501,7 @@ export default function HrPage() {
       entryMap[e.date] = e.status === "PRESENT" ? "P" : e.status === "HALF_DAY" ? "HD" : "L";
     }
 
-    const holidaySet = new Set(holidays.map((h) => h.date));
+    const holidaySet = new Set((holidays || []).map((h) => h.date));
     const weekendSet = new Set(
       (settings?.weekendDays ?? "SUNDAY")
         .split(",")
@@ -653,11 +653,11 @@ export default function HrPage() {
     [payrollRows],
   );
   const inboxItems = useMemo(() => {
-    const leave = pendingLeaveRequests.map((item) => ({ kind: "LEAVE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.mailSubject || item.leaveType || "Leave request", status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const work = pendingWorkRequests.map((item) => ({ kind: "WFH" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.type.replaceAll("_", " "), status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const corrections = pendingRegularizationRequests.map((item) => ({ kind: "CORRECTION" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Attendance correction", status: item.status, summary: `${item.date} | ${item.inTime ?? "--"} -> ${item.outTime ?? "--"}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const comp = pendingCompOffRequests.map((item) => ({ kind: "COMP_OFF" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Comp-off request", status: item.status, summary: `${item.overtimeDate} -> ${item.requestedDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
-    const devices = pendingDeviceRequests.map((item) => ({ kind: "DEVICE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.username, employeeNumber: "Device", title: item.label || "Registered device", status: item.approved ? "APPROVED" : "PENDING", summary: item.deviceId, reason: "Device approval request", raw: item }));
+    const leave = (pendingLeaveRequests || []).map((item) => ({ kind: "LEAVE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.mailSubject || item.leaveType || "Leave request", status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const work = (pendingWorkRequests || []).map((item) => ({ kind: "WFH" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: item.type.replaceAll("_", " "), status: item.status, summary: `${item.fromDate} -> ${item.toDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const corrections = (pendingRegularizationRequests || []).map((item) => ({ kind: "CORRECTION" as const, id: item.id, createdAt: item.createdAt, employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Attendance correction", status: item.status, summary: `${item.date} | ${item.inTime ?? "--"} -> ${item.outTime ?? "--"}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const comp = (pendingCompOffRequests || []).map((item) => ({ kind: "COMP_OFF" as const, id: item.id, createdAt: item.createdAt ?? "", employeeName: item.employeeName, employeeNumber: item.employeeNumber, title: "Comp-off request", status: item.status, summary: `${item.overtimeDate} -> ${item.requestedDate}`, reason: item.reason, attachmentUrl: item.attachmentUrl, attachmentName: item.attachmentName, raw: item }));
+    const devices = (pendingDeviceRequests || []).map((item) => ({ kind: "DEVICE" as const, id: item.id, createdAt: item.createdAt, employeeName: item.username, employeeNumber: "Device", title: item.label || "Registered device", status: item.approved ? "APPROVED" : "PENDING", summary: item.deviceId, reason: "Device approval request", raw: item }));
     return [...leave, ...work, ...corrections, ...comp, ...devices]
       .filter((item) => inboxFilter === "ALL" || item.kind === inboxFilter)
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
@@ -757,7 +757,7 @@ export default function HrPage() {
           </Box>
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: "grid", gap: 1 }}>
-            {payrollRows.slice(0, 8).map((row) => (
+            { (payrollRows || []).slice(0, 8).map((row) => (
               <Box key={row.employeeId} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "190px 100px 110px 110px 110px 110px 110px" }, gap: 1, alignItems: "center", p: 1.25, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#ffffff" }}>
                 <Box>
                   <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{row.employeeName}</Typography>
@@ -819,7 +819,7 @@ export default function HrPage() {
             <Tab value="DEVICE" label={`Device (${pendingDeviceRequests.length})`} />
           </Tabs>
           <Box sx={{ mt: 2, display: "grid", gap: 1 }}>
-            {inboxItems.slice(0, 12).map((item) => (
+            { (inboxItems || []).slice(0, 12).map((item) => (
               <Box
                 key={`${item.kind}-${item.id}`}
                 onClick={() => setSelectedInboxItem(item)}
@@ -867,7 +867,7 @@ export default function HrPage() {
           </Box>
           <Divider sx={{ my: 2 }} />
           <Box sx={{ display: "grid", gap: 1 }}>
-            {attendanceExceptions.slice(0, 10).map((item) => (
+            { (attendanceExceptions || []).slice(0, 10).map((item) => (
               <Box key={item.id} sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "170px 180px 1fr auto" }, gap: 1, alignItems: "center", p: 1.2, border: "1px solid #e5e7eb", borderRadius: 1, bgcolor: "#fffaf5" }}>
                 <Chip size="small" label={item.type.replaceAll("_", " ")} color="warning" sx={{ borderRadius: 1, fontWeight: 900, justifySelf: "start" }} />
                 <Typography sx={{ fontWeight: 900, fontSize: 13 }}>
@@ -901,7 +901,7 @@ export default function HrPage() {
 
               {pendingLeaveRequests.length ? (
                 <Box sx={{ display: "grid", gap: 1.25 }}>
-                  {pendingLeaveRequests.slice(0, 8).map((r) => (
+                  { (pendingLeaveRequests || []).slice(0, 8).map((r) => (
                     <Box
                       key={r.id}
                       sx={{
@@ -989,7 +989,7 @@ export default function HrPage() {
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1.25 }}>
-                {pendingRegularizationRequests.slice(0, 8).map((r) => (
+                { (pendingRegularizationRequests || []).slice(0, 8).map((r) => (
                   <Box key={r.id} sx={{ borderRadius: 1, border: "1px solid #e5e7eb", p: 1.25, background: "#f9fafb" }}>
                     <Typography sx={{ fontWeight: 950, fontSize: 13 }}>
                       {r.employeeName} ({r.employeeNumber}) | {r.date}
@@ -1034,7 +1034,7 @@ export default function HrPage() {
               </Box>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1.25 }}>
-                {pendingWorkRequests.slice(0, 8).map((r) => (
+                { (pendingWorkRequests || []).slice(0, 8).map((r) => (
                   <Box key={r.id} sx={{ borderRadius: 1, border: "1px solid #e5e7eb", p: 1.25, background: "#ffffff", display: "grid", gap: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, alignItems: "flex-start", flexWrap: "wrap" }}>
                       <Box>
@@ -1086,7 +1086,7 @@ export default function HrPage() {
               </Box>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1.25 }}>
-                {pendingCompOffRequests.slice(0, 8).map((r) => (
+                { (pendingCompOffRequests || []).slice(0, 8).map((r) => (
                   <Box key={r.id} sx={{ borderRadius: 1, border: "1px solid #e5e7eb", p: 1.25, background: "#ffffff", display: "grid", gap: 1 }}>
                     <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1, flexWrap: "wrap" }}>
                       <Box>
@@ -1444,7 +1444,7 @@ export default function HrPage() {
               </Typography>
               <Divider sx={{ my: 2 }} />
               <Box sx={{ display: "grid", gap: 1 }}>
-                {entries
+                {(entries || [])
                   .slice()
                   .sort((a, b) => a.date.localeCompare(b.date))
                   .map((e) => {
@@ -1657,6 +1657,7 @@ function workRequestStatusColor(status: WorkRequest["status"]): "default" | "suc
   if (status === "MANAGER_RECOMMENDED") return "info";
   return "warning";
 }
+
 
 
 

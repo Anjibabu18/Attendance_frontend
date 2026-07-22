@@ -9,7 +9,7 @@ import dayjs from "dayjs";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api/client";
 import { useToast } from "../components/Toast";
-import AnalyticsPanel from "../components/AnalyticsPanel";
+
 import AppCard from "../components/AppCard";
 import DashboardHero from "../components/DashboardHero";
 import Layout from "../components/Layout";
@@ -217,8 +217,8 @@ export default function HrPage() {
 
   async function loadEmployees() {
     const res = await api.get<Employee[]>("/api/hr/employees");
-    setEmployees(res.data);
-    if (res.data.length && employeeId === "") setEmployeeId(res.data[0].id);
+    setEmployees(res.data || []);
+    if ((res.data || []).length && employeeId === "") setEmployeeId(res.data[0].id);
   }
 
   async function loadSettings() {
@@ -230,42 +230,42 @@ export default function HrPage() {
 
   async function loadHolidays(m: string) {
     const res = await api.get<Holiday[]>("/api/holidays", { params: { month: m } });
-    setHolidays(res.data);
+    setHolidays(res.data || []);
   }
 
   async function loadDailyPhotos(m: string) {
     const res = await api.get<DailyGroupPhoto[]>("/api/daily-group-photos", { params: { month: m } });
-    setDailyPhotos(res.data);
+    setDailyPhotos(res.data || []);
   }
 
   async function loadPendingLeaveRequests() {
     const res = await api.get<LeaveRequest[]>("/api/hr/leave-requests/pending");
-    setPendingLeaveRequests(res.data);
+    setPendingLeaveRequests(res.data || []);
   }
 
   async function loadPendingRegularizationRequests() {
     const res = await api.get<RegularizationRequest[]>("/api/hr/regularization-requests/pending");
-    setPendingRegularizationRequests(res.data);
+    setPendingRegularizationRequests(res.data || []);
   }
 
   async function loadPendingWorkRequests() {
     const res = await api.get<WorkRequest[]>("/api/hr/work-requests/pending");
-    setPendingWorkRequests(res.data);
+    setPendingWorkRequests(res.data || []);
   }
 
   async function loadPendingCompOffRequests() {
     const res = await api.get<CompOffRequest[]>("/api/hr/comp-off-requests/pending");
-    setPendingCompOffRequests(res.data);
+    setPendingCompOffRequests(res.data || []);
   }
 
   async function loadPendingDeviceRequests() {
     const res = await api.get<DeviceRequest[]>("/api/hr/device-requests/pending");
-    setPendingDeviceRequests(res.data);
+    setPendingDeviceRequests(res.data || []);
   }
 
   async function loadExceptions() {
     const res = await api.get<ExceptionItem[]>("/api/hr/exceptions");
-    setAttendanceExceptions(res.data);
+    setAttendanceExceptions(res.data || []);
   }
 
   async function loadPayroll(m: string) {
@@ -273,7 +273,7 @@ export default function HrPage() {
       api.get<PayrollRow[]>("/api/hr/payroll", { params: { month: m } }),
       api.get<PayrollLock>("/api/hr/payroll-lock", { params: { month: m } }),
     ]);
-    setPayrollRows(rows.data);
+    setPayrollRows(rows.data || []);
     setPayrollLock(lock.data);
   }
 
@@ -423,7 +423,7 @@ export default function HrPage() {
 
   async function loadAttendance(empId: number, m: string) {
     const res = await api.get<Attendance[]>("/api/hr/attendance", { params: { employeeId: empId, month: m } });
-    setEntries(res.data);
+    setEntries(res.data || []);
   }
 
   async function loadSummary(empId: number, m: string) {
@@ -498,7 +498,8 @@ export default function HrPage() {
 
     const entryMap: Record<string, DayStatus> = {};
     for (const e of entries) {
-      entryMap[e.date] = e.status === "PRESENT" ? "P" : e.status === "HALF_DAY" ? "HD" : "L";
+      const dateStr = typeof e.date === "string" ? e.date.split("T")[0] : String(e.date);
+      entryMap[dateStr] = e.status === "PRESENT" ? "P" : e.status === "HALF_DAY" ? "HD" : "L";
     }
 
     const holidaySet = new Set((holidays || []).map((h) => h.date));
@@ -728,10 +729,6 @@ export default function HrPage() {
 
         <RealtimeBoard month={month} />
 
-        {analytics ? (
-          <AnalyticsPanel title="Company analytics" subtitle={`Attendance movement for ${month}`} analytics={analytics} />
-        ) : null}
-
         <AppCard>
           <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "flex-start", flexWrap: "wrap" }}>
             <Box>
@@ -809,43 +806,116 @@ export default function HrPage() {
             onChange={(_, value) => setInboxFilter(value)}
             variant="scrollable"
             allowScrollButtonsMobile
-            sx={{ "& .MuiTab-root": { minHeight: 40, textTransform: "none", fontWeight: 900 } }}
+            sx={{ 
+              minHeight: 48,
+              mb: 3,
+              bgcolor: (theme) => theme.palette.mode === 'light' ? "rgba(255,255,255,0.6)" : "rgba(15,23,42,0.6)",
+              backdropFilter: "blur(12px)",
+              p: 0.5,
+              borderRadius: "16px",
+              border: (theme) => theme.palette.mode === 'light' ? "1px solid rgba(226,232,240,0.8)" : "1px solid rgba(255,255,255,0.1)",
+              "& .MuiTabs-indicator": { display: "none" },
+              "& .MuiTab-root": { 
+                minHeight: 38,
+                px: 2.5,
+                py: 0.5,
+                borderRadius: "12px",
+                textTransform: "none", 
+                fontWeight: 700,
+                color: "text.secondary",
+                transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                "&.Mui-selected": {
+                  color: (theme) => theme.palette.mode === 'light' ? "#ffffff" : "#0f172a",
+                  bgcolor: (theme) => theme.palette.mode === 'light' ? "#0f172a" : "#f8fafc",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                },
+                "&:hover:not(.Mui-selected)": {
+                  bgcolor: (theme) => theme.palette.mode === 'light' ? "rgba(15,23,42,0.05)" : "rgba(255,255,255,0.05)",
+                }
+              } 
+            }}
           >
-            <Tab value="ALL" label={`All (${pendingLeaveRequests.length + pendingRegularizationRequests.length + pendingWorkRequests.length + pendingCompOffRequests.length + pendingDeviceRequests.length})`} />
-            <Tab value="LEAVE" label={`Leave (${pendingLeaveRequests.length})`} />
-            <Tab value="WFH" label={`WFH / On-duty (${pendingWorkRequests.length})`} />
-            <Tab value="CORRECTION" label={`Correction (${pendingRegularizationRequests.length})`} />
-            <Tab value="COMP_OFF" label={`Comp-off (${pendingCompOffRequests.length})`} />
-            <Tab value="DEVICE" label={`Device (${pendingDeviceRequests.length})`} />
+            <Tab value="ALL" label={`All (${(pendingLeaveRequests || []).length + (pendingRegularizationRequests || []).length + (pendingWorkRequests || []).length + (pendingCompOffRequests || []).length + (pendingDeviceRequests || []).length})`} />
+            <Tab value="LEAVE" label={`Leave (${(pendingLeaveRequests || []).length})`} />
+            <Tab value="WFH" label={`WFH / On-duty (${(pendingWorkRequests || []).length})`} />
+            <Tab value="CORRECTION" label={`Correction (${(pendingRegularizationRequests || []).length})`} />
+            <Tab value="COMP_OFF" label={`Comp-off (${(pendingCompOffRequests || []).length})`} />
+            <Tab value="DEVICE" label={`Device (${(pendingDeviceRequests || []).length})`} />
           </Tabs>
-          <Box sx={{ mt: 2, display: "grid", gap: 1 }}>
-            { (inboxItems || []).slice(0, 12).map((item) => (
+          
+          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", lg: "repeat(2, 1fr)" }, gap: 2 }}>
+            { (inboxItems || []).slice(0, 12).map((item, i) => (
               <Box
                 key={`${item.kind}-${item.id}`}
                 onClick={() => setSelectedInboxItem(item)}
                 sx={{
-                  display: "grid",
-                  gridTemplateColumns: { xs: "1fr", md: "140px 180px 1fr auto" },
-                  gap: 1.2,
-                  alignItems: "center",
-                  p: 1.25,
-                  border: "1px solid #e5e7eb",
-                  borderRadius: 1,
-                  bgcolor: "#ffffff",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1.5,
+                  p: 2.5,
+                  border: (theme) => theme.palette.mode === 'light' ? "1px solid rgba(226,232,240,0.8)" : "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "20px",
+                  bgcolor: (theme) => theme.palette.mode === 'light' ? "rgba(255,255,255,0.85)" : "rgba(15,23,42,0.85)",
+                  backdropFilter: "blur(16px)",
                   cursor: "pointer",
+                  animation: `fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${i * 0.05}s backwards`,
+                  transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+                  "&:hover": {
+                    transform: "translateY(-3px) scale(1.01)",
+                    boxShadow: (theme) => theme.palette.mode === 'light' ? "0 12px 30px rgba(15,23,42,0.08)" : "0 12px 30px rgba(0,0,0,0.4)",
+                    borderColor: (theme) => theme.palette.mode === 'light' ? "rgba(148,163,184,0.6)" : "rgba(148,163,184,0.4)",
+                  }
                 }}
               >
-                <Chip size="small" label={item.kind.replaceAll("_", " ")} sx={{ borderRadius: 1, fontWeight: 900, justifySelf: "start" }} />
-                <Typography sx={{ fontWeight: 900, fontSize: 13 }}>
-                  {item.employeeName} <span style={{ opacity: 0.6 }}>({item.employeeNumber})</span>
-                </Typography>
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: 13 }}>{item.title}</Typography>
-                  <Typography sx={{ opacity: 0.72, fontSize: 12, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 2 }}>
+                  <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+                    <Avatar sx={{ width: 44, height: 44, bgcolor: "rgba(37, 99, 235, 0.1)", color: "#2563eb", fontWeight: 800 }}>
+                      {item.employeeName.charAt(0)}
+                    </Avatar>
+                    <Box>
+                      <Typography sx={{ fontWeight: 900, fontSize: 15, color: "text.primary" }}>
+                        {item.employeeName}
+                      </Typography>
+                      <Typography sx={{ fontWeight: 600, fontSize: 12, color: "text.secondary" }}>
+                        ID: {item.employeeNumber}
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Chip 
+                    size="small" 
+                    label={item.kind.replaceAll("_", " ")} 
+                    sx={{ 
+                      borderRadius: 1.5, 
+                      fontWeight: 800, 
+                      bgcolor: "rgba(59, 130, 246, 0.1)",
+                      color: "#2563eb",
+                      border: "1px solid rgba(59, 130, 246, 0.2)"
+                    }} 
+                  />
+                </Box>
+                
+                <Box sx={{ mt: 0.5 }}>
+                  <Typography sx={{ fontWeight: 800, fontSize: 14, mb: 0.5, color: "text.primary" }}>
+                    {item.title}
+                  </Typography>
+                  <Typography sx={{ opacity: 0.8, fontSize: 13, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", lineHeight: 1.5 }}>
                     {item.summary} | {item.reason}
                   </Typography>
                 </Box>
-                <Chip size="small" label={String(item.status).replaceAll("_", " ")} color="warning" sx={{ borderRadius: 1, fontWeight: 900, justifySelf: "start" }} />
+                
+                <Box sx={{ mt: "auto", pt: 1, display: "flex", justifyContent: "flex-end" }}>
+                  <Chip 
+                    size="small" 
+                    label={String(item.status).replaceAll("_", " ")} 
+                    sx={{ 
+                      borderRadius: 1.5, 
+                      fontWeight: 900,
+                      background: item.status === 'PENDING' ? "linear-gradient(90deg, #f59e0b, #d97706)" : (item.status === 'APPROVED' ? "linear-gradient(90deg, #10b981, #059669)" : "linear-gradient(90deg, #ef4444, #dc2626)"),
+                      color: "#fff",
+                      boxShadow: item.status === 'PENDING' ? "0 4px 12px rgba(245, 158, 11, 0.3)" : "none"
+                    }} 
+                  />
+                </Box>
               </Box>
             ))}
             {!inboxItems.length ? <Typography sx={{ opacity: 0.7, fontSize: 13 }}>No requests in this inbox view.</Typography> : null}
@@ -1657,6 +1727,7 @@ function workRequestStatusColor(status: WorkRequest["status"]): "default" | "suc
   if (status === "MANAGER_RECOMMENDED") return "info";
   return "warning";
 }
+
 
 
 
