@@ -344,7 +344,7 @@ export default function ManagerPage() {
                       cursor: "pointer",
                     }}
                   >
-                    <Avatar src={employee.profilePhotoUrl ?? employee.companyRole?.photoUrl ?? undefined} sx={{ width: 44, height: 44 }}>
+                    <Avatar src={employee.profilePhotoUrl || employee.companyRole?.photoUrl || undefined} sx={{ width: 44, height: 44 }}>
                       {employee.name[0]}
                     </Avatar>
                     <Box sx={{ minWidth: 0 }}>
@@ -600,7 +600,7 @@ export default function ManagerPage() {
           {selectedEmployee ? (
             <>
               <Box sx={{ display: "grid", gridTemplateColumns: "56px 1fr", gap: 1.2, alignItems: "center" }}>
-                <Avatar src={selectedEmployee.profilePhotoUrl ?? selectedEmployee.companyRole?.photoUrl ?? undefined} sx={{ width: 56, height: 56 }}>
+                <Avatar src={selectedEmployee.profilePhotoUrl || selectedEmployee.companyRole?.photoUrl || undefined} sx={{ width: 56, height: 56 }}>
                   {selectedEmployee.name[0]}
                 </Avatar>
                 <Box>

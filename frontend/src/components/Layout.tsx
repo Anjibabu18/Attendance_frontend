@@ -384,7 +384,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
           </Box>
           <Box
             sx={{
-              display: { xs: "none", md: "none" },
+              display: { xs: "none", md: "flex" },
               gap: 0.5,
               flexWrap: "wrap",
               alignItems: "center",
@@ -489,10 +489,7 @@ export default function Layout(props: { title: string; children: React.ReactNode
       <Container maxWidth="xl" sx={{ px: { xs: 1.25, sm: 2, md: 3 }, py: { xs: 1.5, md: 3 }, position: "relative" }}>
         {/* Subtle top gradient separator */}
         <Box sx={{ position: "absolute", inset: "0 24px auto 24px", height: 1, background: "linear-gradient(90deg, transparent, rgba(99,102,241,0.25), rgba(15,118,110,0.18), transparent)", pointerEvents: "none" }} />
-        <Box sx={{ display: "grid", gap: { xs: 2, md: 2.5 }, gridTemplateColumns: { xs: "1fr", md: "260px minmax(0,1fr)" }, alignItems: "start" }}>
-          <Box sx={{ display: { xs: "none", md: "block" }, position: "sticky", top: 88 }}>
-            {sidebar}
-          </Box>
+        <Box sx={{ display: "grid", gap: { xs: 2, md: 2.5 }, gridTemplateColumns: "1fr", alignItems: "start" }}>
           <Box sx={{ display: "grid", gap: { xs: 2, md: 2.5 }, minWidth: 0, animation: "attendancePageIn 0.4s cubic-bezier(0.2,0.8,0.2,1) both" }}>{props.children}</Box>
         </Box>
       </Container>
