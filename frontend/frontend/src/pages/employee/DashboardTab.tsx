@@ -10,7 +10,7 @@ import WorkHistoryRoundedIcon from '@mui/icons-material/WorkHistoryRounded';
 import WalletRoundedIcon from '@mui/icons-material/WalletRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
 import dayjs from 'dayjs';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Tilt from 'react-parallax-tilt';
 
 import { api } from '../../api/client';
@@ -18,6 +18,7 @@ import { Attendance } from '../../types';
 import { useEmployee } from './EmployeeContext';
 import { PunchOverlay } from './PunchOverlay';
 import { useThemeContext } from '../../theme/ThemeContext';
+import { hapticPop, hapticSuccess, hapticTap } from '../../utils/haptics';
 
 const MotionBox = motion.create(Box);
 const MotionButton = motion.create(Button);
@@ -48,6 +49,87 @@ function parseTimeValue(value?: string | null) {
   return parsed.isValid() ? parsed : null;
 }
 
+function SlideToPunchButton({ type, onTrigger, urgent }: { type: 'in' | 'out', onTrigger: () => void, urgent?: boolean }) {
+  const isDark = useThemeContext().mode === 'dark';
+  const bg = type === 'in' ? '#22c55e' : '#ef4444';
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const controls = useAnimation();
+
+  const handleDragEnd = (event: any, info: any) => {
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.offsetWidth;
+    const threshold = containerWidth * 0.65; // 65% across to trigger
+    
+    if (info.offset.x >= threshold) {
+      hapticSuccess();
+      onTrigger();
+      // Snap back instantly so it's ready when the modal closes
+      controls.start({ x: 0, transition: { duration: 0 } });
+    } else {
+      hapticPop();
+      controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
+    }
+  };
+
+  return (
+    <Box
+      ref={containerRef}
+      sx={{
+        position: 'relative',
+        width: '100%',
+        height: '56px',
+        bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+        borderRadius: '28px',
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        boxShadow: urgent ? `0 0 25px ${bg}60, inset 0 2px 4px rgba(0,0,0,0.1)` : `inset 0 2px 4px rgba(0,0,0,0.1)`,
+        border: urgent ? `2px solid ${bg}` : `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+        animation: urgent ? 'pulse-border 2s infinite' : 'none',
+        '@keyframes pulse-border': {
+          '0%': { boxShadow: `0 0 10px ${bg}40, inset 0 2px 4px rgba(0,0,0,0.1)` },
+          '50%': { boxShadow: `0 0 35px ${bg}80, inset 0 2px 4px rgba(0,0,0,0.1)` },
+          '100%': { boxShadow: `0 0 10px ${bg}40, inset 0 2px 4px rgba(0,0,0,0.1)` }
+        }
+      }}
+    >
+      <Typography sx={{ 
+        position: 'absolute', width: '100%', textAlign: 'center', 
+        fontWeight: 800, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+        zIndex: 0, pointerEvents: 'none', userSelect: 'none',
+        pl: 5 // offset for the knob
+      }}>
+        SLIDE TO PUNCH {type === 'in' ? 'IN' : 'OUT'} &gt;&gt;
+      </Typography>
+
+      <motion.div
+        drag="x"
+        dragConstraints={containerRef}
+        dragElastic={0.05}
+        dragSnapToOrigin={false}
+        onDragEnd={handleDragEnd}
+        animate={controls}
+        style={{ zIndex: 1, position: 'absolute' }}
+      >
+        <Box sx={{
+          width: '56px', height: '56px', borderRadius: '28px',
+          bgcolor: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
+          boxShadow: urgent ? `0 0 20px ${bg}` : `0 4px 15px ${bg}60`, 
+          cursor: 'grab', '&:active': { cursor: 'grabbing' },
+          animation: urgent ? 'pulse-knob 2s infinite' : 'none',
+          '@keyframes pulse-knob': {
+            '0%': { transform: 'scale(1)' },
+            '50%': { transform: 'scale(1.05)' },
+            '100%': { transform: 'scale(1)' }
+          }
+        }}>
+          {type === 'in' ? <LoginRoundedIcon /> : <LogoutRoundedIcon />}
+        </Box>
+      </motion.div>
+    </Box>
+  );
+}
+
 function timeLabel(value?: string | null) {
   const parsed = parseTimeValue(value);
   return parsed ? parsed.format('hh:mm A') : '--:--';
@@ -76,8 +158,8 @@ function sessionDateTime(entry: Attendance, timeValue?: string | null) {
 }
 
 // Circular progress ring SVG component
-function CircularProgress({ progress, size = 220, strokeWidth = 14, children }: {
-  progress: number; size?: number; strokeWidth?: number; children?: React.ReactNode;
+function CircularProgress({ progress, size = 220, strokeWidth = 14, isOvertime = false, children }: {
+  progress: number; size?: number; strokeWidth?: number; isOvertime?: boolean; children?: React.ReactNode;
 }) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -88,9 +170,9 @@ function CircularProgress({ progress, size = 220, strokeWidth = 14, children }: 
       <svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
         <defs>
           <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#38bdf8" />
-            <stop offset="50%" stopColor="#818cf8" />
-            <stop offset="100%" stopColor="#22c55e" />
+            <stop offset="0%" stopColor={isOvertime ? "#f59e0b" : "#38bdf8"} />
+            <stop offset="50%" stopColor={isOvertime ? "#f97316" : "#818cf8"} />
+            <stop offset="100%" stopColor={isOvertime ? "#ef4444" : "#22c55e"} />
           </linearGradient>
           <filter id="ring-glow">
             <feGaussianBlur stdDeviation="3" result="blur" />
@@ -160,6 +242,12 @@ export function DashboardTab() {
     }
   }, [todayEntry, breaks]);
 
+  const [currentTime, setCurrentTime] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const openPunch = (kind: 'checkin' | 'checkout') => { setPunchKind(kind); setPunchOpen(true); };
 
   const runBreakAction = async (endpoint: string) => {
@@ -173,13 +261,22 @@ export function DashboardTab() {
   const totalLate = entries.reduce((sum, item) => sum + (item.lateMinutes || 0), 0);
   const totalLeaveBalance = leaveBalances.reduce((sum, item) => sum + (item.remainingDays || 0), 0);
   const targetMinutes = settings?.fullDayMinutes || 480;
-  const progress = targetMinutes ? Math.min(100, Math.round((elapsedSeconds / 60 / targetMinutes) * 100)) : 0;
+  const rawProgress = targetMinutes ? Math.round((elapsedSeconds / 60 / targetMinutes) * 100) : 0;
+  const progress = Math.min(100, rawProgress);
+  const isOvertime = rawProgress > 100;
+  const overtimeSeconds = isOvertime ? elapsedSeconds - (targetMinutes * 60) : 0;
+  const ot = secondsLabel(overtimeSeconds);
   const recentEntries = useMemo(() => [...entries].sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()).slice(0, 5), [entries]);
 
   const clockedIn = !!todayEntry?.inTime && !todayEntry?.outTime;
   const completed = !!todayEntry?.outTime;
   const greetingName = profile?.name?.split(' ')[0] || 'there';
   const { h, m, s } = secondsLabel(elapsedSeconds);
+
+  const hour = currentTime.getHours();
+  let dynamicGreeting = 'Good evening 🌙';
+  if (hour < 12) dynamicGreeting = 'Good morning ☕';
+  else if (hour < 17) dynamicGreeting = 'Good afternoon ☀️';
 
   const statCards = [
     { label: 'This month', value: `${monthSummary?.presentDays || 0}/${monthSummary?.workingDays || 0}`, helper: 'Present days', icon: <CalendarTodayRoundedIcon />, color: '#38bdf8', bg: 'rgba(56,189,248,0.12)' },
@@ -275,14 +372,14 @@ export function DashboardTab() {
           {/* Header row */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
             <Box>
-              <Typography sx={{ color: 'rgba(148,163,184,0.9)', fontWeight: 700, fontSize: 12, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
-                TODAY SHIFT
+              <Typography sx={{ color: 'rgba(148,163,184,0.9)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
+                {dayjs(currentTime).format('dddd, DD MMMM YYYY')}
               </Typography>
-              <Typography sx={{ fontWeight: 900, fontSize: { xs: 24, md: 34 }, lineHeight: 1.1, color: '#f8fafc' }}>
-                Good day, {greetingName}
+              <Typography sx={{ fontWeight: 900, fontSize: { xs: 32, md: 48 }, lineHeight: 1.1, color: '#f8fafc', mb: 0.5, letterSpacing: '-0.02em' }}>
+                {dayjs(currentTime).format('hh:mm:ss A')}
               </Typography>
-              <Typography sx={{ color: 'rgba(148,163,184,0.8)', mt: 0.5, fontSize: 13 }}>
-                {dayjs().format('dddd, DD MMMM YYYY')}
+              <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: { xs: 18, md: 20 }, fontWeight: 600 }}>
+                {dynamicGreeting}, {greetingName}
               </Typography>
             </Box>
             <Box
@@ -313,7 +410,7 @@ export function DashboardTab() {
 
             {/* Circular progress ring */}
             <Box sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
-              <CircularProgress progress={progress} size={190} strokeWidth={13}>
+              <CircularProgress progress={progress} size={190} strokeWidth={13} isOvertime={isOvertime}>
                 <Box sx={{ textAlign: 'center' }}>
                   {todayEntry?.inTime ? (
                     <>
@@ -352,8 +449,8 @@ export function DashboardTab() {
                         </Typography>
                         <Typography sx={{ color: '#64748b', fontSize: 14, fontWeight: 700 }}>s</Typography>
                       </Box>
-                      <Typography sx={{ color: 'rgba(148,163,184,0.6)', fontSize: 11, mt: 0.5, fontWeight: 600 }}>
-                        {progress}% of target
+                      <Typography sx={{ color: isOvertime ? '#f59e0b' : 'rgba(148,163,184,0.6)', fontSize: 11, mt: 0.5, fontWeight: 600 }}>
+                        {isOvertime ? `Overtime: ${ot.h}h ${ot.m}m` : `${progress}% of target`}
                       </Typography>
                     </>
                   ) : (
@@ -374,11 +471,13 @@ export function DashboardTab() {
                   <Typography sx={{ color: 'rgba(148,163,184,0.7)', fontSize: 12, fontWeight: 700 }}>
                     Target: {targetMinutes ? minutesLabel(targetMinutes) : '--'}
                   </Typography>
-                  <Typography sx={{ color: '#38bdf8', fontSize: 12, fontWeight: 800 }}>{progress}%</Typography>
+                  <Typography sx={{ color: isOvertime ? '#f59e0b' : '#38bdf8', fontSize: 12, fontWeight: 800 }}>
+                    {isOvertime ? `${rawProgress}% (OT)` : `${progress}%`}
+                  </Typography>
                 </Box>
                 <Box sx={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
                   <motion.div
-                    style={{ height: '100%', borderRadius: 3, background: 'linear-gradient(90deg, #38bdf8, #818cf8, #22c55e)' }}
+                    style={{ height: '100%', borderRadius: 3, background: isOvertime ? 'linear-gradient(90deg, #f59e0b, #ef4444)' : 'linear-gradient(90deg, #38bdf8, #818cf8, #22c55e)' }}
                     initial={{ width: '0%' }}
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 1.2, ease: 'easeOut' }}
@@ -386,11 +485,12 @@ export function DashboardTab() {
                 </Box>
               </Box>
 
-              {/* Today's punch times */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+              {/* Today's punch times & OT */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: isOvertime ? '1fr 1fr 1fr' : '1fr 1fr', gap: 1 }}>
                 {[
                   { label: 'In', value: timeLabel(todayEntry?.inTime), color: '#22c55e' },
                   { label: 'Out', value: timeLabel(todayEntry?.outTime), color: '#ef4444' },
+                  ...(isOvertime ? [{ label: 'OT', value: `${ot.h}h ${ot.m}m`, color: '#f59e0b' }] : []),
                 ].map(({ label, value, color }) => (
                   <Box key={label} sx={{ bgcolor: 'rgba(255,255,255,0.07)', borderRadius: '12px', p: 1.25, textAlign: 'center' }}>
                     <Typography sx={{ color: 'rgba(148,163,184,0.7)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</Typography>
@@ -400,30 +500,13 @@ export function DashboardTab() {
               </Box>
 
               {/* Action buttons */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+              <Box sx={{ display: 'flex', gap: 2 }}>
                 {!todayEntry?.inTime ? (
-                  <MotionButton
-                    whileTap={{ scale: 0.97 }}
-                    whileHover={{ scale: 1.02 }}
-                    onClick={() => openPunch('checkin')}
-                    variant="contained"
-                    startIcon={<LoginRoundedIcon />}
-                    sx={{ bgcolor: '#22c55e', color: 'white', borderRadius: '12px', py: 1.4, fontWeight: 900, fontSize: 15, boxShadow: '0 8px 20px rgba(34,197,94,0.4)', '&:hover': { bgcolor: '#16a34a' } }}
-                  >
-                    Punch In
-                  </MotionButton>
+                  <SlideToPunchButton type="in" onTrigger={() => openPunch('checkin')} />
                 ) : !todayEntry.outTime ? (
-                  <MotionButton
-                    whileTap={{ scale: 0.97 }}
-                    onClick={() => openPunch('checkout')}
-                    variant="contained"
-                    startIcon={<LogoutRoundedIcon />}
-                    sx={{ bgcolor: '#ef4444', color: 'white', borderRadius: '12px', py: 1.4, fontWeight: 900, fontSize: 15, boxShadow: '0 8px 20px rgba(239,68,68,0.4)', '&:hover': { bgcolor: '#dc2626' } }}
-                  >
-                    Punch Out
-                  </MotionButton>
+                  <SlideToPunchButton type="out" onTrigger={() => openPunch('checkout')} urgent={progress >= 95} />
                 ) : (
-                  <Button disabled variant="contained" sx={{ borderRadius: '12px', py: 1.4, fontWeight: 900 }}>Completed ✓</Button>
+                  <Button disabled variant="contained" sx={{ borderRadius: '28px', py: 1.6, fontWeight: 900, width: '100%', fontSize: 16 }}>Completed 🎉</Button>
                 )}
 
                 {activeBreak ? (
@@ -649,6 +732,9 @@ export function DashboardTab() {
                       <Typography sx={{ fontWeight: 800, fontSize: 11, color: statusColor }}>{item.status.replace('_', ' ')}</Typography>
                     </Box>
                     <Typography sx={{ fontWeight: 900, fontSize: 13, color: 'text.secondary' }}>{minutesLabel(item.workedMinutes)}</Typography>
+                    {(item.overtimeMinutes ?? 0) > 0 && (
+                      <Typography sx={{ fontWeight: 900, fontSize: 11, color: '#f59e0b' }}>OT: {minutesLabel(item.overtimeMinutes)}</Typography>
+                    )}
                   </Box>
                 </MotionBox>
               );

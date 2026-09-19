@@ -5,14 +5,28 @@ import { motion } from "framer-motion";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { getAuth } from "../auth/auth";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const lazyWithDelay = (factory: () => Promise<any>, ms: number = 2000) => lazy(() => Promise.all([factory(), delay(ms)]).then(([moduleExports]) => moduleExports));
+const LoginPage = lazy(() => import("../pages/LoginPage"));
+const AdminPage = lazy(() => import("../pages/AdminPage"));
+const HrPage = lazy(() => import("../pages/HrPage"));
+const ManagerPage = lazy(() => import("../pages/ManagerPage"));
+const EmployeePage = lazy(() => import("../pages/EmployeePage"));
 
-const LoginPage = lazyWithDelay(() => import("../pages/LoginPage"));
-const AdminPage = lazyWithDelay(() => import("../pages/AdminPage"));
-const HrPage = lazyWithDelay(() => import("../pages/HrPage"));
-const ManagerPage = lazyWithDelay(() => import("../pages/ManagerPage"));
-const EmployeePage = lazyWithDelay(() => import("../pages/EmployeePage"));
+// Preload the target route chunk in background so navigation is instant
+if (typeof window !== "undefined") {
+  const preloadRoutes = () => {
+    const auth = getAuth();
+    if (auth?.role === "ROLE_EMPLOYEE") import("../pages/EmployeePage");
+    else if (auth?.role === "ROLE_HR") import("../pages/HrPage");
+    else if (auth?.role === "ROLE_ADMIN") import("../pages/AdminPage");
+    else if (auth?.role === "ROLE_MANAGER") import("../pages/ManagerPage");
+    else import("../pages/LoginPage");
+  };
+  if ("requestIdleCallback" in window) {
+    (window as any).requestIdleCallback(preloadRoutes, { timeout: 800 });
+  } else {
+    setTimeout(preloadRoutes, 200);
+  }
+}
 
 function AuthedRedirect() {
   const auth = getAuth();

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Box, Button, Typography, CircularProgress, Dialog, IconButton, TextField } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
@@ -48,6 +49,7 @@ export function PunchOverlay({
   const [error, setError] = useState<string|null>(null);
   const [isOfflinePunch, setIsOfflinePunch] = useState(false);
   const [punchResponse, setPunchResponse] = useState<any>(null);
+  const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
@@ -356,6 +358,7 @@ export function PunchOverlay({
       const blob = await new Promise<Blob|null>(r => c.toBlob(r, 'image/jpeg', 0.8));
       if (!blob) throw new Error("Cannot capture");
       const dataUrl = c.toDataURL('image/jpeg', 0.8);
+      setCapturedSelfie(dataUrl);
 
       const file = new File([blob], `${kind}.jpg`, { type: 'image/jpeg' });
       
@@ -591,7 +594,7 @@ export function PunchOverlay({
                 pointerEvents: 'none'
               }
             }}>
-              <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               
               {/* Corner Markers */}
               <Box sx={{ position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderTop: '4px solid #3B82F6', borderLeft: '4px solid #3B82F6', borderTopLeftRadius: 12, zIndex: 3 }} />
@@ -669,7 +672,7 @@ export function PunchOverlay({
               }
             }}>
               <Box sx={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden', position: 'relative', bgcolor: '#0F172A' }}>
-                <video ref={videoRef} playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+                <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
                 <Box sx={{ position: 'absolute', inset: 0, borderRadius: '50%', border: '4px solid rgba(255,255,255,0.1)', pointerEvents: 'none' }} />
                 
                 {/* Scanning overlay effect */}
@@ -726,30 +729,73 @@ export function PunchOverlay({
             {/* Background glowing orb */}
             <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, transparent 70%)', zIndex: 0, pointerEvents: 'none' }} />
 
-            <Box sx={{ 
-              width: 150, height: 150, mx: 'auto', mb: 5, mt: 2,
-              borderRadius: '50%', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              position: 'relative',
-              zIndex: 1,
-              animation: 'bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
-              '@keyframes bounceIn': { 
-                '0%': { transform: 'scale(0)', opacity: 0 }, 
-                '60%': { transform: 'scale(1.1)', opacity: 1 },
-                '100%': { transform: 'scale(1)', opacity: 1 } 
-              }
-            }}>
-              {/* Expanding success wave */}
-              <Box sx={{ position: 'absolute', inset: -20, border: '4px solid #10B981', borderRadius: '50%', animation: 'success-wave 1.5s ease-out forwards', '@keyframes success-wave': { '0%': { transform: 'scale(0.8)', opacity: 0.8 }, '100%': { transform: 'scale(1.6)', opacity: 0 } } }} />
-              
-              {/* Outer decorative dashed ring */}
-              <Box sx={{ position: 'absolute', inset: -10, border: '3px dashed rgba(16, 185, 129, 0.4)', borderRadius: '50%', animation: 'spin-slow 15s linear infinite' }} />
-              
-              {/* Inner glowing circle */}
-              <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', backdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 30px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.4)' }} />
-              
-              <CheckCircleIcon sx={{ fontSize: 80, color: '#10B981', zIndex: 2, filter: 'drop-shadow(0 0 12px rgba(16,185,129,0.8))' }} />
-            </Box>
+            {capturedSelfie ? (
+              <Box sx={{ 
+                width: 140, height: 140, mx: 'auto', mb: 3, mt: 2,
+                borderRadius: '50%', 
+                position: 'relative',
+                zIndex: 1,
+                animation: 'bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+                '@keyframes bounceIn': { 
+                  '0%': { transform: 'scale(0)', opacity: 0 }, 
+                  '60%': { transform: 'scale(1.08)', opacity: 1 },
+                  '100%': { transform: 'scale(1)', opacity: 1 } 
+                }
+              }}>
+                <Box sx={{ position: 'absolute', inset: -14, border: '3px solid #10B981', borderRadius: '50%', animation: 'success-wave 1.5s ease-out forwards' }} />
+                <Box 
+                  component="img" 
+                  src={capturedSelfie} 
+                  alt="Verified Selfie" 
+                  sx={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    borderRadius: '50%', 
+                    objectFit: 'cover', 
+                    border: '4px solid #10B981',
+                    boxShadow: '0 0 30px rgba(16, 185, 129, 0.45)' 
+                  }} 
+                />
+                <Box sx={{ 
+                  position: 'absolute', 
+                  bottom: -2, 
+                  right: -2, 
+                  bgcolor: '#10B981', 
+                  borderRadius: '50%', 
+                  p: '4px', 
+                  display: 'flex', 
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                  border: '2px solid #0F172A'
+                }}>
+                  <CheckCircleIcon sx={{ fontSize: 24, color: '#ffffff' }} />
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ 
+                width: 150, height: 150, mx: 'auto', mb: 5, mt: 2,
+                borderRadius: '50%', 
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative',
+                zIndex: 1,
+                animation: 'bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+                '@keyframes bounceIn': { 
+                  '0%': { transform: 'scale(0)', opacity: 0 }, 
+                  '60%': { transform: 'scale(1.1)', opacity: 1 },
+                  '100%': { transform: 'scale(1)', opacity: 1 } 
+                }
+              }}>
+                {/* Expanding success wave */}
+                <Box sx={{ position: 'absolute', inset: -20, border: '4px solid #10B981', borderRadius: '50%', animation: 'success-wave 1.5s ease-out forwards', '@keyframes success-wave': { '0%': { transform: 'scale(0.8)', opacity: 0.8 }, '100%': { transform: 'scale(1.6)', opacity: 0 } } }} />
+                
+                {/* Outer decorative dashed ring */}
+                <Box sx={{ position: 'absolute', inset: -10, border: '3px dashed rgba(16, 185, 129, 0.4)', borderRadius: '50%', animation: 'spin-slow 15s linear infinite' }} />
+                
+                {/* Inner glowing circle */}
+                <Box sx={{ position: 'absolute', inset: 0, bgcolor: 'rgba(16, 185, 129, 0.15)', borderRadius: '50%', backdropFilter: 'blur(10px)', boxShadow: 'inset 0 0 30px rgba(16, 185, 129, 0.3), 0 0 40px rgba(16, 185, 129, 0.4)' }} />
+                
+                <CheckCircleIcon sx={{ fontSize: 80, color: '#10B981', zIndex: 2, filter: 'drop-shadow(0 0 12px rgba(16,185,129,0.8))' }} />
+              </Box>
+            )}
 
             <Typography variant="h2" sx={{ 
               fontWeight: 900, mb: 2, 
@@ -770,6 +816,15 @@ export function PunchOverlay({
                 : <>You are successfully clocked {kind === 'checkin' ? 'in' : 'out'} at <Box component="span" sx={{ color: 'white', fontWeight: 800 }}>{dayjs().format('hh:mm A')}</Box>.</>
               }
             </Typography>
+
+            {capturedSelfie && (
+              <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, px: 2, py: 0.75, borderRadius: '20px', bgcolor: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', mb: 3 }}>
+                <CheckCircleIcon sx={{ fontSize: 16, color: '#34D399' }} />
+                <Typography sx={{ color: '#34D399', fontSize: 13, fontWeight: 800 }}>
+                  Face Matched & Verified · Photo Saved
+                </Typography>
+              </Box>
+            )}
 
             {punchResponse?.streak > 0 && (
               <Box sx={{ mb: 4, p: 2, bgcolor: 'rgba(245, 158, 11, 0.1)', borderRadius: 3, border: '1px solid rgba(245, 158, 11, 0.3)', animation: 'fadeInUp 0.6s ease-out 0.5s both' }}>

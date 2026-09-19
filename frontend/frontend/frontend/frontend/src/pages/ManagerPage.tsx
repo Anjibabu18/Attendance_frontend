@@ -23,6 +23,7 @@ import AppCard from "../components/AppCard";
 import DashboardHero from "../components/DashboardHero";
 import Layout from "../components/Layout";
 import StatCard from "../components/StatCard";
+import { GlobalLoader } from "../components/GlobalLoader";
 
 type Employee = {
   id: number;
@@ -114,6 +115,7 @@ export default function ManagerPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (err) {
@@ -130,16 +132,21 @@ export default function ManagerPage() {
   }, [ok, toastSuccess]);
 
   async function refresh() {
-    const [teamRes, correctionsRes, workRes, attendanceRes] = await Promise.all([
-      api.get<Employee[]>("/api/manager/team"),
-      api.get<RegularizationRequest[]>("/api/manager/regularization-requests/pending"),
-      api.get<WorkRequest[]>('/api/manager/work-requests/pending'),
-      api.get<TeamAttendance[]>('/api/manager/team/attendance', { params: { month } }),
-    ]);
-    setTeam(teamRes.data);
-    setPendingCorrections(correctionsRes.data);
-    setPendingWorkRequests(workRes.data);
-    setTeamAttendance(attendanceRes.data);
+    setBusy(true);
+    try {
+      const [teamRes, correctionsRes, workRes, attendanceRes] = await Promise.all([
+        api.get<Employee[]>("/api/manager/team"),
+        api.get<RegularizationRequest[]>("/api/manager/regularization-requests/pending"),
+        api.get<WorkRequest[]>('/api/manager/work-requests/pending'),
+        api.get<TeamAttendance[]>('/api/manager/team/attendance', { params: { month } }),
+      ]);
+      setTeam(teamRes.data);
+      setPendingCorrections(correctionsRes.data);
+      setPendingWorkRequests(workRes.data);
+      setTeamAttendance(attendanceRes.data);
+    } finally {
+      setBusy(false);
+    }
   }
 
   useEffect(() => {
@@ -248,6 +255,7 @@ export default function ManagerPage() {
 
   return (
     <Layout title="Manager Dashboard">
+      {busy && <GlobalLoader message="Loading Manager Workspace..." />}
       <Box sx={{ display: "grid", gap: 3 }}>
         {err ? <Alert severity="error">{err}</Alert> : null}
         {ok ? <Alert severity="success">{ok}</Alert> : null}

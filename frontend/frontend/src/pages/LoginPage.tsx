@@ -181,7 +181,7 @@ export default function LoginPage() {
 
         {/* Bottom copyright */}
         <Typography sx={{ position: "absolute", bottom: 24, color: "rgba(255,255,255,0.3)", fontSize: 11, zIndex: 1 }}>
-          © 2026 WorkTrack
+          © 2026 VD Attendance
         </Typography>
       </MotionBox>
 

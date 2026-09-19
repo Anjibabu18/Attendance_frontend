@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import {
   Avatar,
   Box,
-  BottomNavigation,
-  BottomNavigationAction,
   Button,
   CircularProgress,
   Typography,
@@ -26,6 +24,7 @@ import { LiveVerificationOverlay } from './employee/LiveVerificationOverlay';
 import { api } from '../api/client';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { LayoutSkeleton } from '../components/LayoutSkeleton';
+import { AppLogo } from '../components/AppLogo';
 import { useThemeContext } from '../theme/ThemeContext';
 import PermissionOnboardingOverlay from './employee/PermissionOnboardingOverlay';
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
@@ -40,39 +39,11 @@ const tabs = [
   { label: 'More', subtitle: 'Profile, reports, settings', icon: <TuneRoundedIcon fontSize="small" /> },
 ];
 
-const pageVariants = {
-  initial: (direction: number) => ({
-    x: direction > 0 ? '100%' : direction < 0 ? '-100%' : 0,
-    opacity: 0,
-    scale: 0.92,
-    filter: 'blur(10px)',
-  }),
-  animate: {
-    x: 0,
-    opacity: 1,
-    scale: 1,
-    filter: 'blur(0px)',
-    transition: { type: 'spring', stiffness: 350, damping: 35, mass: 0.8 },
-  },
-  exit: (direction: number) => ({
-    x: direction < 0 ? '100%' : direction > 0 ? '-100%' : 0,
-    opacity: 0,
-    scale: 0.92,
-    filter: 'blur(10px)',
-    transition: { duration: 0.3, ease: 'easeInOut' },
-  }),
-};
-
-const swipeConfidenceThreshold = 10000;
-const swipePower = (offset: number, velocity: number) => {
-  return Math.abs(offset) * velocity;
-};
-
 function EmployeeContent() {
   const { loading, error, profile, refreshData } = useEmployee();
   const { mode, toggleColorMode } = useThemeContext();
   const [activeTab, setActiveTab] = useState(0);
-  const [direction, setDirection] = useState(0);
+  const [visitedTabs, setVisitedTabs] = useState<Record<number, boolean>>({ 0: true });
   const [quickRequestMode, setQuickRequestMode] = useState<QuickRequestMode | null>(null);
   const [pendingVerificationId, setPendingVerificationId] = useState<number | null>(null);
   const [showPermissionsOverlay, setShowPermissionsOverlay] = useState(() => {
@@ -83,6 +54,13 @@ function EmployeeContent() {
   const bgOpacity = useTransform(scrollY, [0, 800], [1, 0.3]);
   const meshY = useTransform(scrollY, [0, 1000], ['0%', '15%']);
   const active = tabs[activeTab];
+
+  const handleSelectTab = (index: number) => {
+    if (index !== 2) setQuickRequestMode(null);
+    setActiveTab(index);
+    setVisitedTabs((prev) => (prev[index] ? prev : { ...prev, [index]: true }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   React.useEffect(() => {
     if (loading || error) return;
@@ -122,22 +100,6 @@ function EmployeeContent() {
       </Box>
     );
   }
-
-  const renderTab = () => {
-    if (activeTab === 0) return <DashboardTab />;
-    if (activeTab === 1) return <AttendanceTab />;
-    if (activeTab === 2) return <RequestsTab initialMode={quickRequestMode} />;
-    return <MoreTab onQuickRequest={(mode) => { setQuickRequestMode(mode); setDirection(1); setActiveTab(2); }} />;
-  };
-
-  const paginate = (newDirection: number) => {
-    const nextTab = activeTab + newDirection;
-    if (nextTab >= 0 && nextTab < tabs.length) {
-      setDirection(newDirection);
-      setActiveTab(nextTab);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-  };
 
   return (
     <Box
@@ -204,10 +166,10 @@ function EmployeeContent() {
           }}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, px: 1, py: 1.25 }}>
-            <Box component={motion.div} whileHover={{ rotate: -6, scale: 1.06 }} sx={{ width: 42, height: 42, borderRadius: '8px', bgcolor: 'primary.main', color: 'white', display: 'grid', placeItems: 'center', fontWeight: 900, boxShadow: '0 14px 28px rgba(37, 99, 235, 0.22)' }}>WT</Box>
+            <AppLogo size={40} animated={true} />
             <Box>
-              <Typography sx={{ fontWeight: 900, lineHeight: 1 }}>VD Attendance</Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: 12 }}>Employee Portal</Typography>
+              <Typography sx={{ fontWeight: 900, lineHeight: 1.1, fontSize: 15 }}>WorkTrack</Typography>
+              <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>Employee Portal</Typography>
             </Box>
           </Box>
 
@@ -217,11 +179,7 @@ function EmployeeContent() {
               return (
                 <Button
                   key={tab.label}
-                  onClick={() => { 
-                    if (index !== 2) setQuickRequestMode(null); 
-                    setDirection(index > activeTab ? 1 : index < activeTab ? -1 : 0);
-                    setActiveTab(index); 
-                  }}
+                  onClick={() => handleSelectTab(index)}
                   sx={{
                     position: 'relative', justifyContent: 'flex-start', textTransform: 'none', borderRadius: '8px', px: 1.3, py: 1.15,
                     color: selected ? 'primary.main' : 'text.secondary', bgcolor: 'transparent', fontWeight: 900, overflow: 'hidden',
@@ -263,12 +221,10 @@ function EmployeeContent() {
             <Box sx={{ minHeight: '100vh' }}>
               <Box sx={{ position: 'sticky', top: 0, zIndex: 20, bgcolor: 'background.paper', borderBottom: '1px solid', borderColor: 'divider' }}>
             <Box sx={{ maxWidth: 1220, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 1.5, md: 2 }, display: 'flex', justifyContent: 'space-between', gap: 2, alignItems: 'center' }}>
-              <AnimatePresence mode="wait">
-                <Box component={motion.div} key={active.label} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} sx={{ minWidth: 0 }}>
-                  <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, md: 28 }, lineHeight: 1.05 }}>{active.label}</Typography>
-                  <Typography sx={{ color: 'text.secondary', fontSize: { xs: 12, md: 14 }, mt: 0.5 }}>{active.subtitle}</Typography>
-                </Box>
-              </AnimatePresence>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: { xs: 20, md: 28 }, lineHeight: 1.05 }}>{active.label}</Typography>
+                <Typography sx={{ color: 'text.secondary', fontSize: { xs: 12, md: 14 }, mt: 0.5 }}>{active.subtitle}</Typography>
+              </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
                 <Button component={motion.button} whileTap={{ scale: 0.96 }} onClick={refreshData} variant="outlined" startIcon={<RefreshRoundedIcon />} sx={{ display: { xs: 'none', sm: 'inline-flex' }, borderRadius: '8px', textTransform: 'none', fontWeight: 900 }}>
                   Refresh
@@ -310,31 +266,29 @@ function EmployeeContent() {
             </Box>
           </Box>
 
-          <Box sx={{ maxWidth: 1220, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 2, md: 3 }, overflowX: 'hidden' }}>
-            <AnimatePresence mode="wait" custom={direction}>
-              <motion.div
-                key={activeTab}
-                custom={direction}
-                variants={pageVariants}
-                initial="initial"
-                animate="animate"
-                exit="exit"
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                dragElastic={0.8} // Liquid stretch effect
-                onDragEnd={(e, { offset, velocity }) => {
-                  const swipe = swipePower(offset.x, velocity.x);
-                  if (swipe < -swipeConfidenceThreshold) {
-                    paginate(1);
-                  } else if (swipe > swipeConfidenceThreshold) {
-                    paginate(-1);
-                  }
-                }}
-                style={{ touchAction: 'pan-y' }} // Allow vertical scroll, hijack horizontal
-              >
-                {renderTab()}
-              </motion.div>
-            </AnimatePresence>
+          <Box sx={{ maxWidth: 1220, mx: 'auto', px: { xs: 2, sm: 3 }, py: { xs: 2, md: 3 } }}>
+            <Box sx={{ position: 'relative' }}>
+              {visitedTabs[0] && (
+                <Box sx={{ display: activeTab === 0 ? 'block' : 'none' }}>
+                  <DashboardTab />
+                </Box>
+              )}
+              {visitedTabs[1] && (
+                <Box sx={{ display: activeTab === 1 ? 'block' : 'none' }}>
+                  <AttendanceTab />
+                </Box>
+              )}
+              {visitedTabs[2] && (
+                <Box sx={{ display: activeTab === 2 ? 'block' : 'none' }}>
+                  <RequestsTab initialMode={quickRequestMode} />
+                </Box>
+              )}
+              {visitedTabs[3] && (
+                <Box sx={{ display: activeTab === 3 ? 'block' : 'none' }}>
+                  <MoreTab onQuickRequest={(mode) => { setQuickRequestMode(mode); handleSelectTab(2); }} />
+                </Box>
+              )}
+            </Box>
           </Box>
             </Box>
           </PullToRefresh>
@@ -354,10 +308,7 @@ function EmployeeContent() {
                   key={tab.label}
                   onClick={() => {
                     hapticPop();
-                    if (idx !== 2) setQuickRequestMode(null);
-                    setDirection(idx > activeTab ? 1 : idx < activeTab ? -1 : 0);
-                    setActiveTab(idx);
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    handleSelectTab(idx);
                   }}
                   sx={{
                     position: 'relative', flex: 1, height: '100%', 

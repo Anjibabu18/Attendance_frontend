@@ -9,8 +9,8 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
-        name: "WorkTrack Attendance",
-        short_name: "WorkTrack",
+        name: "VD Attendance Attendance",
+        short_name: "VD Attendance",
         description: "Employee Attendance & Leave Management",
         theme_color: "#0b63ff",
         background_color: "#f3f8ff",
@@ -37,6 +37,7 @@ export default defineConfig({
         ],
       },
       workbox: {
+        importScripts: ["/sw-push.js"],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
         runtimeCaching: [
           {

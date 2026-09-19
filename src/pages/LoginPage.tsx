@@ -18,6 +18,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, clearLastAuthError, getLastAuthError } from "../api/client";
 import { useToast } from "../components/Toast";
+import { AppLogo } from "../components/AppLogo";
 import { Role, setAuth } from "../auth/auth";
 import { motion } from "framer-motion";
 import { loginWithBiometric, isBiometricSupported } from "../utils/webauthn";
@@ -152,8 +153,8 @@ export default function LoginPage() {
             transition={{ delay: 0.2, duration: 0.6, type: "spring", stiffness: 200 }}
             sx={{ mb: 4 }}
           >
-            <Box sx={{ width: 80, height: 80, borderRadius: "50%", border: "3px solid rgba(59,130,246,0.4)", display: "grid", placeItems: "center", mx: "auto", mb: 3, bgcolor: "rgba(59,130,246,0.08)" }}>
-              <CheckCircleIcon sx={{ fontSize: 44, color: "#60a5fa" }} />
+            <Box sx={{ display: "flex", justifyContent: "center", mb: 2.5 }}>
+              <AppLogo size={82} animated={true} glow={true} />
             </Box>
             <Typography sx={{ fontSize: 36, fontWeight: 900, lineHeight: 1, letterSpacing: "-0.02em" }}>
               Work<Box component="span" sx={{ color: "#60a5fa" }}>Track</Box>
@@ -207,11 +208,9 @@ export default function LoginPage() {
 
         <Box sx={{ width: "100%", maxWidth: 440, position: "relative", zIndex: 1 }}>
           {/* Mobile logo */}
-          <Box sx={{ display: { xs: "flex", md: "none" }, alignItems: "center", gap: 1.5, mb: 5 }}>
-            <Box sx={{ width: 40, height: 40, borderRadius: "50%", border: "3px solid rgba(37,99,235,0.3)", display: "grid", placeItems: "center", color: "#2563eb" }}>
-              <CheckCircleIcon sx={{ fontSize: 24 }} />
-            </Box>
-            <Typography sx={{ fontSize: 24, fontWeight: 900 }}>
+          <Box sx={{ display: { xs: "flex", md: "none" }, alignItems: "center", gap: 1.5, mb: 4 }}>
+            <AppLogo size={36} animated={true} />
+            <Typography sx={{ fontSize: 22, fontWeight: 900 }}>
               Work<Box component="span" sx={{ color: "#2563eb" }}>Track</Box>
             </Typography>
           </Box>

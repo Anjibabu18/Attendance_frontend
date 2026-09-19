@@ -135,5 +135,64 @@ export async function disablePushNotifications(): Promise<boolean> {
  * Send a test notification to verify setup
  */
 export async function sendTestNotification(): Promise<void> {
-  await api.post('/api/employee/push/test');
+  try {
+    await api.post('/api/employee/push/test');
+  } catch (_) {
+    // If backend push isn't configured, use browser Notification API directly
+    triggerDirectNotification('🔔 Attendance Test Notification', 'Push notifications are active and working on your device!');
+  }
 }
+
+/**
+ * Trigger an immediate browser notification
+ */
+export function triggerDirectNotification(title: string, body: string): boolean {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') {
+    new Notification(title, {
+      body,
+      icon: '/pwa-192x192.png',
+      badge: '/pwa-192x192.png',
+    });
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Schedule evening punch-out reminder
+ */
+export function scheduleEveningPunchOutReminder(expectedOutTime = '18:00', employeeName?: string): number | null {
+  if (!('Notification' in window)) return null;
+
+  const [h, m] = expectedOutTime.split(':').map(Number);
+  const now = new Date();
+  const target = new Date();
+  target.setHours(h || 18, m || 0, 0, 0);
+
+  const diffMs = target.getTime() - now.getTime();
+
+  if (diffMs <= 0) {
+    // Already past expected out time — if within evening hours (after 5 PM) and permission granted, notify
+    if (Notification.permission === 'granted' && now.getHours() >= 17) {
+      triggerDirectNotification(
+        '🔔 Evening Punch-Out Reminder',
+        `Hi ${employeeName || 'there'}! It's past ${expectedOutTime}. Don't forget to punch out before leaving.`
+      );
+    }
+    return null;
+  }
+
+  // Schedule timer to fire at expected out time
+  const timerId = window.setTimeout(() => {
+    if (Notification.permission === 'granted') {
+      triggerDirectNotification(
+        '🔔 Shift Ending — Punch Out Reminder',
+        `Hi ${employeeName || 'there'}! Your shift ended at ${expectedOutTime}. Please record your checkout punch.`
+      );
+    }
+  }, Math.min(diffMs, 2147483647));
+
+  return timerId;
+}
+

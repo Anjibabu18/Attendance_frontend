@@ -29,7 +29,6 @@ import com.attendance.service.FaceVerificationService;
 import com.attendance.service.PayrollService;
 import jakarta.validation.Valid;
 import java.time.YearMonth;
-import java.time.LocalDate;
 import java.util.List;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;

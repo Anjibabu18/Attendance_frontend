@@ -1,7 +1,7 @@
 import { Box, Button, Container, Typography } from "@mui/material";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import { VDLogo } from "../components/VDLogo";
+import { AppLogo } from "../components/AppLogo";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -18,83 +18,55 @@ export default function HomePage() {
   }, []);
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "#f8faff", color: "#0f172a", overflow: "hidden" }}>
-      {/* ── Splash Screen ── */}
+    <Box sx={{ minHeight: "100vh", bgcolor: "#0a0f1d", color: "#f8fafc", overflow: "hidden" }}>
+      {/* ── Splashboard / Loading animation on initial landing ── */}
       <AnimatePresence>
         {showSplash && (
-          <Box
-            component={motion.div}
+          <MotionBox
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.05, filter: "blur(14px)" }}
-            transition={{ duration: 0.9, ease: "easeInOut" }}
+            exit={{ opacity: 0, scale: 1.04, transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] } }}
             sx={{
-              position: "fixed", inset: 0, zIndex: 99999,
+              position: "fixed", inset: 0, zIndex: 9999,
               display: "flex", flexDirection: "column",
               alignItems: "center", justifyContent: "center",
-              overflow: "hidden",
-              background: "radial-gradient(ellipse at 50% 35%, #0f2548 0%, #05080f 100%)",
+              background: "radial-gradient(ellipse at 50% 40%, #0d1e40 0%, #060b17 100%)",
             }}
           >
-            {/* Ambient orbs */}
-            {[
-              { left: "-10%", top: "5%", color: "rgba(56,189,248,0.18)", size: "55vw", delay: 0 },
-              { right: "-10%", bottom: "5%", color: "rgba(192,132,252,0.18)", size: "45vw", delay: 1.5 },
-            ].map((orb, i) => (
-              <Box
-                key={i}
-                component={motion.div}
-                animate={{ scale: [1, 1.25, 1], opacity: [0.6, 1, 0.6] }}
-                transition={{ duration: 5 + i, repeat: Infinity, ease: "easeInOut", delay: orb.delay }}
-                sx={{
-                  position: "absolute",
-                  width: orb.size, height: orb.size,
-                  maxWidth: 600, maxHeight: 600,
-                  background: `radial-gradient(circle, ${orb.color} 0%, transparent 70%)`,
-                  borderRadius: "50%", pointerEvents: "none",
-                  left: (orb as any).left, right: (orb as any).right,
-                  top: (orb as any).top, bottom: (orb as any).bottom,
-                }}
-              />
-            ))}
-
-            {/* Spinning ring */}
+            {/* Ambient orb glow */}
             <Box
               component={motion.div}
-              animate={{ rotate: 360 }}
-              transition={{ duration: 16, repeat: Infinity, ease: "linear" }}
+              animate={{ scale: [1, 1.25, 1], opacity: [0.3, 0.55, 0.3] }}
+              transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
               sx={{
-                position: "absolute",
-                width: 300, height: 300, borderRadius: "50%",
-                border: "1px solid rgba(56,189,248,0.15)",
-                borderTop: "2px solid rgba(56,189,248,0.5)",
+                position: "absolute", width: 440, height: 440, borderRadius: "50%",
+                background: "radial-gradient(circle, rgba(56,189,248,0.2) 0%, rgba(99,102,241,0.08) 50%, transparent 70%)",
                 pointerEvents: "none",
               }}
             />
 
-            {/* VD Logo */}
+            {/* App Logo */}
             <Box
               component={motion.div}
-              initial={{ scale: 0.2, opacity: 0 }}
+              initial={{ scale: 0.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.9, ease: [0.34, 1.56, 0.64, 1] }}
+              transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1] }}
               sx={{ position: "relative", zIndex: 2, mb: 3 }}
             >
-              <VDLogo size={160} />
+              <AppLogo size={130} animated={true} glow={true} />
             </Box>
 
-            {/* VD Attendance name */}
+            {/* App name */}
             <Box
               component={motion.div}
-              initial={{ opacity: 0, y: 24 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.45, duration: 0.7, ease: "easeOut" }}
+              transition={{ delay: 0.25, duration: 0.5, ease: "easeOut" }}
               sx={{ position: "relative", zIndex: 2, textAlign: "center", mb: 0.5 }}
             >
               <Typography sx={{
-                fontSize: { xs: 38, sm: 54, md: 68 },
-                fontWeight: 900, lineHeight: 1,
-                letterSpacing: "-0.04em",
-                fontFamily: '"Georgia", serif',
+                fontSize: { xs: 36, sm: 48, md: 56 },
+                fontWeight: 900, lineHeight: 1.1,
+                letterSpacing: "-0.03em",
                 color: "#f8fafc",
               }}>
                 Work<Box component="span" sx={{
@@ -141,7 +113,7 @@ export default function HomePage() {
                 />
               ))}
             </Box>
-          </Box>
+          </MotionBox>
         )}
       </AnimatePresence>
 
@@ -158,9 +130,7 @@ export default function HomePage() {
         <Container maxWidth="lg">
           <Box sx={{ height: 68, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-              <Box sx={{ width: 38, height: 38, borderRadius: "50%", border: "3px solid rgba(37,99,235,0.2)", display: "grid", placeItems: "center", color: "#2563eb" }}>
-                <CheckCircleIcon sx={{ fontSize: 22 }} />
-              </Box>
+              <AppLogo size={36} animated={false} />
               <Typography sx={{ fontWeight: 900, fontSize: 22, lineHeight: 1 }}>
                 Work<Box component="span" sx={{ color: "#2563eb" }}>Track</Box>
               </Typography>
@@ -293,7 +263,7 @@ export default function HomePage() {
       {/* ── Footer ── */}
       <Box sx={{ textAlign: "center", py: 4, color: "#94a3b8", fontSize: 13 }}>
         <Typography sx={{ fontSize: 13, color: "#94a3b8" }}>
-          © 2026 VD Attendance. All rights reserved.
+          © 2026 WorkTrack Attendance. All rights reserved.
         </Typography>
       </Box>
     </Box>

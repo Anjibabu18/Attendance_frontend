@@ -17,6 +17,7 @@ import dayjs from "dayjs";
 import { useThemeContext } from "../theme/ThemeContext";
 import DarkModeRoundedIcon from "@mui/icons-material/DarkModeRounded";
 import LightModeRoundedIcon from "@mui/icons-material/LightModeRounded";
+import { AppLogo } from "./AppLogo";
 
 type CompanyProfile = { groupPhotoUrl?: string | null };
 type Notification = { id: number; title: string; message: string; read: boolean; createdAt: string };
@@ -240,12 +241,10 @@ export default function Layout(props: { title: string; children: React.ReactNode
       >
       {/* Brand */}
       <Box sx={{ px: 1, pt: 0.5, pb: 1.25, display: "flex", alignItems: "center", gap: 1.25 }}>
-        <Box sx={{ width: 32, height: 32, borderRadius: 2, background: "linear-gradient(135deg, #4f46e5, #2563eb)", display: "grid", placeItems: "center", boxShadow: "0 4px 12px rgba(79,70,229,0.3)" }}>
-          <ShieldOutlinedIcon sx={{ fontSize: 17, color: "#fff" }} />
-        </Box>
+        <AppLogo size={32} animated={false} />
         <Box>
-          <Typography sx={{ fontWeight: 900, fontSize: 13.5, color: "#0f172a", lineHeight: 1.1 }}>Attendance</Typography>
-          <Typography sx={{ fontSize: 10, color: "text.secondary", fontWeight: 500 }}>Management Portal</Typography>
+          <Typography sx={{ fontWeight: 900, fontSize: 14, color: "#0f172a", lineHeight: 1.1 }}>WorkTrack</Typography>
+          <Typography sx={{ fontSize: 10, color: "text.secondary", fontWeight: 500 }}>Attendance Portal</Typography>
         </Box>
       </Box>
 
@@ -356,20 +355,18 @@ export default function Layout(props: { title: string; children: React.ReactNode
             <MenuIcon fontSize="small" />
           </IconButton>
           <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 1, md: 1.5 }, flexGrow: 1, minWidth: 0 }}>
-            <Avatar
-              src={company?.groupPhotoUrl ?? undefined}
-              sx={{
-                width: { xs: 38, md: 44 },
-                height: { xs: 38, md: 44 },
-                border: "1px solid rgba(255,255,255,0.8)",
-                bgcolor: "#111827",
-                color: "white",
-                fontWeight: 900,
-                boxShadow: "0 10px 22px rgba(15,23,42,0.16)",
-              }}
-            >
-              A
-            </Avatar>
+            {company?.groupPhotoUrl ? (
+              <Avatar
+                src={company.groupPhotoUrl}
+                sx={{
+                  width: { xs: 38, md: 42 },
+                  height: { xs: 38, md: 42 },
+                  boxShadow: "0 8px 20px rgba(15,23,42,0.14)",
+                }}
+              />
+            ) : (
+              <AppLogo size={38} animated={false} />
+            )}
             <Box sx={{ minWidth: 0 }}>
               <Box sx={{ display: "flex", gap: 0.8, alignItems: "center", flexWrap: "wrap" }}>
                 <Typography variant="h6" sx={{ fontWeight: 950, lineHeight: 1.08, fontSize: { xs: 16, md: 18 }, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: { xs: 185, sm: 320, md: "none" } }}>

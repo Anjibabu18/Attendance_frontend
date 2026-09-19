@@ -100,7 +100,7 @@ function initialForm() {
 }
 
 export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null }) {
-  const { leaveRequests, workRequests, regularizationRequests, compOffRequests, refreshRequests } = useEmployee();
+  const { leaveRequests, workRequests, regularizationRequests, compOffRequests, refreshRequests, entries, settings } = useEmployee();
   const [filter, setFilter] = useState('All');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [mode, setMode] = useState<RequestMode>('leave');
@@ -108,6 +108,13 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+
+  // #9 Auto-detected incomplete / missing punch entries
+  const missingPunchEntry = useMemo(() => {
+    return [...entries]
+      .sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf())
+      .find((e) => e.inTime && !e.outTime);
+  }, [entries]);
 
   const requests = useMemo<RequestItem[]>(() => {
     const leaveItems = leaveRequests.map((item) => ({
@@ -175,7 +182,22 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
 
   const openRequestDialog = (nextMode: RequestMode = 'leave') => {
     setMode(nextMode);
-    setForm(initialForm());
+    const base = initialForm();
+    if (nextMode === 'regularization') {
+      if (missingPunchEntry) {
+        base.date = missingPunchEntry.date;
+        base.inTime = missingPunchEntry.inTime ? dayjs(missingPunchEntry.inTime).format('HH:mm') : (settings?.defaultInTime?.slice(0, 5) || '09:30');
+        base.outTime = settings?.defaultOutTime?.slice(0, 5) || '18:30';
+        base.reason = 'Missing punch-out correction';
+      } else {
+        const yesterday = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+        base.date = yesterday;
+        base.inTime = settings?.defaultInTime?.slice(0, 5) || '09:30';
+        base.outTime = settings?.defaultOutTime?.slice(0, 5) || '18:30';
+        base.reason = 'Attendance regularization';
+      }
+    }
+    setForm(base);
     setSubmitError(null);
     setAttachmentFile(null);
     setDialogOpen(true);
@@ -356,6 +378,32 @@ export function RequestsTab({ initialMode }: { initialMode?: RequestMode | null 
 
           {mode === 'regularization' && (
             <>
+              {missingPunchEntry && (
+                <Alert
+                  severity="info"
+                  sx={{ borderRadius: '8px', py: 0.5, fontSize: 13 }}
+                  action={
+                    <Button
+                      size="small"
+                      color="inherit"
+                      onClick={() => {
+                        setForm((prev) => ({
+                          ...prev,
+                          date: missingPunchEntry.date,
+                          inTime: missingPunchEntry.inTime ? dayjs(missingPunchEntry.inTime).format('HH:mm') : (settings?.defaultInTime?.slice(0, 5) || '09:30'),
+                          outTime: settings?.defaultOutTime?.slice(0, 5) || '18:30',
+                          reason: 'Missing checkout punch on ' + dayjs(missingPunchEntry.date).format('DD MMM'),
+                        }));
+                      }}
+                      sx={{ fontWeight: 900, textTransform: 'none' }}
+                    >
+                      Pre-fill
+                    </Button>
+                  }
+                >
+                  Missing checkout on <b>{dayjs(missingPunchEntry.date).format('ddd, DD MMM')}</b>
+                </Alert>
+              )}
               <TextField label="Date" type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} InputLabelProps={{ shrink: true }} size="small" />
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                 <TextField label="In time" type="time" value={form.inTime} onChange={(event) => setForm({ ...form, inTime: event.target.value })} InputLabelProps={{ shrink: true }} size="small" />

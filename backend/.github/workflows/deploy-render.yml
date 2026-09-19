@@ -12,6 +12,8 @@ permissions:
 jobs:
   docker-render:
     runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4

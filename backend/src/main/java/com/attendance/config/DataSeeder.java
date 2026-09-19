@@ -1,6 +1,5 @@
 package com.attendance.config;
 
-import com.attendance.config.AppConfig;
 import com.attendance.domain.AppUser;
 import com.attendance.domain.Role;
 import com.attendance.repo.UserRepository;

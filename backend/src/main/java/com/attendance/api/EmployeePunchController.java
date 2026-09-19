@@ -13,7 +13,6 @@ import com.attendance.service.AttendanceService;
 import com.attendance.service.ProductionFeatureService;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Duration;
-import java.time.LocalDate;
 import java.time.LocalTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;

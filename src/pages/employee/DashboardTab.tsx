@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Alert, Avatar, Box, Button, Chip, LinearProgress, Typography } from '@mui/material';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
 import LoginRoundedIcon from '@mui/icons-material/LoginRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import FreeBreakfastRoundedIcon from '@mui/icons-material/FreeBreakfastRounded';
@@ -9,6 +9,13 @@ import CalendarTodayRoundedIcon from '@mui/icons-material/CalendarTodayRounded';
 import WorkHistoryRoundedIcon from '@mui/icons-material/WorkHistoryRounded';
 import WalletRoundedIcon from '@mui/icons-material/WalletRounded';
 import TrendingUpRoundedIcon from '@mui/icons-material/TrendingUpRounded';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import NightlightRoundedIcon from '@mui/icons-material/NightlightRounded';
+import WbSunnyRoundedIcon from '@mui/icons-material/WbSunnyRounded';
+import TimerRoundedIcon from '@mui/icons-material/TimerRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
+import FlashOnRoundedIcon from '@mui/icons-material/FlashOnRounded';
+import NotificationsActiveRoundedIcon from '@mui/icons-material/NotificationsActiveRounded';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence, useAnimation } from 'framer-motion';
 import Tilt from 'react-parallax-tilt';
@@ -18,6 +25,8 @@ import { Attendance } from '../../types';
 import { useEmployee } from './EmployeeContext';
 import { PunchOverlay } from './PunchOverlay';
 import { useThemeContext } from '../../theme/ThemeContext';
+import { useToast } from '../../components/Toast';
+import { scheduleEveningPunchOutReminder, triggerDirectNotification } from '../../utils/pushNotifications';
 import { hapticPop, hapticSuccess, hapticTap } from '../../utils/haptics';
 
 const MotionBox = motion.create(Box);
@@ -205,8 +214,32 @@ function CircularProgress({ progress, size = 220, strokeWidth = 14, isOvertime =
   );
 }
 
+function HeroClock() {
+  const [time, setTime] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <>
+      <Typography sx={{ color: 'rgba(148,163,184,0.9)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
+        {dayjs(time).format('dddd, DD MMMM YYYY')}
+      </Typography>
+      <Typography sx={{ fontWeight: 900, fontSize: { xs: 32, md: 48 }, lineHeight: 1.1, color: '#f8fafc', mb: 0.5, letterSpacing: '-0.02em' }}>
+        {dayjs(time).format('hh:mm:ss A')}
+      </Typography>
+    </>
+  );
+}
+
 export function DashboardTab() {
-  const { profile, todayEntry, settings, monthSummary, entries, leaveBalances, activeBreak, breaks, fetchBreaks, month, deviceStatus, refreshData } = useEmployee();
+  const {
+    profile, todayEntry, settings, monthSummary, entries, leaveBalances,
+    activeBreak, breaks, fetchBreaks, month, deviceStatus, refreshData,
+    payslip, refreshToday, refreshRequests
+  } = useEmployee();
+  const { toastSuccess, toastError } = useToast();
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
 
@@ -216,6 +249,70 @@ export function DashboardTab() {
   const [breakError, setBreakError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [streaks, setStreaks] = useState<{ currentStreak: number; longestStreak: number; punctualityScore: number; badges: string[]; totalOnTime: number; totalDays: number } | null>(null);
+
+  // #6 Quick Leave for Today
+  const [quickLeaveOpen, setQuickLeaveOpen] = useState(false);
+  const [quickLeaveType, setQuickLeaveType] = useState('CASUAL_LEAVE');
+  const [quickLeaveReason, setQuickLeaveReason] = useState('Personal work');
+  const [quickLeaveBusy, setQuickLeaveBusy] = useState(false);
+
+  const handleApplyQuickLeave = async () => {
+    setQuickLeaveBusy(true);
+    try {
+      const todayStr = dayjs().format('YYYY-MM-DD');
+      await api.post('/api/employee/leave-requests', {
+        fromDate: todayStr,
+        toDate: todayStr,
+        leaveType: quickLeaveType,
+        reason: quickLeaveReason.trim() || 'Quick leave applied for today',
+        mailSubject: `Leave request for today (${todayStr})`,
+        mailMessage: quickLeaveReason.trim() || 'Quick leave applied for today',
+      });
+      toastSuccess('Quick leave submitted for today!');
+      setQuickLeaveOpen(false);
+      await refreshRequests();
+    } catch (err: any) {
+      toastError(err?.response?.data?.error || 'Failed to submit quick leave');
+    } finally {
+      setQuickLeaveBusy(false);
+    }
+  };
+
+  // #20 Auto-refresh on focus
+  useEffect(() => {
+    const onFocus = () => { refreshToday(); };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refreshToday]);
+
+  // #2 Evening Punch-Out Reminder
+  useEffect(() => {
+    if (!todayEntry?.inTime || todayEntry?.outTime) return;
+    const expectedOut = settings?.defaultOutTime?.slice(0, 5) || '18:00';
+    const timerId = scheduleEveningPunchOutReminder(expectedOut, profile?.name);
+    return () => {
+      if (timerId) window.clearTimeout(timerId);
+    };
+  }, [todayEntry, settings, profile]);
+
+  const handleTestEveningNotification = async () => {
+    if ('Notification' in window && Notification.permission !== 'granted') {
+      const res = await Notification.requestPermission();
+      if (res !== 'granted') {
+        toastError('Please allow notifications in browser permissions.');
+        return;
+      }
+    }
+    const fired = triggerDirectNotification(
+      '🔔 Evening Punch-Out Reminder',
+      `Hi ${profile?.name?.split(' ')[0] || 'there'}! It's almost time to leave. Don't forget to clock out!`
+    );
+    if (fired) {
+      toastSuccess('Notification fired! Check your screen/banner.');
+    } else {
+      toastSuccess('Reminder active! Notification will appear at expected out time.');
+    }
+  };
 
   useEffect(() => {
     api.get('/api/employee/streaks').then(r => setStreaks(r.data)).catch(() => {});
@@ -242,11 +339,6 @@ export function DashboardTab() {
     }
   }, [todayEntry, breaks]);
 
-  const [currentTime, setCurrentTime] = useState(() => new Date());
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const openPunch = (kind: 'checkin' | 'checkout') => { setPunchKind(kind); setPunchOpen(true); };
 
@@ -268,18 +360,47 @@ export function DashboardTab() {
   const ot = secondsLabel(overtimeSeconds);
   const recentEntries = useMemo(() => [...entries].sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf()).slice(0, 5), [entries]);
 
+  // #7 Weekly trend (last 7 working days)
+  const weeklyTrend = useMemo(() => {
+    return [...entries]
+      .sort((a, b) => dayjs(b.date).valueOf() - dayjs(a.date).valueOf())
+      .slice(0, 7)
+      .reverse()
+      .map((e) => ({ date: e.date, day: dayjs(e.date).format('ddd'), worked: e.workedMinutes ?? 0, status: e.status }));
+  }, [entries]);
+  const maxWorkedInWeek = useMemo(() => Math.max(...weeklyTrend.map((d) => d.worked), targetMinutes), [weeklyTrend, targetMinutes]);
+
+  // #4 Salary Preview
+  const salaryPreview = useMemo(() => {
+    if (!payslip) return null;
+    return payslip;
+  }, [payslip]);
+
+  // #8 Attendance Rank — attendance % compared to full attendance
+  const attendancePct = monthSummary && monthSummary.workingDays > 0
+    ? Math.round((monthSummary.presentDays / monthSummary.workingDays) * 100)
+    : null;
+  const rankLabel = attendancePct != null
+    ? attendancePct >= 95 ? '🏆 Top 5%' : attendancePct >= 85 ? '⭐ Top 15%' : attendancePct >= 75 ? '✅ Good' : '⚠️ Needs Improvement'
+    : null;
+
   const clockedIn = !!todayEntry?.inTime && !todayEntry?.outTime;
   const completed = !!todayEntry?.outTime;
   const greetingName = profile?.name?.split(' ')[0] || 'there';
   const { h, m, s } = secondsLabel(elapsedSeconds);
 
-  const hour = currentTime.getHours();
+  const hour = new Date().getHours();
   let dynamicGreeting = 'Good evening 🌙';
   if (hour < 12) dynamicGreeting = 'Good morning ☕';
   else if (hour < 17) dynamicGreeting = 'Good afternoon ☀️';
 
+  const daysRemaining = useMemo(() => {
+    const end = dayjs(`${month}-01`).endOf('month');
+    return Math.max(0, end.diff(dayjs(), 'day'));
+  }, [month]);
+
   const statCards = [
-    { label: 'This month', value: `${monthSummary?.presentDays || 0}/${monthSummary?.workingDays || 0}`, helper: 'Present days', icon: <CalendarTodayRoundedIcon />, color: '#38bdf8', bg: 'rgba(56,189,248,0.12)' },
+    { label: 'This month', value: `${monthSummary?.presentDays || 0}/${monthSummary?.workingDays || 0}`, helper: `Present days · ${daysRemaining}d left`, icon: <CalendarTodayRoundedIcon />, color: '#38bdf8', bg: 'rgba(56,189,248,0.12)' },
     { label: 'Worked', value: minutesLabel(monthSummary?.totalWorkedMinutes), helper: dayjs(`${month}-01`).format('MMM YYYY'), icon: <WorkHistoryRoundedIcon />, color: '#818cf8', bg: 'rgba(129,140,248,0.12)' },
     { label: 'Overtime', value: minutesLabel(totalOvertime), helper: 'Approved payroll input', icon: <TrendingUpRoundedIcon />, color: '#22c55e', bg: 'rgba(34,197,94,0.12)' },
     { label: 'Leave balance', value: `${totalLeaveBalance}d`, helper: `${leaveBalances.length} leave types`, icon: <WalletRoundedIcon />, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
@@ -372,15 +493,26 @@ export function DashboardTab() {
           {/* Header row */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
             <Box>
-              <Typography sx={{ color: 'rgba(148,163,184,0.9)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
-                {dayjs(currentTime).format('dddd, DD MMMM YYYY')}
-              </Typography>
-              <Typography sx={{ fontWeight: 900, fontSize: { xs: 32, md: 48 }, lineHeight: 1.1, color: '#f8fafc', mb: 0.5, letterSpacing: '-0.02em' }}>
-                {dayjs(currentTime).format('hh:mm:ss A')}
-              </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: { xs: 18, md: 20 }, fontWeight: 600 }}>
-                {dynamicGreeting}, {greetingName}
-              </Typography>
+              <HeroClock />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: { xs: 18, md: 20 }, fontWeight: 600 }}>
+                  {dynamicGreeting}, {greetingName}
+                </Typography>
+                {rankLabel && (
+                  <Chip
+                    label={rankLabel}
+                    size="small"
+                    sx={{
+                      fontWeight: 800,
+                      fontSize: 11,
+                      bgcolor: 'rgba(255,255,255,0.18)',
+                      color: '#f8fafc',
+                      border: '1px solid rgba(255,255,255,0.28)',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  />
+                )}
+              </Box>
             </Box>
             <Box
               component={motion.div}
@@ -392,17 +524,42 @@ export function DashboardTab() {
             </Box>
           </Box>
 
-          {/* Status indicator */}
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
-            <Box
-              component={motion.div}
-              animate={{ scale: clockedIn ? [1, 1.3, 1] : 1, opacity: clockedIn ? [0.7, 1, 0.7] : 1 }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: clockedIn ? '#22c55e' : completed ? '#93c5fd' : '#64748b' }}
-            />
-            <Typography sx={{ fontWeight: 800, color: '#f8fafc', fontSize: 15 }}>
-              {clockedIn ? `Clocked in at ${timeLabel(todayEntry?.inTime)}` : completed ? `Shift completed · In: ${timeLabel(todayEntry?.inTime)}` : 'Not clocked in'}
-            </Typography>
+          {/* Status indicator & Quick Leave action */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2.5, flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box
+                component={motion.div}
+                animate={{ scale: clockedIn ? [1, 1.3, 1] : 1, opacity: clockedIn ? [0.7, 1, 0.7] : 1 }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+                sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: clockedIn ? '#22c55e' : completed ? '#93c5fd' : '#64748b' }}
+              />
+              <Typography sx={{ fontWeight: 800, color: '#f8fafc', fontSize: 15 }}>
+                {clockedIn ? `Clocked in at ${timeLabel(todayEntry?.inTime)}` : completed ? `Shift completed · In: ${timeLabel(todayEntry?.inTime)}` : 'Not clocked in'}
+              </Typography>
+            </Box>
+
+            {!clockedIn && !completed && (
+              <MotionButton
+                whileTap={{ scale: 0.96 }}
+                onClick={() => setQuickLeaveOpen(true)}
+                size="small"
+                startIcon={<FlashOnRoundedIcon sx={{ fontSize: '15px !important' }} />}
+                sx={{
+                  bgcolor: 'rgba(255,255,255,0.14)',
+                  color: '#ffffff',
+                  borderRadius: '10px',
+                  fontWeight: 800,
+                  fontSize: 12,
+                  px: 1.5,
+                  py: 0.5,
+                  border: '1px solid rgba(255,255,255,0.22)',
+                  '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' },
+                  textTransform: 'none',
+                }}
+              >
+                Quick Leave Today
+              </MotionButton>
+            )}
           </Box>
 
           {/* Circular timer + buttons row */}
@@ -586,6 +743,214 @@ export function DashboardTab() {
         </Tilt>
       </MotionBox>
 
+      {/* ── TODAY'S WORK CARD (appears after check-in) ── */}
+      {todayEntry?.inTime && (
+        <MotionBox
+          variants={itemVariants}
+          sx={{
+            borderRadius: '20px',
+            p: { xs: 2, md: 2.5 },
+            background: isDark
+              ? 'linear-gradient(135deg, rgba(15,40,80,0.85) 0%, rgba(10,22,50,0.95) 100%)'
+              : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+            border: `1px solid ${isDark ? 'rgba(56,189,248,0.18)' : 'rgba(37,99,235,0.12)'}`,
+            boxShadow: isDark ? '0 8px 32px rgba(56,189,248,0.08)' : '0 8px 32px rgba(37,99,235,0.07)',
+          }}
+        >
+          {/* Header */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              {todayEntry.outTime ? (
+                <CheckCircleRoundedIcon sx={{ color: '#22c55e', fontSize: 28 }} />
+              ) : (
+                <TimerRoundedIcon sx={{ color: '#38bdf8', fontSize: 28 }} />
+              )}
+              <Box>
+                <Typography sx={{ fontWeight: 900, fontSize: { xs: 16, md: 18 } }}>
+                  {todayEntry.outTime ? 'Shift Completed ✅' : "Today's Work in Progress"}
+                </Typography>
+                <Typography sx={{ color: 'text.secondary', fontSize: 12, fontWeight: 600 }}>
+                  {dayjs().format('dddd, DD MMM YYYY')}
+                </Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+              {(todayEntry.lateMinutes ?? 0) > 0 && (
+                <Chip
+                  size="small"
+                  icon={<WarningAmberRoundedIcon sx={{ fontSize: '14px !important' }} />}
+                  label={`Late ${minutesLabel(todayEntry.lateMinutes)}`}
+                  sx={{ fontWeight: 900, fontSize: 11, bgcolor: 'rgba(245,158,11,0.15)', color: '#d97706', border: '1px solid rgba(245,158,11,0.3)' }}
+                />
+              )}
+              {isOvertime && (
+                <Chip
+                  size="small"
+                  label={`OT +${ot.h}h ${ot.m}m`}
+                  sx={{ fontWeight: 900, fontSize: 11, bgcolor: 'rgba(34,197,94,0.15)', color: '#16a34a', border: '1px solid rgba(34,197,94,0.3)' }}
+                />
+              )}
+            </Box>
+          </Box>
+
+          {/* Progress bar */}
+          <Box sx={{ mb: 2.5 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.75 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'text.secondary' }}>
+                {!todayEntry.outTime ? `Working: ${h}h ${m}m ${s}s` : `Worked: ${minutesLabel(todayEntry.workedMinutes)}`}
+              </Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: isOvertime ? '#22c55e' : '#38bdf8' }}>
+                {isOvertime ? '100% + Overtime' : `${progress}% of ${minutesLabel(targetMinutes)}`}
+              </Typography>
+            </Box>
+            <Box sx={{ height: 10, borderRadius: 5, bgcolor: isDark ? 'rgba(255,255,255,0.08)' : '#e0f2fe', overflow: 'hidden', position: 'relative' }}>
+              <MotionBox
+                component="div"
+                initial={{ width: '0%' }}
+                animate={{ width: `${Math.min(100, progress)}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                sx={{
+                  height: '100%', borderRadius: 5,
+                  background: isOvertime
+                    ? 'linear-gradient(90deg, #22c55e, #16a34a)'
+                    : progress >= 75
+                    ? 'linear-gradient(90deg, #38bdf8, #22c55e)'
+                    : 'linear-gradient(90deg, #38bdf8, #818cf8)',
+                }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+              <Typography sx={{ fontSize: 10, color: 'text.disabled', fontWeight: 600 }}>In: {timeLabel(todayEntry.inTime)}</Typography>
+              <Typography sx={{ fontSize: 10, color: 'text.disabled', fontWeight: 600 }}>
+                Target: {settings?.defaultOutTime?.substring(0,5) ?? '--:--'}
+              </Typography>
+            </Box>
+          </Box>
+
+          {/* Stats grid */}
+          <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1.25, mb: 2 }}>
+            {[
+              {
+                icon: <WbSunnyRoundedIcon sx={{ fontSize: 18, color: '#f59e0b' }} />,
+                label: 'In Time',
+                value: timeLabel(todayEntry.inTime),
+                color: '#22c55e',
+              },
+              {
+                icon: <NightlightRoundedIcon sx={{ fontSize: 18, color: '#818cf8' }} />,
+                label: todayEntry.outTime ? 'Out Time' : 'Expected Out',
+                value: todayEntry.outTime
+                  ? timeLabel(todayEntry.outTime)
+                  : settings?.defaultOutTime?.substring(0, 5) ?? '--:--',
+                color: todayEntry.outTime ? '#ef4444' : '#64748b',
+              },
+              {
+                icon: <TimerRoundedIcon sx={{ fontSize: 18, color: '#38bdf8' }} />,
+                label: todayEntry.outTime ? 'Total Worked' : 'Worked So Far',
+                value: todayEntry.outTime ? minutesLabel(todayEntry.workedMinutes) : `${h}h ${m}m`,
+                color: '#38bdf8',
+              },
+            ].map((item, i) => (
+              <Box
+                key={item.label}
+                sx={{
+                  p: 1.5, borderRadius: '14px', textAlign: 'center',
+                  background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.8)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(37,99,235,0.1)'}`,
+                }}
+              >
+                {item.icon}
+                <Typography sx={{ fontWeight: 900, fontSize: { xs: 14, md: 16 }, color: item.color, fontFamily: 'monospace', lineHeight: 1.2, mt: 0.5 }}>{item.value}</Typography>
+                <Typography sx={{ color: 'text.secondary', fontSize: 11, fontWeight: 700, mt: 0.25 }}>{item.label}</Typography>
+              </Box>
+            ))}
+          </Box>
+
+          {/* Remaining time / done message */}
+          {!todayEntry.outTime ? (
+            (() => {
+              const outTimeStr = settings?.defaultOutTime?.substring(0, 5) ?? '18:00';
+              const expectedOutDt = dayjs(`${dayjs().format('YYYY-MM-DD')}T${outTimeStr}`);
+              const now = dayjs();
+              const remainingMin = expectedOutDt.diff(now, 'minute');
+              const isEvening = now.hour() >= 17; // after 5 PM
+              const isNearEnd = remainingMin > 0 && remainingMin <= 60;
+
+              if (remainingMin <= 0) {
+                return (
+                  <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: 'rgba(34,197,94,0.12)', border: '1px solid rgba(34,197,94,0.25)', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircleRoundedIcon sx={{ color: '#22c55e', fontSize: 20 }} />
+                    <Typography sx={{ fontWeight: 800, fontSize: 13, color: '#16a34a' }}>Full day target reached! You can punch out anytime. 🎉</Typography>
+                  </Box>
+                );
+              }
+
+              return (
+                <Box sx={{
+                  p: 1.5, borderRadius: '12px',
+                  bgcolor: isEvening ? 'rgba(245,158,11,0.1)' : 'rgba(56,189,248,0.08)',
+                  border: `1px solid ${isEvening ? 'rgba(245,158,11,0.25)' : 'rgba(56,189,248,0.15)'}`,
+                  display: 'flex', alignItems: 'center', gap: 1,
+                }}>
+                  {isEvening
+                    ? <NightlightRoundedIcon sx={{ color: '#d97706', fontSize: 18 }} />
+                    : <TimerRoundedIcon sx={{ color: '#38bdf8', fontSize: 18 }} />}
+                  <Typography sx={{ fontWeight: 700, fontSize: 12.5, color: isEvening ? '#92400e' : 'text.secondary' }}>
+                    {isNearEnd
+                      ? `⏰ Almost time to leave — ${remainingMin}m remaining to expected checkout (${outTimeStr})`
+                      : isEvening
+                      ? `🌙 Evening check — ${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m to expected out (${outTimeStr})`
+                      : `${Math.floor(remainingMin / 60)}h ${remainingMin % 60}m remaining to reach target (${outTimeStr})`
+                    }
+                  </Typography>
+                </Box>
+              );
+            })()
+          ) : (
+            <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.2)', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+              <CheckCircleRoundedIcon sx={{ color: '#22c55e' }} />
+              <Box sx={{ flexGrow: 1 }}>
+                <Typography sx={{ fontWeight: 900, fontSize: 13, color: '#15803d' }}>Shift complete! Great work today 🎉</Typography>
+                <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600 }}>
+                  {timeLabel(todayEntry.inTime)} → {timeLabel(todayEntry.outTime)} · {minutesLabel(todayEntry.workedMinutes)} worked
+                  {(todayEntry.lateMinutes ?? 0) > 0 ? ` · Late ${minutesLabel(todayEntry.lateMinutes)}` : ''}
+                  {(todayEntry.overtimeMinutes ?? 0) > 0 ? ` · OT ${minutesLabel(todayEntry.overtimeMinutes)}` : ''}
+                </Typography>
+              </Box>
+            </Box>
+          )}
+
+          {/* #2 Evening Punch-Out Reminder interactive control */}
+          {!todayEntry.outTime && (
+            <Box sx={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              flexWrap: 'wrap', gap: 1, mt: 1.5, pt: 1.5,
+              borderTop: '1px solid', borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+            }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip
+                  icon={<NotificationsActiveRoundedIcon sx={{ fontSize: '15px !important', color: '#f59e0b !important' }} />}
+                  label={`Evening Reminder: ${settings?.defaultOutTime?.slice(0, 5) || '18:00'}`}
+                  size="small"
+                  sx={{ fontWeight: 800, fontSize: 11, bgcolor: 'rgba(245,158,11,0.12)', color: '#d97706' }}
+                />
+                <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600 }}>
+                  Active · Browser will alert you when shift ends
+                </Typography>
+              </Box>
+              <Button
+                size="small"
+                variant="text"
+                onClick={handleTestEveningNotification}
+                sx={{ fontSize: 11, fontWeight: 800, textTransform: 'none', color: '#38bdf8' }}
+              >
+                Test Alert 🔔
+              </Button>
+            </Box>
+          )}
+        </MotionBox>
+      )}
+
       {/* ── Stat Cards ── */}
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 1.5 }}>
         {statCards.map((item, i) => (
@@ -608,6 +973,118 @@ export function DashboardTab() {
           </MotionBox>
           </Tilt>
         ))}
+      </MotionBox>
+
+      {/* ── Insights: Weekly Work Trend & Salary Preview ── */}
+      <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: payslip ? '1.1fr 0.9fr' : '1fr' }, gap: 2.5 }}>
+
+        {/* Weekly Work Trend (#7) */}
+        <Tilt tiltMaxAngleX={3} tiltMaxAngleY={3} glareEnable={true} glareMaxOpacity={0.06} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
+          <Box sx={{ ...glassCard, p: 2.5, height: '100%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <TrendingUpRoundedIcon sx={{ color: '#38bdf8', fontSize: 22 }} />
+                <Typography sx={{ fontWeight: 900, fontSize: 17 }}>Weekly Work Trend</Typography>
+              </Box>
+              <Chip
+                label={`Target: ${minutesLabel(targetMinutes)}/day`}
+                size="small"
+                sx={{ fontWeight: 700, fontSize: 11, bgcolor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)' }}
+              />
+            </Box>
+
+            {weeklyTrend.length === 0 ? (
+              <Typography sx={{ color: 'text.secondary', fontSize: 13, py: 3, textAlign: 'center' }}>
+                No recent work history to chart yet.
+              </Typography>
+            ) : (
+              <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', gap: 1, height: 130, pt: 1, px: 1 }}>
+                {weeklyTrend.map((d) => {
+                  const heightPct = Math.min(100, Math.round((d.worked / (maxWorkedInWeek || 480)) * 100));
+                  const isTargetMet = d.worked >= targetMinutes;
+                  const barColor = isTargetMet ? '#22c55e' : d.worked > 0 ? '#38bdf8' : 'rgba(148,163,184,0.3)';
+                  return (
+                    <Box key={d.date} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, height: '100%' }}>
+                      <Typography sx={{ fontSize: 10, fontWeight: 700, color: 'text.secondary', mb: 0.5 }}>
+                        {d.worked ? `${Math.round(d.worked / 60)}h` : '-'}
+                      </Typography>
+                      <Box sx={{ width: '100%', maxWidth: 32, flex: 1, display: 'flex', alignItems: 'flex-end', bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)', borderRadius: '6px', p: '2px' }}>
+                        <MotionBox
+                          initial={{ height: 0 }}
+                          animate={{ height: `${Math.max(10, heightPct)}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          sx={{
+                            width: '100%',
+                            bgcolor: barColor,
+                            borderRadius: '4px',
+                            boxShadow: isTargetMet ? '0 2px 8px rgba(34,197,94,0.35)' : undefined,
+                          }}
+                        />
+                      </Box>
+                      <Typography sx={{ fontSize: 11, fontWeight: 800, mt: 0.75, color: d.date === dayjs().format('YYYY-MM-DD') ? '#38bdf8' : 'text.secondary' }}>
+                        {d.day}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+          </Box>
+        </Tilt>
+
+        {/* Salary Preview (#4) */}
+        {payslip && (
+          <Tilt tiltMaxAngleX={3} tiltMaxAngleY={3} glareEnable={true} glareMaxOpacity={0.06} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ ...glassCard, p: 2.5, height: '100%' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <WalletRoundedIcon sx={{ color: '#22c55e', fontSize: 22 }} />
+                  <Typography sx={{ fontWeight: 900, fontSize: 17 }}>My Salary Preview</Typography>
+                </Box>
+                <Chip
+                  label={dayjs(`${month}-01`).format('MMM YYYY')}
+                  size="small"
+                  sx={{ fontWeight: 800, fontSize: 11, bgcolor: 'rgba(34,197,94,0.12)', color: '#16a34a' }}
+                />
+              </Box>
+
+              {/* Net Pay Highlight */}
+              <Box sx={{
+                p: 2, borderRadius: '14px', textAlign: 'center', mb: 2,
+                background: isDark
+                  ? 'linear-gradient(135deg, rgba(34,197,94,0.18) 0%, rgba(16,185,129,0.06) 100%)'
+                  : 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
+                border: '1px solid rgba(34,197,94,0.25)',
+              }}>
+                <Typography sx={{ fontSize: 11, fontWeight: 800, color: isDark ? '#86efac' : '#047857', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Estimated Net Pay
+                </Typography>
+                <Typography sx={{ fontSize: { xs: 26, md: 32 }, fontWeight: 900, color: '#16a34a', fontFamily: 'monospace', my: 0.5 }}>
+                  ₹{(payslip.netPay ?? 0).toLocaleString()}
+                </Typography>
+                <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600 }}>
+                  Based on {monthSummary?.presentDays || 0} present days this month
+                </Typography>
+              </Box>
+
+              {/* Breakdown 3-col */}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1 }}>
+                <Box sx={{ p: 1.25, borderRadius: '10px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 700 }}>Base Pay</Typography>
+                  <Typography sx={{ fontSize: 13, fontWeight: 900, color: 'text.primary', mt: 0.25 }}>₹{(payslip.baseSalary ?? 0).toLocaleString()}</Typography>
+                </Box>
+                <Box sx={{ p: 1.25, borderRadius: '10px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 700 }}>OT Pay</Typography>
+                  <Typography sx={{ fontSize: 13, fontWeight: 900, color: '#22c55e', mt: 0.25 }}>+₹{(payslip.overtimePay ?? 0).toLocaleString()}</Typography>
+                </Box>
+                <Box sx={{ p: 1.25, borderRadius: '10px', bgcolor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)', textAlign: 'center', border: '1px solid', borderColor: 'divider' }}>
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 700 }}>Deductions</Typography>
+                  <Typography sx={{ fontSize: 13, fontWeight: 900, color: '#ef4444', mt: 0.25 }}>-₹{(payslip.totalDeductions ?? 0).toLocaleString()}</Typography>
+                </Box>
+              </Box>
+            </Box>
+          </Tilt>
+        )}
       </MotionBox>
 
       {/* ── Bottom Row ── */}
@@ -742,6 +1219,80 @@ export function DashboardTab() {
           </Box>
         </Box>
       </MotionBox>
+
+      {/* ── Quick Leave Dialog Modal (#6) ── */}
+      <Dialog
+        open={quickLeaveOpen}
+        onClose={() => !quickLeaveBusy && setQuickLeaveOpen(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '20px',
+            p: 1,
+            background: isDark ? 'rgba(15,23,42,0.96)' : '#ffffff',
+            backdropFilter: 'blur(20px)',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            boxShadow: '0 24px 64px rgba(0,0,0,0.3)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 900, fontSize: 18, pb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <FlashOnRoundedIcon sx={{ color: '#f59e0b' }} /> Quick Leave for Today
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '8px !important' }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            Apply for leave today (<b>{dayjs().format('ddd, DD MMM YYYY')}</b>):
+          </Typography>
+          <TextField
+            select
+            label="Leave Type"
+            size="small"
+            value={quickLeaveType}
+            onChange={(e) => setQuickLeaveType(e.target.value)}
+            fullWidth
+          >
+            {leaveBalances.length ? (
+              leaveBalances.map((lb) => (
+                <MenuItem key={lb.id} value={lb.leaveType}>
+                  {lb.leaveType.replaceAll('_', ' ')} ({lb.remainingDays}d remaining)
+                </MenuItem>
+              ))
+            ) : (
+              <MenuItem value="CASUAL_LEAVE">Casual Leave</MenuItem>
+            )}
+          </TextField>
+          <TextField
+            label="Reason"
+            size="small"
+            value={quickLeaveReason}
+            onChange={(e) => setQuickLeaveReason(e.target.value)}
+            placeholder="e.g. Urgent personal work / Not feeling well"
+            fullWidth
+            multiline
+            rows={2}
+          />
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setQuickLeaveOpen(false)} disabled={quickLeaveBusy} sx={{ fontWeight: 700 }}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleApplyQuickLeave}
+            disabled={quickLeaveBusy}
+            sx={{
+              fontWeight: 900,
+              borderRadius: '12px',
+              px: 2.5,
+              bgcolor: '#f59e0b',
+              '&:hover': { bgcolor: '#d97706' },
+            }}
+          >
+            {quickLeaveBusy ? 'Submitting...' : 'Apply Leave'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <PunchOverlay open={punchOpen} onClose={() => setPunchOpen(false)} kind={punchKind} />
     </MotionBox>

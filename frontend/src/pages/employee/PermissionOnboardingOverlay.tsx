@@ -79,7 +79,7 @@ export default function PermissionOnboardingOverlay({ onClose }: PermissionOnboa
           </Box>
           <Typography sx={{ fontWeight: 900, fontSize: 24, mb: 1 }}>App Setup</Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>
-            VD Attendance requires Camera access for face verification and Push Notifications so you never miss an update or approval.
+            WorkTrack Attendance requires Camera access for face verification and Push Notifications so you never miss an update or approval.
           </Typography>
         </Box>
 
