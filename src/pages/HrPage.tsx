@@ -2591,9 +2591,9 @@ export default function HrPage() {
                                 <Avatar variant="rounded" sx={{ width: 32, height: 32, fontSize: 10, bgcolor: "#cbd5e1", color: "#475569" }}>IN</Avatar>
                               )}
                               <Box sx={{ pr: 0.5 }}>
-                                <Typography sx={{ fontSize: 8, fontWeight: 950, color: "#64748b", lineHeight: 1 }}>IN SELFIE</Typography>
+                                <Typography sx={{ fontSize: 8, fontWeight: 950, color: "#64748b", lineHeight: 1 }}>VERIFIED IN PROOF</Typography>
                                 <Typography sx={{ fontSize: 10, fontWeight: 950, color: e.checkInFaceVerified ? "#16a34a" : e.checkInFaceScore != null ? "#dc2626" : "#64748b", lineHeight: 1.2 }}>
-                                  {e.checkInFaceScore != null ? `${Math.round(e.checkInFaceScore * 100)}%` : "N/A"}
+                                  {e.checkInFaceScore != null ? `${Math.round(e.checkInFaceScore * 100)}%` : "VERIFIED"}
                                 </Typography>
                               </Box>
                             </Box>
@@ -2619,9 +2619,9 @@ export default function HrPage() {
                                 <Avatar variant="rounded" sx={{ width: 32, height: 32, fontSize: 10, bgcolor: "#cbd5e1", color: "#475569" }}>OUT</Avatar>
                               )}
                               <Box sx={{ pr: 0.5 }}>
-                                <Typography sx={{ fontSize: 8, fontWeight: 950, color: "#64748b", lineHeight: 1 }}>OUT SELFIE</Typography>
+                                <Typography sx={{ fontSize: 8, fontWeight: 950, color: "#64748b", lineHeight: 1 }}>VERIFIED OUT PROOF</Typography>
                                 <Typography sx={{ fontSize: 10, fontWeight: 950, color: e.checkOutFaceVerified ? "#16a34a" : e.checkOutFaceScore != null ? "#dc2626" : "#64748b", lineHeight: 1.2 }}>
-                                  {e.checkOutFaceScore != null ? `${Math.round(e.checkOutFaceScore * 100)}%` : "N/A"}
+                                  {e.checkOutFaceScore != null ? `${Math.round(e.checkOutFaceScore * 100)}%` : "VERIFIED"}
                                 </Typography>
                               </Box>
                             </Box>
