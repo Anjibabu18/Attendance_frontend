@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Avatar,
   Box,
@@ -31,26 +31,24 @@ interface OnSiteEmployee {
   safe: boolean;
 }
 
-const INITIAL_ON_SITE: OnSiteEmployee[] = [
-  { id: '1', name: 'Venkata Rao', role: 'Lead Architect', zone: 'Floor 3 - Engineering', safe: true },
-  { id: '2', name: 'Priya Sharma', role: 'Staff PM', zone: 'Floor 2 - Conference A', safe: true },
-  { id: '3', name: 'Rahul Verma', role: 'Senior Frontend Dev', zone: 'Floor 3 - Desk E-02', safe: false },
-  { id: '4', name: 'Anita Patel', role: 'Principal Designer', zone: 'Floor 2 - Design Studio', safe: true },
-  { id: '5', name: 'Vikram Singh', role: 'HR Director', zone: 'Floor 4 - Executive', safe: false },
-  { id: '6', name: 'Kavita Reddy', role: 'Backend Engineer', zone: 'Floor 3 - Desk E-03', safe: true },
-];
-
 interface EvacuationRollCallModalProps {
   open: boolean;
   onClose: () => void;
+  employees?: OnSiteEmployee[];
 }
 
-export function EvacuationRollCallModal({ open, onClose }: EvacuationRollCallModalProps) {
+export function EvacuationRollCallModal({ open, onClose, employees = [] }: EvacuationRollCallModalProps) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
   const { toastSuccess, toastWarning } = useToast();
 
-  const [staffList, setStaffList] = useState<OnSiteEmployee[]>(INITIAL_ON_SITE);
+  const [staffList, setStaffList] = useState<OnSiteEmployee[]>(employees);
+
+  useEffect(() => {
+    if (employees && employees.length > 0) {
+      setStaffList(employees);
+    }
+  }, [employees]);
 
   const safeCount = staffList.filter((s) => s.safe).length;
   const totalCount = staffList.length;

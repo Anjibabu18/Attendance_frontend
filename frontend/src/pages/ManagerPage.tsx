@@ -713,6 +713,13 @@ export default function ManagerPage() {
       <EvacuationRollCallModal
         open={evacuationModalOpen}
         onClose={() => setEvacuationModalOpen(false)}
+        employees={teamAttendance.map((t: TeamAttendance) => ({
+          id: String(t.employeeId),
+          name: t.employeeName,
+          role: t.employeeNumber,
+          zone: t.office || 'Main Office',
+          safe: t.todayStatus === 'PRESENT',
+        }))}
       />
     </Layout>
   );
