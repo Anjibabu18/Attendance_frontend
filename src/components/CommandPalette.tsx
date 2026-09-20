@@ -31,6 +31,10 @@ import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded';
 import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
+import CenterFocusStrongRoundedIcon from '@mui/icons-material/CenterFocusStrongRounded';
+import HistoryEduRoundedIcon from '@mui/icons-material/HistoryEduRounded';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useThemeContext } from '../theme/ThemeContext';
@@ -208,6 +212,54 @@ export function CommandPalette({
         action: () => {
           onNavigateTab?.(0);
           onClose();
+        },
+      },
+      {
+        id: 'nav-badge-id',
+        category: 'Navigation',
+        title: '3D Digital Employee ID Badge',
+        subtitle: 'View your contactless NFC access card & facility clearance',
+        icon: <BadgeRoundedIcon fontSize="small" sx={{ color: '#0284c7' }} />,
+        shortcut: 'V B',
+        action: () => {
+          onNavigateTab?.(0);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-focus',
+        category: 'Navigation',
+        title: 'Deep Work & Focus Productivity Meter',
+        subtitle: 'Start Pomodoro sprints and track distraction-free shift hours',
+        icon: <CenterFocusStrongRoundedIcon fontSize="small" sx={{ color: '#3b82f6' }} />,
+        shortcut: 'F T',
+        action: () => {
+          onNavigateTab?.(0);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-handover',
+        category: 'Navigation',
+        title: 'Daily Shift Handover & Accomplishments',
+        subtitle: 'AI draft your shift summary before punching out',
+        icon: <HistoryEduRoundedIcon fontSize="small" sx={{ color: '#a855f7' }} />,
+        shortcut: 'S H',
+        action: () => {
+          onNavigateTab?.(0);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-evacuation',
+        category: 'Navigation',
+        title: 'Emergency Evacuation & Safety Roll Call',
+        subtitle: 'Live muster station headcount of all physically on-site personnel',
+        icon: <WarningAmberRoundedIcon fontSize="small" sx={{ color: '#ef4444' }} />,
+        shortcut: 'E R',
+        action: () => {
+          onClose();
+          window.location.href = '/manager';
         },
       },
       // Quick Actions

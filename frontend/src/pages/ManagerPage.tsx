@@ -25,6 +25,8 @@ import { EmptyState } from "../components/EmptyState";
 import Layout from "../components/Layout";
 import StatCard from "../components/StatCard";
 import { GlobalLoader } from "../components/GlobalLoader";
+import { EvacuationRollCallModal } from "../components/EvacuationRollCallModal";
+import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 
 type Employee = {
   id: number;
@@ -118,6 +120,7 @@ export default function ManagerPage() {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [evacuationModalOpen, setEvacuationModalOpen] = useState(false);
 
   useEffect(() => {
     if (err) {
@@ -312,6 +315,22 @@ export default function ManagerPage() {
                 onClick={() => refresh().catch((e: any) => setErr(e?.response?.data?.error ?? "Refresh failed"))}
               >
                 Refresh dashboard
+              </Button>
+              <Button
+                variant="outlined"
+                color="error"
+                startIcon={<WarningAmberRoundedIcon />}
+                onClick={() => setEvacuationModalOpen(true)}
+                sx={{
+                  fontWeight: 900,
+                  borderRadius: "10px",
+                  borderColor: "#ef4444",
+                  color: "#ef4444",
+                  textTransform: "none",
+                  "&:hover": { bgcolor: "rgba(239, 68, 68, 0.08)", borderColor: "#dc2626" },
+                }}
+              >
+                🚨 Evacuation Roll Call
               </Button>
             </Box>
           }
@@ -691,6 +710,10 @@ export default function ManagerPage() {
           ) : null}
         </Box>
       </Drawer>
+      <EvacuationRollCallModal
+        open={evacuationModalOpen}
+        onClose={() => setEvacuationModalOpen(false)}
+      />
     </Layout>
   );
 }

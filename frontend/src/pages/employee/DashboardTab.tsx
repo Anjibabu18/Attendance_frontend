@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, LinearProgress, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
+import { Alert, Avatar, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle, IconButton, LinearProgress, MenuItem, TextField, Tooltip, Typography } from '@mui/material';
 import LoginRoundedIcon from '@mui/icons-material/LoginRounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
 import FreeBreakfastRoundedIcon from '@mui/icons-material/FreeBreakfastRounded';
@@ -33,6 +33,10 @@ import { SmartCommuteWidget } from '../../components/SmartCommuteWidget';
 import { SlackPresenceSyncCard } from '../../components/SlackPresenceSyncCard';
 import { PeerKudosWall } from '../../components/PeerKudosWall';
 import { VoicePunchAssistant } from '../../components/VoicePunchAssistant';
+import { DigitalEmployeeBadgeCard } from '../../components/DigitalEmployeeBadgeCard';
+import { FocusSessionTracker } from '../../components/FocusSessionTracker';
+import { ShiftHandoverNotesCard } from '../../components/ShiftHandoverNotesCard';
+import BadgeRoundedIcon from '@mui/icons-material/BadgeRounded';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { useToast } from '../../components/Toast';
 import { scheduleEveningPunchOutReminder, triggerDirectNotification } from '../../utils/pushNotifications';
@@ -258,6 +262,7 @@ export function DashboardTab() {
   const [breakError, setBreakError] = useState<string | null>(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [streaks, setStreaks] = useState<{ currentStreak: number; longestStreak: number; punctualityScore: number; badges: string[]; totalOnTime: number; totalDays: number } | null>(null);
+  const [idBadgeOpen, setIdBadgeOpen] = useState(false);
 
   // #6 Quick Leave for Today
   const [quickLeaveOpen, setQuickLeaveOpen] = useState(false);
@@ -638,6 +643,22 @@ export function DashboardTab() {
             </Box>
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Tooltip title="View Digital Employee ID Badge">
+                <IconButton
+                  size="small"
+                  onClick={() => { hapticPop(); setIdBadgeOpen(true); }}
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.14)',
+                    color: '#ffffff',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' },
+                    p: 0.6,
+                  }}
+                >
+                  <BadgeRoundedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
               <VoicePunchAssistant
                 onTriggerPunch={(kind) => openPunch(kind === 'in' ? 'checkin' : 'checkout')}
                 onTriggerBreak={() => runBreakAction(activeBreak ? '/api/employee/breaks/end' : '/api/employee/breaks/start')}
@@ -1089,6 +1110,11 @@ export function DashboardTab() {
         <AttendanceBadgesLeague />
       </MotionBox>
 
+      {/* ── Deep Work & Focus Productivity Meter ── */}
+      <MotionBox variants={itemVariants}>
+        <FocusSessionTracker />
+      </MotionBox>
+
       {/* ── Stat Cards ── */}
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 1.5 }}>
         {statCards.map((item, i) => (
@@ -1376,6 +1402,11 @@ export function DashboardTab() {
         <PeerKudosWall />
       </MotionBox>
 
+      {/* ── Daily Shift Handover & Accomplishments ── */}
+      <MotionBox variants={itemVariants}>
+        <ShiftHandoverNotesCard />
+      </MotionBox>
+
       {/* ── Quick Leave Dialog Modal (#6) ── */}
       <Dialog
         open={quickLeaveOpen}
@@ -1451,6 +1482,17 @@ export function DashboardTab() {
       </Dialog>
 
       <PunchOverlay open={punchOpen} onClose={() => setPunchOpen(false)} kind={punchKind} />
+
+      {/* ── 3D Digital Employee ID Badge Modal ── */}
+      <DigitalEmployeeBadgeCard
+        open={idBadgeOpen}
+        onClose={() => setIdBadgeOpen(false)}
+        employeeName={profile?.name || 'Employee'}
+        employeeCode={profile?.employeeNumber || 'EMP001'}
+        roleName={profile?.companyRole?.name || 'Staff Specialist'}
+        departmentName={profile?.department?.name || 'Engineering & Technology'}
+        photoUrl={profile?.profilePhotoUrl}
+      />
     </MotionBox>
   );
 }
