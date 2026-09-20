@@ -10,6 +10,7 @@ const AdminPage = lazy(() => import("../pages/AdminPage"));
 const HrPage = lazy(() => import("../pages/HrPage"));
 const ManagerPage = lazy(() => import("../pages/ManagerPage"));
 const EmployeePage = lazy(() => import("../pages/EmployeePage"));
+const KioskPage = lazy(() => import("../pages/KioskPage"));
 
 // Preload the target route chunk in background so navigation is instant
 if (typeof window !== "undefined") {
@@ -83,6 +84,7 @@ export default function App() {
             </RequireRole>
           }
         />
+        <Route path="/kiosk" element={<KioskPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

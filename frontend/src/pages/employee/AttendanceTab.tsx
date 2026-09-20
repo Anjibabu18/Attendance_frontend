@@ -20,6 +20,7 @@ import { Attendance } from '../../types';
 import { useEmployee } from './EmployeeContext';
 import { useToast } from '../../components/Toast';
 import { AttendanceHeatmap } from '../../components/AttendanceHeatmap';
+import { HolidayOptimizerCard } from '../../components/HolidayOptimizerCard';
 
 const MotionBox = motion.create(Box);
 
@@ -205,6 +206,11 @@ export function AttendanceTab() {
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         weekendDays={settings?.weekendDays}
+      />
+
+      {/* ── AI Bridge Leave & Holiday Optimizer ── */}
+      <HolidayOptimizerCard
+        holidays={holidays}
       />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 0.82fr' }, gap: 2.5, alignItems: 'start' }}>

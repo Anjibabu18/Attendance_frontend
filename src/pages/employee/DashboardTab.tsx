@@ -27,6 +27,8 @@ import { PunchOverlay } from './PunchOverlay';
 import { LiveGeofenceRadar } from '../../components/LiveGeofenceRadar';
 import { SmartAttendanceInsights } from '../../components/SmartAttendanceInsights';
 import { WeeklyRosterCard } from '../../components/WeeklyRosterCard';
+import { OfficeFloorMap } from '../../components/OfficeFloorMap';
+import { AttendanceBadgesLeague } from '../../components/AttendanceBadgesLeague';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { useToast } from '../../components/Toast';
 import { scheduleEveningPunchOutReminder, triggerDirectNotification } from '../../utils/pushNotifications';
@@ -1063,6 +1065,11 @@ export function DashboardTab() {
         />
       </MotionBox>
 
+      {/* ── Gamified Badges & Division League ── */}
+      <MotionBox variants={itemVariants}>
+        <AttendanceBadgesLeague />
+      </MotionBox>
+
       {/* ── Stat Cards ── */}
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 1.5 }}>
         {statCards.map((item, i) => (
@@ -1330,6 +1337,11 @@ export function DashboardTab() {
             }) : <Typography sx={{ color: 'text.secondary', fontSize: 14 }}>No attendance entries for this month yet.</Typography>}
           </Box>
         </Box>
+      </MotionBox>
+
+      {/* ── Live Office Seating & Team Presence Map ── */}
+      <MotionBox variants={itemVariants}>
+        <OfficeFloorMap />
       </MotionBox>
 
       {/* ── Quick Leave Dialog Modal (#6) ── */}

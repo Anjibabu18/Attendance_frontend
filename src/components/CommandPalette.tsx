@@ -22,6 +22,10 @@ import ContentCopyRoundedIcon from '@mui/icons-material/ContentCopyRounded';
 import FlashOnRoundedIcon from '@mui/icons-material/FlashOnRounded';
 import KeyboardReturnRoundedIcon from '@mui/icons-material/KeyboardReturnRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import TabletRoundedIcon from '@mui/icons-material/TabletRounded';
+import ChairRoundedIcon from '@mui/icons-material/ChairRounded';
+import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';
+import BeachAccessRoundedIcon from '@mui/icons-material/BeachAccessRounded';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useThemeContext } from '../theme/ThemeContext';
@@ -117,6 +121,42 @@ export function CommandPalette({
           onClose();
         },
       },
+      {
+        id: 'nav-floor-plan',
+        category: 'Navigation',
+        title: 'Office Floor Map & Seating',
+        subtitle: 'Find where colleagues sit and ping them for coffee or sync',
+        icon: <ChairRoundedIcon fontSize="small" sx={{ color: '#10b981' }} />,
+        shortcut: 'G F',
+        action: () => {
+          onNavigateTab?.(0);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-badges',
+        category: 'Navigation',
+        title: 'Attendance Badges & Division League',
+        subtitle: 'View your punctuality streak, tier rank & achievements',
+        icon: <EmojiEventsRoundedIcon fontSize="small" sx={{ color: '#f59e0b' }} />,
+        shortcut: 'G B',
+        action: () => {
+          onNavigateTab?.(0);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-holiday-optimizer',
+        category: 'Navigation',
+        title: 'AI Holiday & Long Weekend Optimizer',
+        subtitle: 'Discover bridge days to turn 1 leave day into 4-day holidays',
+        icon: <BeachAccessRoundedIcon fontSize="small" sx={{ color: '#06b6d4' }} />,
+        shortcut: 'G H',
+        action: () => {
+          onNavigateTab?.(1);
+          onClose();
+        },
+      },
       // Quick Actions
       {
         id: 'act-punch-in',
@@ -205,6 +245,18 @@ export function CommandPalette({
         action: () => {
           onRefresh?.();
           onClose();
+        },
+      },
+      {
+        id: 'tool-kiosk',
+        category: 'Preferences & Tools',
+        title: 'Launch Front Desk Tablet Kiosk Mode',
+        subtitle: 'Open full-screen kiosk punch terminal (/kiosk)',
+        icon: <TabletRoundedIcon fontSize="small" sx={{ color: '#ec4899' }} />,
+        shortcut: 'K M',
+        action: () => {
+          onClose();
+          window.location.href = '/kiosk';
         },
       },
     ];

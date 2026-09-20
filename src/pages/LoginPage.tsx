@@ -372,6 +372,22 @@ export default function LoginPage() {
                     👨‍💼 Employee
                   </Button>
                 </Box>
+                <Box sx={{ mt: 1.5, textAlign: "center" }}>
+                  <Button
+                    size="small"
+                    variant="text"
+                    onClick={() => nav('/kiosk')}
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#64748b",
+                      textTransform: "none",
+                      "&:hover": { color: "#2563eb", bgcolor: "transparent" },
+                    }}
+                  >
+                    📟 Launch Front Desk Tablet Kiosk Mode →
+                  </Button>
+                </Box>
               </Box>
             </Box>
           </MotionBox>
