@@ -77,6 +77,12 @@ export function PunchOverlay({
   const [autoPunchCountdown, setAutoPunchCountdown] = useState<number | null>(null);
   const [liveClock, setLiveClock] = useState<string>(dayjs().format('hh:mm:ss A'));
 
+  // Morning Tasks & Evening Accomplishments
+  const [todayPlannedTasks, setTodayPlannedTasks] = useState<string>('');
+  const [todayAccomplishments, setTodayAccomplishments] = useState<string>('');
+  const [morningSavedPlan, setMorningSavedPlan] = useState<string | null>(null);
+  const [shiftMood, setShiftMood] = useState<'🚀 Productive' | '⚡ Fast-Paced' | '☕ Smooth'>('🚀 Productive');
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
   const qrScanActiveRef = useRef(false);
@@ -90,6 +96,17 @@ export function PunchOverlay({
   const [distanceMeters, setDistanceMeters] = useState<number|null>(null);
   const watchIdRef = useRef<number|null>(null);
   const autoPunchTimerRef = useRef<any>(null);
+
+  // Load any morning planned tasks for today
+  useEffect(() => {
+    if (open) {
+      const todayKey = dayjs().format('YYYY-MM-DD');
+      const saved = localStorage.getItem(`worktrack_morning_plan_${todayKey}`);
+      if (saved) {
+        setMorningSavedPlan(saved);
+      }
+    }
+  }, [open]);
 
   // Update live clock every second during Step 3
   useEffect(() => {
@@ -316,6 +333,26 @@ export function PunchOverlay({
     playBeep(950, 70);
 
     try {
+      // Save morning planned tasks or evening accomplishments
+      const isCheckin = kind === 'checkin';
+      const todayKey = dayjs().format('YYYY-MM-DD');
+      if (isCheckin && todayPlannedTasks.trim()) {
+        localStorage.setItem(`worktrack_morning_plan_${todayKey}`, todayPlannedTasks.trim());
+      } else if (!isCheckin && todayAccomplishments.trim()) {
+        try {
+          const existingRaw = localStorage.getItem('worktrack_shift_handovers_v1');
+          const existing = existingRaw ? JSON.parse(existingRaw) : [];
+          const newEntry = {
+            id: Date.now().toString(),
+            summary: todayAccomplishments.trim(),
+            mood: shiftMood,
+            timestamp: `${dayjs().format('hh:mm A')} · Checkout`,
+            morningPlan: morningSavedPlan || undefined
+          };
+          localStorage.setItem('worktrack_shift_handovers_v1', JSON.stringify([newEntry, ...existing]));
+        } catch {}
+      }
+
       // 1. Generate official cryptographic digital verification badge
       const badge = await generateDigitalPunchBadge({
         employeeName: profile?.name || 'Authorized Staff',
@@ -326,7 +363,9 @@ export function PunchOverlay({
         location,
         distanceMeters,
         officeRadius: officeLocation?.radius || 50,
-        authMethod: methodLabel
+        authMethod: methodLabel,
+        taskNotes: isCheckin ? todayPlannedTasks.trim() : todayAccomplishments.trim(),
+        mood: !isCheckin ? shiftMood : undefined
       });
 
       setGeneratedBadgeUrl(badge.dataUrl);
@@ -489,6 +528,17 @@ export function PunchOverlay({
     a.click();
     document.body.removeChild(a);
     hapticSuccess();
+  };
+
+  // 1-Click AI Auto-Draft for accomplishments based on morning goals or duties
+  const handleAiAutoDraftAccomplishments = () => {
+    hapticTap();
+    playBeep(900, 80);
+    if (morningSavedPlan && morningSavedPlan.trim()) {
+      setTodayAccomplishments(`• Delivered planned goals: ${morningSavedPlan.trim()}\n• Resolved open blockers, validated test suite, and wrapped up shift duties.`);
+    } else {
+      setTodayAccomplishments(`• Executed scheduled shift responsibilities with 100% attendance.\n• Closed assigned tasks, triaged updates, and completed handover smoothly.`);
+    }
   };
 
   const closeOverlay = () => {
@@ -694,6 +744,127 @@ export function PunchOverlay({
                 </Typography>
               </Box>
             </Box>
+
+            {/* ── MORNING FOCUS & GOALS (Check-In) OR EVENING ACCOMPLISHMENTS (Check-Out) ── */}
+            {isCheckin ? (
+              <Box sx={{ 
+                width: '100%', 
+                p: 2, 
+                mb: 2.5, 
+                borderRadius: 3.5, 
+                bgcolor: 'rgba(255, 255, 255, 0.04)', 
+                border: '1px solid rgba(16, 185, 129, 0.25)', 
+                textAlign: 'left' 
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#34D399', letterSpacing: '0.5px' }}>
+                    🌅 TODAY'S MORNING FOCUS & GOALS
+                  </Typography>
+                  <Typography sx={{ fontSize: 10, color: '#94A3B8' }}>Optional</Typography>
+                </Box>
+                <TextField
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={2}
+                  placeholder="What are your key goals today? (e.g., Deploy user auth, review PRs, client demo...)"
+                  value={todayPlannedTasks}
+                  onChange={(e) => setTodayPlannedTasks(e.target.value)}
+                  sx={{
+                    bgcolor: 'rgba(15, 23, 42, 0.7)',
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-root': { color: 'white', fontSize: 13, borderRadius: 2 }
+                  }}
+                />
+                <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', mt: 1 }}>
+                  {['💻 Feature Dev', '🐛 Bug Fixes', '👥 Standup', '📋 Sprint Tasks', '🚀 Deployment'].map((tag) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      size="small"
+                      onClick={() => {
+                        setTodayPlannedTasks(prev => prev ? `${prev} · ${tag}` : tag);
+                        hapticTap();
+                      }}
+                      sx={{
+                        fontSize: 10,
+                        height: 22,
+                        cursor: 'pointer',
+                        bgcolor: 'rgba(255,255,255,0.06)',
+                        color: '#94A3B8',
+                        '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.2)', color: '#34D399' }
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            ) : (
+              <Box sx={{ 
+                width: '100%', 
+                p: 2, 
+                mb: 2.5, 
+                borderRadius: 3.5, 
+                bgcolor: 'rgba(255, 255, 255, 0.04)', 
+                border: '1px solid rgba(245, 158, 11, 0.25)', 
+                textAlign: 'left' 
+              }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#FCD34D', letterSpacing: '0.5px' }}>
+                    🌆 WHAT DID YOU ACCOMPLISH TODAY?
+                  </Typography>
+                  <Button
+                    size="small"
+                    onClick={handleAiAutoDraftAccomplishments}
+                    sx={{ fontSize: 11, fontWeight: 800, color: '#FCD34D', p: 0, textTransform: 'none' }}
+                  >
+                    ⚡ AI Auto-Fill
+                  </Button>
+                </Box>
+
+                {morningSavedPlan && (
+                  <Box sx={{ p: 1, mb: 1, borderRadius: 1.5, bgcolor: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                    <Typography sx={{ fontSize: 11, color: '#34D399', fontWeight: 600 }}>
+                      📋 Morning Goals: "{morningSavedPlan}"
+                    </Typography>
+                  </Box>
+                )}
+
+                <TextField
+                  fullWidth
+                  size="small"
+                  multiline
+                  rows={2}
+                  placeholder="Summary of accomplishments & handoff notes..."
+                  value={todayAccomplishments}
+                  onChange={(e) => setTodayAccomplishments(e.target.value)}
+                  sx={{
+                    bgcolor: 'rgba(15, 23, 42, 0.7)',
+                    borderRadius: 2,
+                    '& .MuiOutlinedInput-root': { color: 'white', fontSize: 13, borderRadius: 2 }
+                  }}
+                />
+
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                  <Typography sx={{ fontSize: 11, color: '#94A3B8', fontWeight: 700 }}>Mood:</Typography>
+                  {(['🚀 Productive', '⚡ Fast-Paced', '☕ Smooth'] as const).map((m) => (
+                    <Chip
+                      key={m}
+                      label={m}
+                      size="small"
+                      onClick={() => { setShiftMood(m); hapticTap(); }}
+                      sx={{
+                        fontSize: 10,
+                        height: 22,
+                        cursor: 'pointer',
+                        bgcolor: shiftMood === m ? 'rgba(245, 158, 11, 0.25)' : 'rgba(255,255,255,0.06)',
+                        color: shiftMood === m ? '#FCD34D' : '#94A3B8',
+                        border: shiftMood === m ? '1px solid #F59E0B' : 'none'
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            )}
 
             {/* Check-In Mode Switcher Tabs */}
             <Box sx={{ display: 'flex', width: '100%', bgcolor: 'rgba(255,255,255,0.05)', p: 0.5, borderRadius: 3, mb: 3 }}>

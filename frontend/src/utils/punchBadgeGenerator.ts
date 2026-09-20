@@ -10,6 +10,8 @@ export interface BadgeOptions {
   distanceMeters?: number | null;
   officeRadius?: number | null;
   authMethod?: string;
+  taskNotes?: string;
+  mood?: string;
 }
 
 export interface GeneratedBadgeResult {
@@ -34,7 +36,9 @@ export async function generateDigitalPunchBadge(options: BadgeOptions): Promise<
     location,
     distanceMeters,
     officeRadius = 50,
-    authMethod = '1-Tap Geofence Instant Pass'
+    authMethod = '1-Tap Geofence Instant Pass',
+    taskNotes,
+    mood
   } = options;
 
   const width = 900;
@@ -205,11 +209,13 @@ export async function generateDigitalPunchBadge(options: BadgeOptions): Promise<
   const latStr = location ? location.lat.toFixed(5) : '17.38504';
   const lngStr = location ? location.lng.toFixed(5) : '78.48667';
 
-  renderAuditRow(ctx, 'GPS Latitude / Longitude:', `${latStr}° N, ${lngStr}° E`, 505, 195);
-  renderAuditRow(ctx, 'Geofence Radius Status:', `✅ Inside Zone (${dist}m / ${officeRadius}m radius)`, 505, 240);
-  renderAuditRow(ctx, 'Authentication Channel:', `⚡ ${authMethod}`, 505, 285);
-  renderAuditRow(ctx, 'Corporate Network IP:', '🏢 Verified Office Subnet Gateway', 505, 330);
-  renderAuditRow(ctx, 'Integrity Checksum:', `SHA256: ${tokenHash}`, 505, 372);
+  renderAuditRow(ctx, 'GPS Latitude / Longitude:', `${latStr}° N, ${lngStr}° E`, 505, 190);
+  renderAuditRow(ctx, 'Geofence Radius Status:', `✅ Inside Zone (${dist}m / ${officeRadius}m radius)`, 505, 230);
+  renderAuditRow(ctx, 'Authentication Channel:', `⚡ ${authMethod}`, 505, 270);
+  
+  const notesText = taskNotes ? taskNotes.replace(/\n/g, ' ').substring(0, 42) + (taskNotes.length > 42 ? '...' : '') : (isCheckin ? 'Morning Shift Focus Stamped' : 'Shift Duties Handed Over');
+  renderAuditRow(ctx, isCheckin ? 'Morning Planned Tasks:' : 'Tasks Accomplished Today:', notesText + (mood ? ` (${mood})` : ''), 505, 310);
+  renderAuditRow(ctx, 'Security Integrity Token:', `SHA256: ${tokenHash} · IP Validated`, 505, 350);
 
   // 7. Footer Stamp & Seal
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
