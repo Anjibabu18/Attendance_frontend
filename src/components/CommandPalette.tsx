@@ -26,6 +26,11 @@ import TabletRoundedIcon from '@mui/icons-material/TabletRounded';
 import ChairRoundedIcon from '@mui/icons-material/ChairRounded';
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';
 import BeachAccessRoundedIcon from '@mui/icons-material/BeachAccessRounded';
+import NavigationRoundedIcon from '@mui/icons-material/NavigationRounded';
+import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
+import VolunteerActivismRoundedIcon from '@mui/icons-material/VolunteerActivismRounded';
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { useThemeContext } from '../theme/ThemeContext';
@@ -154,6 +159,54 @@ export function CommandPalette({
         shortcut: 'G H',
         action: () => {
           onNavigateTab?.(1);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-commute',
+        category: 'Navigation',
+        title: 'Smart Commute & Departure Assistant',
+        subtitle: 'Live transit time to HQ, traffic density & weather updates',
+        icon: <NavigationRoundedIcon fontSize="small" sx={{ color: '#0284c7' }} />,
+        shortcut: 'G C',
+        action: () => {
+          onNavigateTab?.(0);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-anomaly',
+        category: 'Navigation',
+        title: 'AI Anomaly & Fraud Prevention Shield',
+        subtitle: 'Cryptographic GPS verification, trust score & velocity check',
+        icon: <VerifiedUserRoundedIcon fontSize="small" sx={{ color: '#10b981' }} />,
+        shortcut: 'G V',
+        action: () => {
+          onNavigateTab?.(1);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-presence',
+        category: 'Navigation',
+        title: 'Slack & Teams Auto-Presence Sync',
+        subtitle: 'Sync your physical badge punch to corporate chat channels',
+        icon: <ChatBubbleOutlineRoundedIcon fontSize="small" sx={{ color: '#6366f1' }} />,
+        shortcut: 'G S',
+        action: () => {
+          onNavigateTab?.(0);
+          onClose();
+        },
+      },
+      {
+        id: 'nav-kudos',
+        category: 'Navigation',
+        title: 'Team Recognition & Shift Kudos Wall',
+        subtitle: 'Celebrate shift coverage and view monthly punctuality champions',
+        icon: <VolunteerActivismRoundedIcon fontSize="small" sx={{ color: '#ec4899' }} />,
+        shortcut: 'G K',
+        action: () => {
+          onNavigateTab?.(0);
           onClose();
         },
       },

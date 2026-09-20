@@ -29,6 +29,10 @@ import { SmartAttendanceInsights } from '../../components/SmartAttendanceInsight
 import { WeeklyRosterCard } from '../../components/WeeklyRosterCard';
 import { OfficeFloorMap } from '../../components/OfficeFloorMap';
 import { AttendanceBadgesLeague } from '../../components/AttendanceBadgesLeague';
+import { SmartCommuteWidget } from '../../components/SmartCommuteWidget';
+import { SlackPresenceSyncCard } from '../../components/SlackPresenceSyncCard';
+import { PeerKudosWall } from '../../components/PeerKudosWall';
+import { VoicePunchAssistant } from '../../components/VoicePunchAssistant';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { useToast } from '../../components/Toast';
 import { scheduleEveningPunchOutReminder, triggerDirectNotification } from '../../utils/pushNotifications';
@@ -633,28 +637,35 @@ export function DashboardTab() {
               </Typography>
             </Box>
 
-            {!clockedIn && !completed && (
-              <MotionButton
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setQuickLeaveOpen(true)}
-                size="small"
-                startIcon={<FlashOnRoundedIcon sx={{ fontSize: '15px !important' }} />}
-                sx={{
-                  bgcolor: 'rgba(255,255,255,0.14)',
-                  color: '#ffffff',
-                  borderRadius: '10px',
-                  fontWeight: 800,
-                  fontSize: 12,
-                  px: 1.5,
-                  py: 0.5,
-                  border: '1px solid rgba(255,255,255,0.22)',
-                  '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' },
-                  textTransform: 'none',
-                }}
-              >
-                Quick Leave Today
-              </MotionButton>
-            )}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <VoicePunchAssistant
+                onTriggerPunch={(kind) => openPunch(kind === 'in' ? 'checkin' : 'checkout')}
+                onTriggerBreak={() => runBreakAction(activeBreak ? '/api/employee/breaks/end' : '/api/employee/breaks/start')}
+                onOpenKiosk={() => { window.location.href = '/kiosk'; }}
+              />
+              {!clockedIn && !completed && (
+                <MotionButton
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setQuickLeaveOpen(true)}
+                  size="small"
+                  startIcon={<FlashOnRoundedIcon sx={{ fontSize: '15px !important' }} />}
+                  sx={{
+                    bgcolor: 'rgba(255,255,255,0.14)',
+                    color: '#ffffff',
+                    borderRadius: '10px',
+                    fontWeight: 800,
+                    fontSize: 12,
+                    px: 1.5,
+                    py: 0.5,
+                    border: '1px solid rgba(255,255,255,0.22)',
+                    '&:hover': { bgcolor: 'rgba(255,255,255,0.22)' },
+                    textTransform: 'none',
+                  }}
+                >
+                  Quick Leave Today
+                </MotionButton>
+              )}
+            </Box>
           </Box>
 
           {/* Circular timer + buttons row */}
@@ -841,6 +852,14 @@ export function DashboardTab() {
       {/* ── Live Office Geofence Radar ── */}
       <MotionBox variants={itemVariants}>
         <LiveGeofenceRadar assignedOffice={profile?.assignedOfficeLocation} />
+      </MotionBox>
+
+      {/* ── Smart Commute & Transit Assistant ── */}
+      <MotionBox variants={itemVariants}>
+        <SmartCommuteWidget
+          officeName={profile?.assignedOfficeLocation?.officeName || 'HQ Tech Park, Tower A'}
+          shiftStartTime={settings?.defaultInTime || '09:00 AM'}
+        />
       </MotionBox>
 
       {/* ── TODAY'S WORK CARD (appears after check-in) ── */}
@@ -1342,6 +1361,19 @@ export function DashboardTab() {
       {/* ── Live Office Seating & Team Presence Map ── */}
       <MotionBox variants={itemVariants}>
         <OfficeFloorMap />
+      </MotionBox>
+
+      {/* ── Slack & Teams Auto-Presence Sync ── */}
+      <MotionBox variants={itemVariants}>
+        <SlackPresenceSyncCard
+          isPunchedIn={!!todayEntry?.inTime && !todayEntry?.outTime}
+          isOnBreak={!!activeBreak}
+        />
+      </MotionBox>
+
+      {/* ── Team Recognition & Shift Kudos Wall ── */}
+      <MotionBox variants={itemVariants}>
+        <PeerKudosWall />
       </MotionBox>
 
       {/* ── Quick Leave Dialog Modal (#6) ── */}

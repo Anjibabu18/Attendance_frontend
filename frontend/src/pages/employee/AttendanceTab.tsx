@@ -21,6 +21,9 @@ import { useEmployee } from './EmployeeContext';
 import { useToast } from '../../components/Toast';
 import { AttendanceHeatmap } from '../../components/AttendanceHeatmap';
 import { HolidayOptimizerCard } from '../../components/HolidayOptimizerCard';
+import { AiAnomalyDetectorCard } from '../../components/AiAnomalyDetectorCard';
+import { ExecutiveTimesheetModal } from '../../components/ExecutiveTimesheetModal';
+import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
 
 const MotionBox = motion.create(Box);
 
@@ -75,6 +78,7 @@ export function AttendanceTab() {
   const [selectedDate, setSelectedDate] = useState<string>(dayjs().format('YYYY-MM-DD'));
   const [photoViewerOpen, setPhotoViewerOpen] = useState<string | null>(null);
   const [scorecardOpen, setScorecardOpen] = useState(false);
+  const [timesheetModalOpen, setTimesheetModalOpen] = useState(false);
   const isTodaySelected = selectedDate === dayjs().format('YYYY-MM-DD');
 
   const entriesByDate = useMemo(() => {
@@ -188,6 +192,15 @@ export function AttendanceTab() {
             Report Card
           </Button>
           <Button
+            variant="outlined"
+            size="small"
+            onClick={() => setTimesheetModalOpen(true)}
+            startIcon={<PictureAsPdfRoundedIcon />}
+            sx={{ borderRadius: '8px', fontWeight: 800, textTransform: 'none' }}
+          >
+            Timesheet PDF
+          </Button>
+          <Button
             variant="contained"
             size="small"
             onClick={handleShareWhatsApp}
@@ -212,6 +225,9 @@ export function AttendanceTab() {
       <HolidayOptimizerCard
         holidays={holidays}
       />
+
+      {/* ── AI Anomaly & Fraud Prevention Shield ── */}
+      <AiAnomalyDetectorCard />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 0.82fr' }, gap: 2.5, alignItems: 'start' }}>
         <Box sx={{ ...cardSx, p: { xs: 1.5, sm: 2.25 } }}>
@@ -346,6 +362,20 @@ export function AttendanceTab() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* ── Official Executive Timesheet Modal ── */}
+      <ExecutiveTimesheetModal
+        open={timesheetModalOpen}
+        onClose={() => setTimesheetModalOpen(false)}
+        employeeName={profile?.name || 'Employee'}
+        employeeCode={profile?.employeeNumber || 'EMP001'}
+        department={profile?.department?.name || 'Engineering & Technology'}
+        month={first.format('MMMM YYYY')}
+        totalWorkedHours={`${((monthSummary?.totalWorkedMinutes ?? totalWorkedMinutes) / 60).toFixed(1)} hrs`}
+        presentDays={monthSummary?.presentDays ?? 21}
+        leaveDays={monthSummary?.leaveDays ?? 1}
+        overtimeHours={minutesLabel(totalOvertimeMinutes)}
+      />
     </MotionBox>
   );
 }
