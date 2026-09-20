@@ -107,27 +107,23 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
       sx={{
         p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
-        background: isDark
-          ? isInside
-            ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(15, 23, 42, 0.7) 100%)'
-            : 'linear-gradient(135deg, rgba(245, 158, 11, 0.08) 0%, rgba(15, 23, 42, 0.7) 100%)'
-          : isInside
-          ? 'linear-gradient(135deg, rgba(16, 185, 129, 0.06) 0%, rgba(255, 255, 255, 0.9) 100%)'
-          : 'linear-gradient(135deg, rgba(245, 158, 11, 0.06) 0%, rgba(255, 255, 255, 0.9) 100%)',
+        bgcolor: isDark ? 'rgba(15, 23, 42, 0.75)' : '#ffffff',
         border: `1px solid ${
           isInside
             ? isDark
-              ? 'rgba(16, 185, 129, 0.25)'
-              : 'rgba(16, 185, 129, 0.3)'
+              ? 'rgba(16, 185, 129, 0.35)'
+              : '#bbf7d0'
             : isDark
-            ? 'rgba(245, 158, 11, 0.25)'
-            : 'rgba(245, 158, 11, 0.3)'
+            ? 'rgba(245, 158, 11, 0.35)'
+            : '#fed7aa'
         }`,
         boxShadow: isDark
           ? isInside
-            ? '0 12px 36px rgba(16, 185, 129, 0.08)'
-            : '0 12px 36px rgba(245, 158, 11, 0.06)'
-          : '0 8px 30px rgba(0, 0, 0, 0.04)',
+            ? '0 12px 36px rgba(16, 185, 129, 0.1)'
+            : '0 12px 36px rgba(245, 158, 11, 0.08)'
+          : isInside
+          ? '0 6px 24px -2px rgba(16, 185, 129, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.03)'
+          : '0 6px 24px -2px rgba(245, 158, 11, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.03)',
         backdropFilter: 'blur(16px)',
         position: 'relative',
         overflow: 'hidden',
@@ -137,12 +133,12 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
       <Box
         sx={{
           position: 'absolute',
-          right: -30,
-          bottom: -30,
-          width: 180,
-          height: 180,
+          right: -25,
+          bottom: -25,
+          width: 170,
+          height: 170,
           borderRadius: '50%',
-          border: `1px dashed ${isInside ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+          border: `1.5px dashed ${isInside ? (isDark ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.25)') : (isDark ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.25)')}`,
           pointerEvents: 'none',
           display: 'grid',
           placeItems: 'center',
@@ -150,21 +146,21 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
       >
         <Box
           sx={{
-            width: 120,
-            height: 120,
+            width: 110,
+            height: 110,
             borderRadius: '50%',
-            border: `1px solid ${isInside ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+            border: `1px solid ${isInside ? (isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.2)') : (isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.2)')}`,
           }}
         />
         <motion.div
-          animate={{ scale: [1, 1.8, 1], opacity: [0.6, 0, 0.6] }}
+          animate={{ scale: [1, 1.8, 1], opacity: [0.5, 0, 0.5] }}
           transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           style={{
             position: 'absolute',
-            width: 60,
-            height: 60,
+            width: 55,
+            height: 55,
             borderRadius: '50%',
-            backgroundColor: isInside ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+            backgroundColor: isInside ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
           }}
         />
       </Box>
@@ -174,25 +170,26 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
+              width: 38,
+              height: 38,
+              borderRadius: '12px',
               bgcolor: isInside
-                ? 'rgba(16, 185, 129, 0.15)'
-                : 'rgba(245, 158, 11, 0.15)',
+                ? isDark ? 'rgba(16, 185, 129, 0.16)' : '#ecfdf5'
+                : isDark ? 'rgba(245, 158, 11, 0.16)' : '#fffbeb',
+              border: `1px solid ${isInside ? (isDark ? 'rgba(16, 185, 129, 0.3)' : '#a7f3d0') : (isDark ? 'rgba(245, 158, 11, 0.3)' : '#fde68a')}`,
               display: 'grid',
               placeItems: 'center',
-              color: isInside ? '#10b981' : '#f59e0b',
+              color: isInside ? (isDark ? '#34d399' : '#059669') : (isDark ? '#fbbf24' : '#d97706'),
             }}
           >
-            <RadioButtonCheckedRoundedIcon sx={{ fontSize: 20 }} />
+            <RadioButtonCheckedRoundedIcon sx={{ fontSize: 21 }} />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 15, lineHeight: 1.1 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: 15, lineHeight: 1.2, color: 'text.primary' }}>
               Office Geofence Radar
             </Typography>
-            <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
-              Target: {office.officeName || 'Assigned Office'} ({office.radiusMeters}m radius)
+            <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.3, fontWeight: 500 }}>
+              Target: <strong style={{ color: isDark ? '#f1f5f9' : '#334155' }}>{office.officeName || 'Assigned Office'}</strong> ({office.radiusMeters}m radius)
             </Typography>
           </Box>
         </Box>
@@ -206,14 +203,17 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
             disabled={loading}
             size="small"
             sx={{
-              bgcolor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
-              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.06)'}`,
+              bgcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f8fafc',
+              border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0'}`,
+              '&:hover': {
+                bgcolor: isDark ? 'rgba(255, 255, 255, 0.12)' : '#f1f5f9',
+              },
             }}
           >
             {loading ? (
               <CircularProgress size={16} sx={{ color: isInside ? '#10b981' : '#f59e0b' }} />
             ) : (
-              <RefreshRoundedIcon fontSize="small" />
+              <RefreshRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
             )}
           </IconButton>
         </Tooltip>
@@ -225,15 +225,16 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
           <Box
             component={motion.div}
             animate={{
-              scale: isInside ? [1, 1.2, 1] : [1, 1.1, 1],
+              scale: isInside ? [1, 1.25, 1] : [1, 1.15, 1],
             }}
             transition={{ duration: 2, repeat: Infinity }}
             sx={{
-              width: 12,
-              height: 12,
+              width: 11,
+              height: 11,
               borderRadius: '50%',
               bgcolor: isInside ? '#10b981' : '#f59e0b',
               boxShadow: isInside ? '0 0 10px #10b981' : '0 0 10px #f59e0b',
+              flexShrink: 0,
             }}
           />
           <Box>
@@ -241,7 +242,7 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
               sx={{
                 fontWeight: 800,
                 fontSize: 14,
-                color: isInside ? '#10b981' : '#f59e0b',
+                color: isInside ? (isDark ? '#34d399' : '#059669') : (isDark ? '#fbbf24' : '#d97706'),
               }}
             >
               {loading
@@ -250,7 +251,7 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
                 ? 'Within Office Geofence'
                 : 'Outside Office Geofence'}
             </Typography>
-            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: 12, color: 'text.secondary', fontWeight: 500 }}>
               {loading
                 ? 'Connecting to satellites...'
                 : isInside
@@ -268,8 +269,9 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
               sx={{
                 fontSize: 11,
                 fontWeight: 700,
-                bgcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
-                color: 'text.secondary',
+                bgcolor: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f1f5f9',
+                color: isDark ? '#94a3b8' : '#475569',
+                border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : '#e2e8f0'}`,
               }}
             />
           )}
@@ -279,9 +281,13 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
             sx={{
               fontWeight: 800,
               fontSize: 11,
-              bgcolor: isInside ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-              color: isInside ? '#10b981' : '#f59e0b',
-              border: `1px solid ${isInside ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+              bgcolor: isInside
+                ? isDark ? 'rgba(16, 185, 129, 0.16)' : '#dcfce7'
+                : isDark ? 'rgba(245, 158, 11, 0.16)' : '#fef3c7',
+              color: isInside
+                ? isDark ? '#34d399' : '#15803d'
+                : isDark ? '#fbbf24' : '#b45309',
+              border: `1px solid ${isInside ? (isDark ? 'rgba(16, 185, 129, 0.35)' : '#86efac') : (isDark ? 'rgba(245, 158, 11, 0.35)' : '#fde68a')}`,
             }}
           />
         </Box>

@@ -25,12 +25,14 @@ interface VoicePunchAssistantProps {
   onTriggerPunch?: (kind: 'in' | 'out') => void;
   onTriggerBreak?: () => void;
   onOpenKiosk?: () => void;
+  variant?: 'default' | 'hero';
 }
 
 export function VoicePunchAssistant({
   onTriggerPunch,
   onTriggerBreak,
   onOpenKiosk,
+  variant = 'default',
 }: VoicePunchAssistantProps) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
@@ -152,6 +154,8 @@ export function VoicePunchAssistant({
     setListening(false);
   };
 
+  const isHero = variant === 'hero';
+
   return (
     <>
       <Tooltip title="Voice-Activated Punch & Assistant">
@@ -159,18 +163,31 @@ export function VoicePunchAssistant({
           size="small"
           variant="outlined"
           onClick={handleStartListening}
-          startIcon={<MicRoundedIcon fontSize="small" sx={{ color: '#ec4899' }} />}
+          startIcon={<MicRoundedIcon fontSize="small" sx={{ color: isHero ? '#38bdf8' : '#ec4899' }} />}
           sx={{
             borderRadius: '12px',
             textTransform: 'none',
             fontWeight: 800,
             fontSize: 12,
-            borderColor: isDark ? 'rgba(236, 72, 153, 0.3)' : 'rgba(236, 72, 153, 0.2)',
-            bgcolor: isDark ? 'rgba(236, 72, 153, 0.06)' : 'rgba(236, 72, 153, 0.04)',
-            color: 'text.primary',
+            borderColor: isHero
+              ? 'rgba(255, 255, 255, 0.22)'
+              : isDark
+              ? 'rgba(236, 72, 153, 0.3)'
+              : 'rgba(236, 72, 153, 0.2)',
+            bgcolor: isHero
+              ? 'rgba(255, 255, 255, 0.12)'
+              : isDark
+              ? 'rgba(236, 72, 153, 0.06)'
+              : 'rgba(236, 72, 153, 0.04)',
+            color: isHero ? '#ffffff' : 'text.primary',
+            backdropFilter: isHero ? 'blur(8px)' : undefined,
             '&:hover': {
-              borderColor: '#ec4899',
-              bgcolor: isDark ? 'rgba(236, 72, 153, 0.12)' : 'rgba(236, 72, 153, 0.08)',
+              borderColor: isHero ? '#38bdf8' : '#ec4899',
+              bgcolor: isHero
+                ? 'rgba(255, 255, 255, 0.22)'
+                : isDark
+                ? 'rgba(236, 72, 153, 0.12)'
+                : 'rgba(236, 72, 153, 0.08)',
             },
           }}
         >

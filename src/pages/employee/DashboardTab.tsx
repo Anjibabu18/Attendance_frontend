@@ -71,15 +71,19 @@ function parseTimeValue(value?: string | null) {
 
 function SlideToPunchButton({ type, onTrigger, urgent }: { type: 'in' | 'out', onTrigger: () => void, urgent?: boolean }) {
   const isDark = useThemeContext().mode === 'dark';
-  const bg = type === 'in' ? '#22c55e' : '#ef4444';
+  const isCheckIn = type === 'in';
+  const bgGrad = isCheckIn
+    ? 'linear-gradient(135deg, #22c55e 0%, #15803d 100%)'
+    : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+  const glowColor = isCheckIn ? '#22c55e' : '#ef4444';
   const containerRef = React.useRef<HTMLDivElement>(null);
   const controls = useAnimation();
 
   const handleDragEnd = (event: any, info: any) => {
     if (!containerRef.current) return;
     const containerWidth = containerRef.current.offsetWidth;
-    const threshold = containerWidth * 0.65; // 65% across to trigger
-    
+    const threshold = containerWidth * 0.62; // 62% across to trigger
+
     if (info.offset.x >= threshold) {
       hapticSuccess();
       onTrigger();
@@ -87,7 +91,7 @@ function SlideToPunchButton({ type, onTrigger, urgent }: { type: 'in' | 'out', o
       controls.start({ x: 0, transition: { duration: 0 } });
     } else {
       hapticPop();
-      controls.start({ x: 0, transition: { type: 'spring', stiffness: 300, damping: 20 } });
+      controls.start({ x: 0, transition: { type: 'spring', stiffness: 320, damping: 22 } });
     }
   };
 
@@ -97,30 +101,55 @@ function SlideToPunchButton({ type, onTrigger, urgent }: { type: 'in' | 'out', o
       sx={{
         position: 'relative',
         width: '100%',
-        height: '56px',
-        bgcolor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-        borderRadius: '28px',
+        height: '60px',
+        bgcolor: 'rgba(255, 255, 255, 0.12)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: '30px',
         overflow: 'hidden',
         display: 'flex',
         alignItems: 'center',
-        boxShadow: urgent ? `0 0 25px ${bg}60, inset 0 2px 4px rgba(0,0,0,0.1)` : `inset 0 2px 4px rgba(0,0,0,0.1)`,
-        border: urgent ? `2px solid ${bg}` : `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-        animation: urgent ? 'pulse-border 2s infinite' : 'none',
-        '@keyframes pulse-border': {
-          '0%': { boxShadow: `0 0 10px ${bg}40, inset 0 2px 4px rgba(0,0,0,0.1)` },
-          '50%': { boxShadow: `0 0 35px ${bg}80, inset 0 2px 4px rgba(0,0,0,0.1)` },
-          '100%': { boxShadow: `0 0 10px ${bg}40, inset 0 2px 4px rgba(0,0,0,0.1)` }
-        }
+        boxShadow: urgent
+          ? `0 0 25px ${glowColor}60, inset 0 2px 6px rgba(0,0,0,0.25)`
+          : `inset 0 2px 6px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.2)`,
+        border: `1.5px solid ${urgent ? glowColor : 'rgba(255, 255, 255, 0.22)'}`,
+        transition: 'all 0.2s ease',
       }}
     >
-      <Typography sx={{ 
-        position: 'absolute', width: '100%', textAlign: 'center', 
-        fontWeight: 800, color: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
-        zIndex: 0, pointerEvents: 'none', userSelect: 'none',
-        pl: 5 // offset for the knob
-      }}>
-        SLIDE TO PUNCH {type === 'in' ? 'IN' : 'OUT'} &gt;&gt;
-      </Typography>
+      <Box
+        sx={{
+          position: 'absolute',
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 1,
+          zIndex: 0,
+          pointerEvents: 'none',
+          userSelect: 'none',
+          pl: 5,
+        }}
+      >
+        <Typography
+          sx={{
+            fontWeight: 900,
+            fontSize: { xs: 12, sm: 13 },
+            color: '#ffffff',
+            letterSpacing: '0.12em',
+            textTransform: 'uppercase',
+            textShadow: '0 2px 6px rgba(0,0,0,0.5)',
+          }}
+        >
+          Slide to Punch {isCheckIn ? 'In' : 'Out'}
+        </Typography>
+        <Typography
+          component={motion.span}
+          animate={{ x: [0, 5, 0] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+          sx={{ color: '#38bdf8', fontWeight: 900, fontSize: 16 }}
+        >
+          ➔
+        </Typography>
+      </Box>
 
       <motion.div
         drag="x"
@@ -129,21 +158,27 @@ function SlideToPunchButton({ type, onTrigger, urgent }: { type: 'in' | 'out', o
         dragSnapToOrigin={false}
         onDragEnd={handleDragEnd}
         animate={controls}
-        style={{ zIndex: 1, position: 'absolute' }}
+        style={{ zIndex: 1, position: 'absolute', left: 2 }}
       >
-        <Box sx={{
-          width: '56px', height: '56px', borderRadius: '28px',
-          bgcolor: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white',
-          boxShadow: urgent ? `0 0 20px ${bg}` : `0 4px 15px ${bg}60`, 
-          cursor: 'grab', '&:active': { cursor: 'grabbing' },
-          animation: urgent ? 'pulse-knob 2s infinite' : 'none',
-          '@keyframes pulse-knob': {
-            '0%': { transform: 'scale(1)' },
-            '50%': { transform: 'scale(1.05)' },
-            '100%': { transform: 'scale(1)' }
-          }
-        }}>
-          {type === 'in' ? <LoginRoundedIcon /> : <LogoutRoundedIcon />}
+        <Box
+          sx={{
+            width: '54px',
+            height: '54px',
+            borderRadius: '27px',
+            background: bgGrad,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#ffffff',
+            boxShadow: `0 4px 20px ${glowColor}80, inset 0 1px 2px rgba(255,255,255,0.4)`,
+            border: '2px solid rgba(255, 255, 255, 0.3)',
+            cursor: 'grab',
+            '&:active': { cursor: 'grabbing' },
+            transition: 'transform 0.1s',
+            '&:hover': { transform: 'scale(1.04)' },
+          }}
+        >
+          {isCheckIn ? <LoginRoundedIcon sx={{ fontSize: 24 }} /> : <LogoutRoundedIcon sx={{ fontSize: 24 }} />}
         </Box>
       </motion.div>
     </Box>
@@ -233,14 +268,42 @@ function HeroClock() {
   }, []);
 
   return (
-    <>
-      <Typography sx={{ color: 'rgba(148,163,184,0.9)', fontWeight: 700, fontSize: 13, letterSpacing: '0.1em', textTransform: 'uppercase', mb: 0.5 }}>
-        {dayjs(time).format('dddd, DD MMMM YYYY')}
+    <Box sx={{ mb: 1.5 }}>
+      <Box
+        sx={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 0.75,
+          px: 1.5,
+          py: 0.4,
+          borderRadius: '8px',
+          bgcolor: 'rgba(255, 255, 255, 0.12)',
+          border: '1px solid rgba(255, 255, 255, 0.18)',
+          backdropFilter: 'blur(8px)',
+          mb: 1,
+        }}
+      >
+        <CalendarTodayRoundedIcon sx={{ fontSize: 13, color: '#38bdf8' }} />
+        <Typography sx={{ color: 'rgba(255, 255, 255, 0.95)', fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          {dayjs(time).format('dddd, DD MMMM YYYY')}
+        </Typography>
+      </Box>
+      <Typography
+        sx={{
+          fontWeight: 950,
+          fontSize: { xs: 34, sm: 44, md: 48 },
+          lineHeight: 1.05,
+          color: '#ffffff',
+          letterSpacing: '-0.03em',
+          textShadow: '0 2px 10px rgba(0,0,0,0.3)',
+        }}
+      >
+        {dayjs(time).format('hh:mm:ss')}{' '}
+        <Box component="span" sx={{ fontSize: { xs: 18, md: 24 }, fontWeight: 900, color: '#38bdf8' }}>
+          {dayjs(time).format('A')}
+        </Box>
       </Typography>
-      <Typography sx={{ fontWeight: 900, fontSize: { xs: 32, md: 48 }, lineHeight: 1.1, color: '#f8fafc', mb: 0.5, letterSpacing: '-0.02em' }}>
-        {dayjs(time).format('hh:mm:ss A')}
-      </Typography>
-    </>
+    </Box>
   );
 }
 
@@ -505,18 +568,19 @@ export function DashboardTab() {
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1.4fr 0.6fr' }, gap: 2.5 }}>
 
         {/* Left: Main shift card */}
-        <Tilt tiltMaxAngleX={5} tiltMaxAngleY={5} glareEnable={true} glareMaxOpacity={0.12} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
+        <Tilt tiltMaxAngleX={5} tiltMaxAngleY={5} glareEnable={true} glareMaxOpacity={0.12} glareBorderRadius="24px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
         <Box sx={{
-          ...glassCard,
-          background: isDark
-            ? 'linear-gradient(135deg, #0f2040 0%, #0a1628 100%)'
-            : 'linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%)',
+          borderRadius: '24px',
+          background: 'linear-gradient(145deg, #090e1a 0%, #0f172a 45%, #131f38 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.12)',
+          boxShadow: '0 20px 48px rgba(15, 23, 42, 0.28), 0 0 1px rgba(255, 255, 255, 0.2)',
+          backdropFilter: 'blur(20px)',
           p: { xs: 2.5, md: 3.5 },
           position: 'relative', overflow: 'hidden',
         }}>
-          {/* Background glow orbs */}
-          <Box sx={{ position: 'absolute', top: -60, right: -60, width: 200, height: 200, borderRadius: '50%', background: 'radial-gradient(circle, rgba(56,189,248,0.15) 0%, transparent 70%)', pointerEvents: 'none' }} />
-          <Box sx={{ position: 'absolute', bottom: -40, left: -40, width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(192,132,252,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          {/* Background ambient mesh glow orbs */}
+          <Box sx={{ position: 'absolute', top: -80, right: -60, width: 240, height: 240, borderRadius: '50%', background: 'radial-gradient(circle, rgba(56,189,248,0.18) 0%, transparent 70%)', pointerEvents: 'none' }} />
+          <Box sx={{ position: 'absolute', bottom: -60, left: -60, width: 220, height: 220, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.16) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
           {/* Header row */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5 }}>
@@ -677,6 +741,7 @@ export function DashboardTab() {
                 </IconButton>
               </Tooltip>
               <VoicePunchAssistant
+                variant="hero"
                 onTriggerPunch={(kind) => openPunch(kind === 'in' ? 'checkin' : 'checkout')}
                 onTriggerBreak={() => runBreakAction(activeBreak ? '/api/employee/breaks/end' : '/api/employee/breaks/start')}
                 onOpenKiosk={() => { window.location.href = '/kiosk'; }}
@@ -787,15 +852,29 @@ export function DashboardTab() {
               </Box>
 
               {/* Today's punch times & OT */}
-              <Box sx={{ display: 'grid', gridTemplateColumns: isOvertime ? '1fr 1fr 1fr' : '1fr 1fr', gap: 1 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: isOvertime ? '1fr 1fr 1fr' : '1fr 1fr', gap: 1.25 }}>
                 {[
-                  { label: 'In', value: timeLabel(todayEntry?.inTime), color: '#22c55e' },
-                  { label: 'Out', value: timeLabel(todayEntry?.outTime), color: '#ef4444' },
-                  ...(isOvertime ? [{ label: 'OT', value: `${ot.h}h ${ot.m}m`, color: '#f59e0b' }] : []),
-                ].map(({ label, value, color }) => (
-                  <Box key={label} sx={{ bgcolor: 'rgba(255,255,255,0.07)', borderRadius: '12px', p: 1.25, textAlign: 'center' }}>
-                    <Typography sx={{ color: 'rgba(148,163,184,0.7)', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</Typography>
-                    <Typography sx={{ fontWeight: 900, fontSize: 17, color, fontFamily: 'monospace', letterSpacing: '-0.02em' }}>{value}</Typography>
+                  { label: 'Clock In', value: timeLabel(todayEntry?.inTime), color: todayEntry?.inTime ? '#4ade80' : '#ffffff', dot: '#22c55e' },
+                  { label: 'Clock Out', value: timeLabel(todayEntry?.outTime), color: todayEntry?.outTime ? '#f87171' : '#ffffff', dot: '#ef4444' },
+                  ...(isOvertime ? [{ label: 'Overtime', value: `+${ot.h}h ${ot.m}m`, color: '#fbbf24', dot: '#f59e0b' }] : []),
+                ].map(({ label, value, color, dot }) => (
+                  <Box
+                    key={label}
+                    sx={{
+                      bgcolor: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.14)',
+                      backdropFilter: 'blur(12px)',
+                      borderRadius: '14px',
+                      p: 1.5,
+                      textAlign: 'center',
+                      boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.75, mb: 0.25 }}>
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: dot }} />
+                      <Typography sx={{ color: 'rgba(255, 255, 255, 0.75)', fontSize: 11, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>{label}</Typography>
+                    </Box>
+                    <Typography sx={{ fontWeight: 950, fontSize: { xs: 16, sm: 18 }, color, fontFamily: 'monospace', letterSpacing: '-0.02em', mt: 0.25 }}>{value}</Typography>
                   </Box>
                 ))}
               </Box>
@@ -817,7 +896,17 @@ export function DashboardTab() {
                     disabled={breakBusy}
                     variant="contained"
                     startIcon={<PlayArrowRoundedIcon />}
-                    sx={{ bgcolor: '#f59e0b', color: 'white', borderRadius: '12px', py: 1.4, fontWeight: 900, boxShadow: '0 8px 20px rgba(245,158,11,0.4)', '&:hover': { bgcolor: '#d97706' } }}
+                    sx={{
+                      bgcolor: '#f59e0b',
+                      color: 'white',
+                      borderRadius: '18px',
+                      px: 2.5,
+                      py: 1.4,
+                      fontWeight: 900,
+                      boxShadow: '0 8px 20px rgba(245,158,11,0.4)',
+                      '&:hover': { bgcolor: '#d97706' },
+                      whiteSpace: 'nowrap',
+                    }}
                   >
                     Resume
                   </MotionButton>
@@ -828,7 +917,18 @@ export function DashboardTab() {
                     disabled={breakBusy || !clockedIn}
                     variant="contained"
                     startIcon={<FreeBreakfastRoundedIcon />}
-                    sx={{ bgcolor: 'rgba(255,255,255,0.12)', color: 'white', borderRadius: '12px', py: 1.4, fontWeight: 900, border: '1px solid rgba(255,255,255,0.15)', '&:hover': { bgcolor: 'rgba(255,255,255,0.2)' }, '&.Mui-disabled': { color: 'rgba(255,255,255,0.4)' } }}
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.14)',
+                      color: 'white',
+                      borderRadius: '18px',
+                      px: 2.5,
+                      py: 1.4,
+                      fontWeight: 900,
+                      border: '1px solid rgba(255,255,255,0.22)',
+                      '&:hover': { bgcolor: 'rgba(255,255,255,0.24)' },
+                      '&.Mui-disabled': { color: 'rgba(255,255,255,0.35)', bgcolor: 'rgba(255,255,255,0.06)' },
+                      whiteSpace: 'nowrap',
+                    }}
                   >
                     Break
                   </MotionButton>
@@ -842,46 +942,145 @@ export function DashboardTab() {
         </Tilt>
 
         {/* Right: Today Details card */}
-        <Tilt tiltMaxAngleX={5} tiltMaxAngleY={5} glareEnable={true} glareMaxOpacity={0.1} glareBorderRadius="16px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ ...glassCard, p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.5, height: '100%' }}>
-          <Typography sx={{ fontWeight: 900, fontSize: 18, mb: 0.5 }}>Today Details</Typography>
+        <Tilt tiltMaxAngleX={4} tiltMaxAngleY={4} glareEnable={true} glareMaxOpacity={0.06} glareBorderRadius="24px" scale={1.01} transitionSpeed={500} style={{ display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{
+          p: 2.5,
+          borderRadius: '24px',
+          bgcolor: 'background.paper',
+          border: '1px solid',
+          borderColor: 'divider',
+          boxShadow: isDark ? '0 12px 32px rgba(0,0,0,0.35)' : '0 12px 32px rgba(15, 23, 42, 0.06)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+          height: '100%',
+        }}>
+          {/* Header */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Box sx={{ width: 32, height: 32, borderRadius: '10px', bgcolor: isDark ? 'rgba(56,189,248,0.15)' : '#e0f2fe', color: '#0284c7', display: 'grid', placeItems: 'center' }}>
+                <TimerRoundedIcon fontSize="small" />
+              </Box>
+              <Typography sx={{ fontWeight: 950, fontSize: 17, letterSpacing: '-0.01em' }}>Today Details</Typography>
+            </Box>
+            <Chip
+              size="small"
+              label={clockedIn ? 'Active Shift' : completed ? 'Completed' : 'Not Clocked In'}
+              sx={{
+                fontWeight: 800,
+                fontSize: 10,
+                bgcolor: clockedIn ? 'rgba(34,197,94,0.12)' : completed ? 'rgba(56,189,248,0.12)' : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                color: clockedIn ? '#16a34a' : completed ? '#0284c7' : 'text.secondary',
+                border: `1px solid ${clockedIn ? 'rgba(34,197,94,0.3)' : 'transparent'}`,
+              }}
+            />
+          </Box>
 
+          {/* 4 Stat rows with colorful badge containers */}
           {[
-            { label: 'Punch In', value: timeLabel(todayEntry?.inTime), color: '#22c55e', icon: '🟢' },
-            { label: 'Punch Out', value: timeLabel(todayEntry?.outTime), color: '#ef4444', icon: '🔴' },
-            { label: 'Late', value: minutesLabel(todayEntry?.lateMinutes), color: '#f59e0b', icon: '⏰' },
-            { label: 'Overtime', value: minutesLabel(todayEntry?.overtimeMinutes), color: '#818cf8', icon: '⚡' },
-          ].map(({ label, value, color, icon }, i) => (
+            { label: 'Punch In', value: timeLabel(todayEntry?.inTime), color: '#16a34a', bg: 'rgba(34,197,94,0.12)', icon: <LoginRoundedIcon sx={{ fontSize: 16, color: '#16a34a' }} /> },
+            { label: 'Punch Out', value: timeLabel(todayEntry?.outTime), color: '#dc2626', bg: 'rgba(239,68,68,0.12)', icon: <LogoutRoundedIcon sx={{ fontSize: 16, color: '#dc2626' }} /> },
+            { label: 'Late Arrival', value: minutesLabel(todayEntry?.lateMinutes), color: '#d97706', bg: 'rgba(245,158,11,0.12)', icon: <AccessTimeRoundedIcon sx={{ fontSize: 16, color: '#d97706' }} /> },
+            { label: 'Overtime', value: minutesLabel(todayEntry?.overtimeMinutes), color: '#6366f1', bg: 'rgba(99,102,241,0.12)', icon: <FlashOnRoundedIcon sx={{ fontSize: 16, color: '#6366f1' }} /> },
+          ].map(({ label, value, color, bg, icon }, i) => (
             <MotionBox
               key={label}
-              initial={{ opacity: 0, x: 20 }}
+              initial={{ opacity: 0, x: 15 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 + i * 0.07 }}
+              transition={{ delay: 0.1 + i * 0.05 }}
               sx={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                p: 1.5, borderRadius: '12px',
-                background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                p: 1.25,
+                borderRadius: '14px',
+                bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                border: '1px solid',
+                borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                transition: 'all 0.2s ease',
+                '&:hover': {
+                  borderColor: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.1)',
+                  bgcolor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                },
               }}
             >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Typography sx={{ fontSize: 16 }}>{icon}</Typography>
-                <Typography sx={{ color: 'text.secondary', fontWeight: 700, fontSize: 13 }}>{label}</Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: bg, display: 'grid', placeItems: 'center' }}>
+                  {icon}
+                </Box>
+                <Typography sx={{ color: 'text.secondary', fontWeight: 800, fontSize: 12.5 }}>{label}</Typography>
               </Box>
-              <Typography sx={{ fontWeight: 900, fontSize: 15, color, fontFamily: 'monospace' }}>{value}</Typography>
+              <Typography sx={{ fontWeight: 950, fontSize: 14.5, color, fontFamily: 'monospace' }}>{value}</Typography>
             </MotionBox>
           ))}
 
+          {/* Mini Target Progress Bar */}
+          <Box sx={{
+            p: 1.5,
+            borderRadius: '14px',
+            bgcolor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+            border: '1px solid',
+            borderColor: 'divider',
+          }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
+              <Typography sx={{ fontSize: 11, fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                Shift Progress
+              </Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 900, color: isOvertime ? '#16a34a' : '#0284c7' }}>
+                {isOvertime ? '100% (OT)' : `${progress}%`}
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={progress}
+              sx={{
+                height: 6,
+                borderRadius: 3,
+                bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                '& .MuiLinearProgress-bar': {
+                  bgcolor: isOvertime ? '#16a34a' : '#0284c7',
+                  borderRadius: 3,
+                },
+              }}
+            />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.75 }}>
+              <Typography sx={{ fontSize: 10.5, color: 'text.disabled', fontWeight: 600 }}>Target: {minutesLabel(targetMinutes)}</Typography>
+              <Typography sx={{ fontSize: 10.5, color: 'text.disabled', fontWeight: 600 }}>
+                {todayEntry?.workedMinutes ? `${minutesLabel(todayEntry.workedMinutes)} worked` : `${h}h ${m}m elapsed`}
+              </Typography>
+            </Box>
+          </Box>
+
           {/* Break status */}
           <Box sx={{
-            display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '12px', mt: 'auto',
-            background: activeBreak ? 'rgba(245,158,11,0.12)' : isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)',
-            border: `1px solid ${activeBreak ? 'rgba(245,158,11,0.3)' : 'transparent'}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            p: 1.5, borderRadius: '14px', mt: 'auto',
+            bgcolor: activeBreak ? (isDark ? 'rgba(245,158,11,0.15)' : '#fef3c7') : isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+            border: '1px solid',
+            borderColor: activeBreak ? '#f59e0b' : 'divider',
           }}>
-            <AccessTimeRoundedIcon sx={{ color: activeBreak ? '#f59e0b' : 'text.disabled', fontSize: 20 }} />
-            <Typography sx={{ fontWeight: 700, fontSize: 13, color: activeBreak ? '#f59e0b' : 'text.secondary' }}>
-              {activeBreak ? 'Break is currently active' : 'No active break'}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+              <Box sx={{ width: 32, height: 32, borderRadius: '8px', bgcolor: activeBreak ? 'rgba(245,158,11,0.2)' : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', display: 'grid', placeItems: 'center', color: activeBreak ? '#f59e0b' : 'text.secondary' }}>
+                <FreeBreakfastRoundedIcon sx={{ fontSize: 17 }} />
+              </Box>
+              <Box>
+                <Typography sx={{ fontWeight: 800, fontSize: 12.5, color: activeBreak ? '#d97706' : 'text.primary' }}>
+                  {activeBreak ? 'Break Currently Active' : 'No Active Break'}
+                </Typography>
+                <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                  {activeBreak ? 'Shift timer paused' : 'Tap Break button to pause shift'}
+                </Typography>
+              </Box>
+            </Box>
+            <Chip
+              size="small"
+              label={activeBreak ? 'Paused' : 'Available'}
+              sx={{
+                fontSize: 10, fontWeight: 800, height: 20,
+                bgcolor: activeBreak ? '#f59e0b' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                color: activeBreak ? '#ffffff' : 'text.secondary',
+              }}
+            />
           </Box>
         </Box>
         </Tilt>
