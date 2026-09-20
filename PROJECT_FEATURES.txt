@@ -81,9 +81,10 @@ MODULE 2: SMART PUNCH & CHECK-IN VERIFICATION ENGINE (7 Features)
    - Interactive contactless RFID smart badge tap simulator with dual-frequency chime audio and haptics.
    - Optional 3-second hands-free auto-punch countdown when inside office perimeter.
 
-10. Dynamic QR Code Punch Scanner & Office Terminal Generator
-    - Generates rotating office entrance QR codes with custom validity windows.
-    - Built-in camera QR scanner for touchless, physically verified punch-in when mandated by policy.
+10. Dynamic Dual QR Code Punch Scanner (Entrance & Exit QR Verification)
+    - Generates rotating office entrance and exit QR codes with custom validity windows.
+    - Built-in camera QR scanner for both Check-In (Entrance QR) and Check-Out (Exit QR).
+    - Includes instant QR image file upload fallback and geofence-verified instant pass options.
 
 11. Live Shift Countdown & Overtime Tracker Pill
     - Real-time animated counter showing remaining shift time (e.g. "3h 45m left").

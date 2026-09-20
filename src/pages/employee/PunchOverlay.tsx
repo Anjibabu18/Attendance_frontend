@@ -86,6 +86,7 @@ export function PunchOverlay({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream|null>(null);
   const qrScanActiveRef = useRef(false);
+  const qrFileInputRef = useRef<HTMLInputElement>(null);
   const [location, setLocation] = useState<{lat: number, lng: number}|null>(null);
 
   const [qrToken, setQrToken] = useState<string>("");
@@ -146,15 +147,10 @@ export function PunchOverlay({
           return;
         }
 
-        // Advance to Verified Check-In Hub (or QR if strictly required by company)
+        // Advance to Step 1: Scan Office QR Code (both for check-in and check-out!)
         setTimeout(() => {
-          if (settings?.requireQrForPunch) {
-            setStep(1);
-            startQrCamera();
-          } else {
-            // Instant advance to Verified Hub with ZERO camera/selfie requirement
-            setStep(3);
-          }
+          setStep(1);
+          startQrCamera();
         }, 1200);
       } else {
         setError(`Outside office radius (${Math.round(res.data.distanceMeters)}m)`);
@@ -298,6 +294,31 @@ export function PunchOverlay({
       setTimeout(() => startQrCamera(), 600);
     } finally {
       setBusy(false);
+    }
+  };
+
+  const scanQrImageFile = async (file: File) => {
+    setError(null);
+    try {
+      const image = new Image();
+      image.src = URL.createObjectURL(file);
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error("Cannot read QR image"));
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Cannot scan QR image");
+      ctx.drawImage(image, 0, 0);
+      URL.revokeObjectURL(image.src);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
+      if (!code) throw new Error("No QR code found in uploaded image");
+      await handleQrScanned(code.data);
+    } catch (err: any) {
+      setError(err?.message || "Invalid QR Image");
     }
   };
 
@@ -623,21 +644,63 @@ export function PunchOverlay({
           </Box>
         )}
 
-        {/* STEP 1: SCAN OFFICE QR (Optional company policy) */}
+        {/* STEP 1: SCAN OFFICE QR (Both Check-In and Check-Out) */}
         {step === 1 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', alignItems: 'center' }}>
-            <Typography variant="h4" sx={{ fontWeight: 800, mb: 1, background: 'linear-gradient(135deg, #60A5FA, #3B82F6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Scan Office QR</Typography>
-            <Typography sx={{ color: '#94A3B8', mb: 4, fontSize: 15 }}>Position the office QR code within the frame</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5, background: isCheckin ? 'linear-gradient(135deg, #60A5FA, #3B82F6)' : 'linear-gradient(135deg, #FCD34D, #F59E0B)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              {isCheckin ? 'Scan Entrance QR' : 'Scan Exit QR'}
+            </Typography>
+            <Typography sx={{ color: '#94A3B8', mb: 3, fontSize: 14 }}>
+              {isCheckin 
+                ? 'Scan the office entrance QR code to verify your arrival on-site' 
+                : 'Scan the office exit QR code before clocking out'
+              }
+            </Typography>
             {error && (
-              <Box sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', p: 2, borderRadius: 2, mb: 3, textAlign: 'center' }}>
-                <Typography sx={{ color: '#EF4444', fontWeight: 600, mb: 1 }}>{error}</Typography>
+              <Box sx={{ bgcolor: 'rgba(239, 68, 68, 0.1)', p: 2, borderRadius: 2, mb: 2.5, textAlign: 'center', maxWidth: 320 }}>
+                <Typography sx={{ color: '#EF4444', fontWeight: 600, mb: 1, fontSize: 13 }}>{error}</Typography>
                 <Button variant="outlined" size="small" onClick={startQrCamera} sx={{ borderColor: '#EF4444', color: '#EF4444' }}>Try Again</Button>
               </Box>
             )}
-            <Box sx={{ position: 'relative', width: '280px', height: '280px', mb: 4, mx: 'auto', bgcolor: 'black', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 0 0 8px rgba(59, 130, 246, 0.1), 0 20px 40px rgba(0,0,0,0.4)' }}>
+            <Box sx={{ position: 'relative', width: '280px', height: '280px', mb: 3, mx: 'auto', bgcolor: 'black', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 0 0 8px rgba(59, 130, 246, 0.1), 0 20px 40px rgba(0,0,0,0.4)' }}>
               <video ref={videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <Box sx={{ position: 'absolute', top: 16, left: 16, width: 40, height: 40, borderTop: '4px solid #3B82F6', borderLeft: '4px solid #3B82F6', borderTopLeftRadius: 12, zIndex: 3 }} />
+              <Box sx={{ position: 'absolute', top: 16, right: 16, width: 40, height: 40, borderTop: '4px solid #3B82F6', borderRight: '4px solid #3B82F6', borderTopRightRadius: 12, zIndex: 3 }} />
+              <Box sx={{ position: 'absolute', bottom: 16, left: 16, width: 40, height: 40, borderBottom: '4px solid #3B82F6', borderLeft: '4px solid #3B82F6', borderBottomLeftRadius: 12, zIndex: 3 }} />
+              <Box sx={{ position: 'absolute', bottom: 16, right: 16, width: 40, height: 40, borderBottom: '4px solid #3B82F6', borderRight: '4px solid #3B82F6', borderBottomRightRadius: 12, zIndex: 3 }} />
             </Box>
-            <Typography sx={{ color: '#94A3B8', fontSize: 13, fontWeight: 600 }}>Scanning for QR code...</Typography>
+            <Typography sx={{ color: '#94A3B8', fontSize: 13, fontWeight: 600, mb: 2 }}>
+              Scanning for {isCheckin ? 'Entrance' : 'Exit'} QR code...
+            </Typography>
+
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+              <input 
+                type="file" 
+                ref={qrFileInputRef} 
+                accept="image/*" 
+                style={{ display: 'none' }} 
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) scanQrImageFile(f);
+                }}
+              />
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => qrFileInputRef.current?.click()}
+                sx={{ borderRadius: 3, borderColor: 'rgba(255,255,255,0.2)', color: '#CBD5E1', fontSize: 12 }}
+              >
+                📁 Upload QR Image
+              </Button>
+              <Button
+                variant="text"
+                size="small"
+                onClick={() => { stopCamera(); setStep(3); }}
+                sx={{ borderRadius: 3, color: '#94A3B8', fontSize: 12 }}
+              >
+                ⚡ Proceed with Geofence
+              </Button>
+            </Box>
           </Box>
         )}
 
