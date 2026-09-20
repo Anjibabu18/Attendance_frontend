@@ -20,6 +20,7 @@ import { motion } from 'framer-motion';
 
 import { useThemeContext } from '../theme/ThemeContext';
 import { hapticPop, hapticTap } from '../utils/haptics';
+import { formatShiftTime, formatShiftTime12h } from '../utils/timeFormat';
 
 interface SmartCommuteWidgetProps {
   officeName?: string;
@@ -28,9 +29,9 @@ interface SmartCommuteWidgetProps {
 }
 
 export function SmartCommuteWidget({
-  officeName = 'HQ Tech Park, Tower A',
+  officeName = 'Main Office',
   shiftStartTime = '09:00 AM',
-  userAddress = 'Home (Whitefield)',
+  userAddress = 'Home',
 }: SmartCommuteWidgetProps) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
@@ -67,19 +68,14 @@ export function SmartCommuteWidget({
     }
   }, [travelMode]);
 
-  // Calculate target departure time based on shift start (default 9:00 AM)
+  // Calculate target departure time based on shift start
   const departureRecommendation = useMemo(() => {
     const today = dayjs();
-    let shiftDate = today.hour(9).minute(0).second(0);
-    if (shiftStartTime.includes(':')) {
-      const parts = shiftStartTime.replace(/[^0-9:]/g, '').split(':');
-      const hour = parseInt(parts[0], 10);
-      const minute = parseInt(parts[1] || '0', 10);
-      if (!isNaN(hour)) {
-        const isPM = shiftStartTime.toLowerCase().includes('pm') && hour < 12;
-        shiftDate = today.hour(isPM ? hour + 12 : hour).minute(minute).second(0);
-      }
-    }
+    const cleanTime = formatShiftTime(shiftStartTime, '09:00');
+    const [hStr, mStr] = cleanTime.split(':');
+    const hour = parseInt(hStr, 10) || 9;
+    const minute = parseInt(mStr, 10) || 0;
+    const shiftDate = today.hour(hour).minute(minute).second(0);
     const departureTime = shiftDate.subtract(commuteDetails.departureLeadMin, 'minute');
     return departureTime.format('hh:mm A');
   }, [shiftStartTime, commuteDetails.departureLeadMin]);
@@ -233,7 +229,7 @@ export function SmartCommuteWidget({
             {departureRecommendation}
           </Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.75, fontWeight: 600 }}>
-            Leave {userAddress} by this time to arrive smoothly by <b>{shiftStartTime}</b>
+            Leave {userAddress} by this time to arrive smoothly by <b>{formatShiftTime12h(shiftStartTime)}</b>
           </Typography>
         </Box>
 

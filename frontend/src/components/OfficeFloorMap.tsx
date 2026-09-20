@@ -36,16 +36,12 @@ interface DeskMember {
   checkInTime: string;
 }
 
-const SAMPLE_TEAM: DeskMember[] = [
-  { id: '1', name: 'Venkata Rao', role: 'Lead Architect', deskId: 'E-01', zone: 'Engineering', status: 'DESK', checkInTime: '09:15 AM' },
-  { id: '2', name: 'Priya Sharma', role: 'Staff Product Manager', deskId: 'P-04', zone: 'Product', status: 'MEETING', checkInTime: '09:28 AM' },
-  { id: '3', name: 'Rahul Verma', role: 'Senior Frontend Dev', deskId: 'E-02', zone: 'Engineering', status: 'COFFEE', checkInTime: '09:40 AM' },
-  { id: '4', name: 'Anita Patel', role: 'Principal Designer', deskId: 'P-01', zone: 'Product', status: 'DESK', checkInTime: '09:10 AM' },
-  { id: '5', name: 'Vikram Singh', role: 'HR Director', deskId: 'X-01', zone: 'Executive', status: 'DESK', checkInTime: '09:05 AM' },
-  { id: '6', name: 'Kavita Reddy', role: 'Backend Engineer', deskId: 'E-03', zone: 'Engineering', status: 'REMOTE', checkInTime: '09:30 AM' },
-];
+interface OfficeFloorMapProps {
+  currentEmployee?: any;
+  isPunchedIn?: boolean;
+}
 
-export function OfficeFloorMap() {
+export function OfficeFloorMap({ currentEmployee, isPunchedIn = false }: OfficeFloorMapProps = {}) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
   const { toastSuccess } = useToast();
@@ -54,7 +50,24 @@ export function OfficeFloorMap() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMember, setSelectedMember] = useState<DeskMember | null>(null);
 
-  const filteredMembers = SAMPLE_TEAM.filter((m) => {
+  const teamList: DeskMember[] = [
+    {
+      id: 'me',
+      name: currentEmployee?.name || 'You (Staff Specialist)',
+      role: currentEmployee?.companyRole?.name || 'Staff Specialist',
+      deskId: 'E-01',
+      zone: 'Engineering',
+      status: isPunchedIn ? 'DESK' : 'REMOTE',
+      checkInTime: isPunchedIn ? 'Active Now' : 'Not Clocked In',
+    },
+    { id: '2', name: 'Priya Sharma', role: 'Staff Product Manager', deskId: 'P-04', zone: 'Product', status: 'MEETING', checkInTime: '09:28 AM' },
+    { id: '3', name: 'Rahul Verma', role: 'Senior Frontend Dev', deskId: 'E-02', zone: 'Engineering', status: 'COFFEE', checkInTime: '09:40 AM' },
+    { id: '4', name: 'Anita Patel', role: 'Principal Designer', deskId: 'P-01', zone: 'Product', status: 'DESK', checkInTime: '09:10 AM' },
+    { id: '5', name: 'Vikram Singh', role: 'HR Director', deskId: 'X-01', zone: 'Executive', status: 'DESK', checkInTime: '09:05 AM' },
+    { id: '6', name: 'Kavita Reddy', role: 'Backend Engineer', deskId: 'E-03', zone: 'Engineering', status: 'REMOTE', checkInTime: '09:30 AM' },
+  ];
+
+  const filteredMembers = teamList.filter((m) => {
     if (activeZone !== 'ALL' && m.zone !== activeZone) return false;
     if (searchQuery.trim()) {
       return (

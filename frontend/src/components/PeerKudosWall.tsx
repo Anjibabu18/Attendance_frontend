@@ -20,6 +20,7 @@ import AddReactionRoundedIcon from '@mui/icons-material/AddReactionRounded';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
+import dayjs from 'dayjs';
 
 import { useThemeContext } from '../theme/ThemeContext';
 import { useToast } from './Toast';
@@ -73,14 +74,23 @@ const INITIAL_KUDOS: KudosItem[] = [
   },
 ];
 
-export function PeerKudosWall() {
+export function PeerKudosWall({ currentUserName }: { currentUserName?: string }) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
   const { toastSuccess } = useToast();
 
-  const [kudosList, setKudosList] = useState<KudosItem[]>(INITIAL_KUDOS);
+  const [kudosList, setKudosList] = useState<KudosItem[]>(() => {
+    try {
+      const raw = localStorage.getItem('worktrack_peer_kudos_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return INITIAL_KUDOS;
+  });
   const [giveModalOpen, setGiveModalOpen] = useState(false);
-  const [recipient, setRecipient] = useState('Priya Sharma');
+  const [recipient, setRecipient] = useState('Team Colleague');
   const [badgeCategory, setBadgeCategory] = useState<'Shift Savior' | 'Punctuality Pro' | 'Team Pillar' | 'Problem Solver'>('Shift Savior');
   const [message, setMessage] = useState('');
 
@@ -119,7 +129,11 @@ export function PeerKudosWall() {
       likes: 1,
     };
 
-    setKudosList((prev) => [newKudos, ...prev]);
+    const updated = [newKudos, ...kudosList];
+    setKudosList(updated);
+    try {
+      localStorage.setItem('worktrack_peer_kudos_v1', JSON.stringify(updated));
+    } catch {}
     toastSuccess(`Kudos sent to ${recipient}! 🌟`);
     setMessage('');
     setGiveModalOpen(false);
@@ -215,10 +229,10 @@ export function PeerKudosWall() {
           </Box>
           <Box>
             <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#f59e0b' }}>
-              🌟 September Punctuality Champion: Venkata Rao
+              🌟 {dayjs().format('MMMM')} Team Appreciation &amp; Recognition
             </Typography>
             <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-              Awarded 14 peer kudos & 100% on-time arrival record this month!
+              {currentUserName ? `Celebrating top on-time contributions and peer support across ${currentUserName}'s team!` : 'Celebrating on-time contributions, teamwork, and shift coverage across the team!'}
             </Typography>
           </Box>
         </Box>

@@ -41,6 +41,7 @@ import { useThemeContext } from '../../theme/ThemeContext';
 import { useToast } from '../../components/Toast';
 import { scheduleEveningPunchOutReminder, triggerDirectNotification } from '../../utils/pushNotifications';
 import { hapticPop, hapticSuccess, hapticTap } from '../../utils/haptics';
+import { formatShiftTime } from '../../utils/timeFormat';
 
 const MotionBox = motion.create(Box);
 const MotionButton = motion.create(Button);
@@ -408,8 +409,8 @@ export function DashboardTab() {
   if (hour < 12) dynamicGreeting = 'Good morning ☕';
   else if (hour < 17) dynamicGreeting = 'Good afternoon ☀️';
 
-  const shiftInTime = profile?.shift?.inTime?.slice(0, 5) || settings?.defaultInTime?.slice(0, 5) || '09:00';
-  const shiftOutTime = profile?.shift?.outTime?.slice(0, 5) || settings?.defaultOutTime?.slice(0, 5) || '18:00';
+  const shiftInTime = formatShiftTime(profile?.shift?.inTime, formatShiftTime(settings?.defaultInTime, '09:00'));
+  const shiftOutTime = formatShiftTime(profile?.shift?.outTime, formatShiftTime(settings?.defaultOutTime, '18:00'));
 
   const shiftRemainingText = useMemo(() => {
     if (!todayEntry?.inTime || todayEntry?.outTime) return null;
@@ -878,8 +879,9 @@ export function DashboardTab() {
       {/* ── Smart Commute & Transit Assistant ── */}
       <MotionBox variants={itemVariants}>
         <SmartCommuteWidget
-          officeName={profile?.assignedOfficeLocation?.officeName || 'HQ Tech Park, Tower A'}
-          shiftStartTime={settings?.defaultInTime || '09:00 AM'}
+          officeName={profile?.assignedOfficeLocation?.officeName || 'Main Office'}
+          shiftStartTime={shiftInTime}
+          userAddress={(profile as any)?.address || 'Home'}
         />
       </MotionBox>
 
@@ -1107,7 +1109,7 @@ export function DashboardTab() {
 
       {/* ── Gamified Badges & Division League ── */}
       <MotionBox variants={itemVariants}>
-        <AttendanceBadgesLeague />
+        <AttendanceBadgesLeague entries={entries} monthSummary={monthSummary} />
       </MotionBox>
 
       {/* ── Deep Work & Focus Productivity Meter ── */}
@@ -1386,7 +1388,7 @@ export function DashboardTab() {
 
       {/* ── Live Office Seating & Team Presence Map ── */}
       <MotionBox variants={itemVariants}>
-        <OfficeFloorMap />
+        <OfficeFloorMap currentEmployee={profile} isPunchedIn={!!todayEntry?.inTime && !todayEntry?.outTime} />
       </MotionBox>
 
       {/* ── Slack & Teams Auto-Presence Sync ── */}
@@ -1399,7 +1401,7 @@ export function DashboardTab() {
 
       {/* ── Team Recognition & Shift Kudos Wall ── */}
       <MotionBox variants={itemVariants}>
-        <PeerKudosWall />
+        <PeerKudosWall currentUserName={profile?.name} />
       </MotionBox>
 
       {/* ── Daily Shift Handover & Accomplishments ── */}

@@ -1,13 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box, Chip, LinearProgress, Tooltip, Typography } from '@mui/material';
 import EmojiEventsRoundedIcon from '@mui/icons-material/EmojiEventsRounded';
-import MilitaryTechRoundedIcon from '@mui/icons-material/MilitaryTechRounded';
-import WorkspacePremiumRoundedIcon from '@mui/icons-material/WorkspacePremiumRounded';
 import WhatshotRoundedIcon from '@mui/icons-material/WhatshotRounded';
 import { motion } from 'framer-motion';
 
 import { useThemeContext } from '../theme/ThemeContext';
 import { hapticPop } from '../utils/haptics';
+import { Attendance, MonthSummary } from '../types';
 
 interface Badge {
   id: string;
@@ -20,16 +19,86 @@ interface Badge {
   progressText: string;
 }
 
-const BADGES: Badge[] = [
-  { id: '1', name: 'Early Bird', icon: '🌅', color: '#f59e0b', desc: 'Clocked in before 9:15 AM 5 days in a row', unlocked: true, progress: 100, progressText: '5/5 days completed' },
-  { id: '2', name: 'Century Club', icon: '💯', color: '#10b981', desc: '100% On-Time arrivals this month', unlocked: false, progress: 92, progressText: '92% on-time score' },
-  { id: '3', name: 'Ironclad Streak', icon: '⚡', color: '#38bdf8', desc: '15+ consecutive working days without absence', unlocked: false, progress: 80, progressText: '12/15 days streak' },
-  { id: '4', name: 'Wellness Master', icon: '🌿', color: '#8b5cf6', desc: 'Zero unapproved overtime with healthy daily stamina', unlocked: true, progress: 100, progressText: 'Optimal balance maintained' },
-];
+interface AttendanceBadgesLeagueProps {
+  entries?: Attendance[];
+  monthSummary?: MonthSummary | null;
+}
 
-export function AttendanceBadgesLeague() {
+export function AttendanceBadgesLeague({ entries = [], monthSummary }: AttendanceBadgesLeagueProps) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
+
+  const { badges, divisionLabel } = useMemo(() => {
+    const presentEntries = entries.filter((e) => e.status === 'PRESENT');
+    const presentCount = monthSummary?.presentDays ?? presentEntries.length;
+    const onTimeEntries = presentEntries.filter((e) => (e.lateMinutes || 0) <= 0);
+    const onTimeRate = presentCount > 0 ? Math.round((onTimeEntries.length / presentCount) * 100) : 0;
+
+    // Early Bird: clocked in on time 5 days
+    const earlyCount = Math.min(5, onTimeEntries.length);
+    const earlyUnlocked = earlyCount >= 5;
+
+    // Century Club: 100% on time
+    const centuryUnlocked = presentCount >= 10 && onTimeRate === 100;
+
+    // Ironclad Streak: 15 days
+    const streakCount = Math.min(15, presentCount);
+    const streakUnlocked = presentCount >= 15;
+
+    // Wellness Master: healthy stamina with <= 0 unapproved heavy OT
+    const heavyOt = entries.filter((e) => (e.overtimeMinutes || 0) > 90).length;
+    const wellnessUnlocked = presentCount > 0 && heavyOt === 0;
+
+    const badgeList: Badge[] = [
+      {
+        id: '1',
+        name: 'Early Bird',
+        icon: '🌅',
+        color: '#f59e0b',
+        desc: 'Clocked in on-time 5 days this month',
+        unlocked: earlyUnlocked,
+        progress: Math.min(100, Math.round((earlyCount / 5) * 100)),
+        progressText: `${earlyCount}/5 days completed`,
+      },
+      {
+        id: '2',
+        name: 'Century Club',
+        icon: '💯',
+        color: '#10b981',
+        desc: '100% On-Time arrivals this month',
+        unlocked: centuryUnlocked,
+        progress: onTimeRate,
+        progressText: `${onTimeRate}% on-time score`,
+      },
+      {
+        id: '3',
+        name: 'Ironclad Streak',
+        icon: '⚡',
+        color: '#38bdf8',
+        desc: '15+ working days without absence',
+        unlocked: streakUnlocked,
+        progress: Math.min(100, Math.round((streakCount / 15) * 100)),
+        progressText: `${streakCount}/15 days streak`,
+      },
+      {
+        id: '4',
+        name: 'Wellness Master',
+        icon: '🌿',
+        color: '#8b5cf6',
+        desc: 'Healthy daily stamina & work-life balance',
+        unlocked: wellnessUnlocked,
+        progress: wellnessUnlocked ? 100 : presentCount > 0 ? 75 : 20,
+        progressText: wellnessUnlocked ? 'Optimal balance maintained' : presentCount > 0 ? 'Good stamina' : 'New cycle',
+      },
+    ];
+
+    let div = 'Bronze Division';
+    if (presentCount >= 20) div = 'Diamond Division #1';
+    else if (presentCount >= 12) div = 'Gold Division #2';
+    else if (presentCount >= 5) div = 'Silver Division #3';
+
+    return { badges: badgeList, divisionLabel: div };
+  }, [entries, monthSummary]);
 
   return (
     <Box
@@ -70,7 +139,7 @@ export function AttendanceBadgesLeague() {
 
         <Chip
           icon={<WhatshotRoundedIcon sx={{ fontSize: '15px !important', color: '#f59e0b !important' }} />}
-          label="Diamond Division #3"
+          label={divisionLabel}
           size="small"
           sx={{
             fontWeight: 800,
@@ -84,7 +153,7 @@ export function AttendanceBadgesLeague() {
 
       {/* Badges Grid */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 1.5 }}>
-        {BADGES.map((b) => (
+        {badges.map((b) => (
           <Box
             key={b.id}
             component={motion.div}
@@ -98,61 +167,57 @@ export function AttendanceBadgesLeague() {
                   ? `linear-gradient(135deg, ${b.color}15 0%, rgba(15, 23, 42, 0.7) 100%)`
                   : 'rgba(255, 255, 255, 0.02)'
                 : b.unlocked
-                ? `linear-gradient(135deg, ${b.color}10 0%, rgba(255, 255, 255, 0.9) 100%)`
+                ? `linear-gradient(135deg, ${b.color}10 0%, #ffffff 100%)`
                 : 'rgba(0, 0, 0, 0.02)',
-              border: `1px solid ${
-                b.unlocked
-                  ? `${b.color}50`
-                  : isDark
-                  ? 'rgba(255, 255, 255, 0.06)'
-                  : 'rgba(0, 0, 0, 0.06)'
-              }`,
-              boxShadow: b.unlocked ? `0 8px 24px ${b.color}18` : 'none',
+              border: '1px solid',
+              borderColor: b.unlocked ? `${b.color}40` : 'divider',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              gap: 1.5,
-              position: 'relative',
               cursor: 'pointer',
+              transition: 'all 0.2s ease',
             }}
           >
             <Box>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                <Typography sx={{ fontSize: 28, lineHeight: 1 }}>{b.icon}</Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                <Typography sx={{ fontSize: 28 }}>{b.icon}</Typography>
                 <Chip
                   label={b.unlocked ? 'UNLOCKED' : `${b.progress}%`}
                   size="small"
                   sx={{
-                    height: 20,
-                    fontSize: 10,
                     fontWeight: 900,
-                    bgcolor: b.unlocked ? `${b.color}25` : 'action.hover',
-                    color: b.unlocked ? b.color : 'text.disabled',
-                    border: `1px solid ${b.unlocked ? `${b.color}40` : 'transparent'}`,
+                    fontSize: 9,
+                    height: 20,
+                    bgcolor: b.unlocked ? `${b.color}25` : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                    color: b.unlocked ? b.color : 'text.secondary',
+                    border: b.unlocked ? `1px solid ${b.color}50` : 'none',
                   }}
                 />
               </Box>
-
-              <Typography sx={{ fontWeight: 900, fontSize: 14, color: b.unlocked ? b.color : 'text.primary' }}>
+              <Typography sx={{ fontWeight: 800, fontSize: 14, color: b.unlocked ? 'text.primary' : 'text.secondary', mb: 0.5 }}>
                 {b.name}
               </Typography>
-              <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.5, lineHeight: 1.4 }}>
+              <Typography sx={{ fontSize: 11, color: 'text.secondary', lineHeight: 1.3, mb: 2 }}>
                 {b.desc}
               </Typography>
             </Box>
 
             <Box>
-              <Box sx={{ height: 6, borderRadius: 3, bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)', overflow: 'hidden', mb: 0.5 }}>
-                <Box
-                  sx={{
-                    height: '100%',
-                    width: `${b.progress}%`,
+              <LinearProgress
+                variant="determinate"
+                value={b.progress}
+                sx={{
+                  height: 6,
+                  borderRadius: 3,
+                  bgcolor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                  mb: 1,
+                  '& .MuiLinearProgress-bar': {
                     bgcolor: b.color,
                     borderRadius: 3,
-                  }}
-                />
-              </Box>
-              <Typography sx={{ fontSize: 10, color: 'text.disabled', fontWeight: 700 }}>
+                  },
+                }}
+              />
+              <Typography sx={{ fontSize: 10, fontWeight: 700, color: 'text.secondary', textAlign: 'right' }}>
                 {b.progressText}
               </Typography>
             </Box>

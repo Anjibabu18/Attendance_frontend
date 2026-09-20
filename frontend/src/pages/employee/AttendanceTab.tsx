@@ -24,6 +24,7 @@ import { HolidayOptimizerCard } from '../../components/HolidayOptimizerCard';
 import { AiAnomalyDetectorCard } from '../../components/AiAnomalyDetectorCard';
 import { ExecutiveTimesheetModal } from '../../components/ExecutiveTimesheetModal';
 import PictureAsPdfRoundedIcon from '@mui/icons-material/PictureAsPdfRounded';
+import FileDownloadRoundedIcon from '@mui/icons-material/FileDownloadRounded';
 
 const MotionBox = motion.create(Box);
 
@@ -203,6 +204,15 @@ export function AttendanceTab() {
           <Button
             variant="contained"
             size="small"
+            onClick={() => setTimesheetModalOpen(true)}
+            startIcon={<FileDownloadRoundedIcon />}
+            sx={{ bgcolor: '#0284c7', '&:hover': { bgcolor: '#0369a1' }, borderRadius: '8px', fontWeight: 800, textTransform: 'none' }}
+          >
+            📥 Export Excel / CSV
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
             onClick={handleShareWhatsApp}
             startIcon={<WhatsAppIcon />}
             sx={{ bgcolor: '#25D366', '&:hover': { bgcolor: '#1ebe5d' }, borderRadius: '8px', fontWeight: 800, textTransform: 'none' }}
@@ -306,6 +316,56 @@ export function AttendanceTab() {
                 <Typography sx={{ fontWeight: 900 }}>{minutesLabel(selectedEntry?.overtimeMinutes)}</Typography>
               </Box>
             </Box>
+
+            {/* Morning Goals & Evening Accomplishments for selected day */}
+            {(() => {
+              const dKey = selectedDate;
+              const morningPlan = localStorage.getItem(`worktrack_morning_plan_${dKey}`);
+              let eveningAccomplishment = '';
+              let shiftMood = '';
+              try {
+                const raw = localStorage.getItem('worktrack_shift_handovers_v1');
+                if (raw) {
+                  const parsed = JSON.parse(raw);
+                  if (Array.isArray(parsed) && parsed.length > 0 && dKey === dayjs().format('YYYY-MM-DD')) {
+                    eveningAccomplishment = parsed[0]?.summary;
+                    shiftMood = parsed[0]?.mood;
+                  }
+                }
+              } catch {}
+
+              if (!morningPlan && !eveningAccomplishment) return null;
+
+              return (
+                <Box sx={{ mt: 2, p: 1.5, borderRadius: '8px', bgcolor: 'background.default', border: '1px solid', borderColor: 'divider' }}>
+                  {morningPlan && (
+                    <Box sx={{ mb: eveningAccomplishment ? 1.5 : 0 }}>
+                      <Typography sx={{ fontSize: 11, fontWeight: 800, color: 'success.main', mb: 0.25 }}>
+                        🌅 MORNING GOALS &amp; PLANNED TASKS
+                      </Typography>
+                      <Typography sx={{ fontSize: 12, color: 'text.primary', fontWeight: 600 }}>
+                        {morningPlan}
+                      </Typography>
+                    </Box>
+                  )}
+                  {eveningAccomplishment && (
+                    <Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
+                        <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#f59e0b' }}>
+                          🌆 EVENING ACCOMPLISHMENTS &amp; DEBRIEF
+                        </Typography>
+                        {shiftMood && (
+                          <Chip label={shiftMood} size="small" sx={{ height: 18, fontSize: 10, fontWeight: 800, bgcolor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }} />
+                        )}
+                      </Box>
+                      <Typography sx={{ fontSize: 12, color: 'text.primary', whiteSpace: 'pre-line' }}>
+                        {eveningAccomplishment}
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              );
+            })()}
           </MotionBox>
         </AnimatePresence>
       </Box>
@@ -369,12 +429,13 @@ export function AttendanceTab() {
         onClose={() => setTimesheetModalOpen(false)}
         employeeName={profile?.name || 'Employee'}
         employeeCode={profile?.employeeNumber || 'EMP001'}
-        department={profile?.department?.name || 'Engineering & Technology'}
+        department={profile?.department?.name || 'General'}
         month={first.format('MMMM YYYY')}
         totalWorkedHours={`${((monthSummary?.totalWorkedMinutes ?? totalWorkedMinutes) / 60).toFixed(1)} hrs`}
-        presentDays={monthSummary?.presentDays ?? 21}
-        leaveDays={monthSummary?.leaveDays ?? 1}
+        presentDays={monthSummary?.presentDays ?? 0}
+        leaveDays={monthSummary?.leaveDays ?? 0}
         overtimeHours={minutesLabel(totalOvertimeMinutes)}
+        entries={entries}
       />
     </MotionBox>
   );

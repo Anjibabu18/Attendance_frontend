@@ -24,6 +24,7 @@ import { Profile } from '../types';
 import { useThemeContext } from '../theme/ThemeContext';
 import { useToast } from './Toast';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
+import { formatShiftTime } from '../utils/timeFormat';
 
 interface WeeklyRosterCardProps {
   profile?: Profile | null;
@@ -57,8 +58,8 @@ export function WeeklyRosterCard({ profile, weekendDays = 'SUNDAY' }: WeeklyRost
     const dayName = current.format('ddd').toUpperCase();
     const isWeekend = weekendSet.has(dayName) || dayName === 'SUN';
 
-    const defaultIn = profile?.shift?.inTime?.slice(0, 5) || '09:00';
-    const defaultOut = profile?.shift?.outTime?.slice(0, 5) || '18:00';
+    const defaultIn = formatShiftTime(profile?.shift?.inTime, '09:00');
+    const defaultOut = formatShiftTime(profile?.shift?.outTime, '18:00');
 
     return {
       date: dayStr,

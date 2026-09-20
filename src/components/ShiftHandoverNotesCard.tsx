@@ -15,6 +15,8 @@ import HistoryEduRoundedIcon from '@mui/icons-material/HistoryEduRounded';
 import MoodRoundedIcon from '@mui/icons-material/MoodRounded';
 import { motion } from 'framer-motion';
 
+import dayjs from 'dayjs';
+
 import { useThemeContext } from '../theme/ThemeContext';
 import { useToast } from './Toast';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
@@ -28,14 +30,16 @@ export function ShiftHandoverNotesCard() {
   const [handoverNotes, setHandoverNotes] = useState('');
   const [mood, setMood] = useState<'🚀 Productive' | '⚡ Fast-Paced' | '☕ Smooth'>('🚀 Productive');
   const [drafting, setDrafting] = useState(false);
-  const [submittedNotes, setSubmittedNotes] = useState<Array<{ id: string; summary: string; mood: string; timestamp: string }>>([
-    {
-      id: '1',
-      summary: 'Completed architectural code review for attendance sync engine & closed 4 tickets.',
-      mood: '🚀 Productive',
-      timestamp: 'Yesterday · 06:15 PM',
-    },
-  ]);
+  const [submittedNotes, setSubmittedNotes] = useState<Array<{ id: string; summary: string; mood: string; timestamp: string }>>(() => {
+    try {
+      const raw = localStorage.getItem('worktrack_shift_handovers_v1');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
 
   const handleAiDraft = () => {
     hapticTap();
@@ -58,11 +62,15 @@ export function ShiftHandoverNotesCard() {
     hapticSuccess();
     const newEntry = {
       id: Date.now().toString(),
-      summary: accomplishments.trim(),
+      summary: accomplishments.trim() + (handoverNotes.trim() ? `\n• Handover: ${handoverNotes.trim()}` : ''),
       mood,
-      timestamp: 'Just now',
+      timestamp: `${dayjs().format('hh:mm A')} · Today`,
     };
-    setSubmittedNotes((prev) => [newEntry, ...prev]);
+    const updated = [newEntry, ...submittedNotes];
+    setSubmittedNotes(updated);
+    try {
+      localStorage.setItem('worktrack_shift_handovers_v1', JSON.stringify(updated));
+    } catch {}
     toastSuccess('Daily shift handover note logged for your manager!');
     setAccomplishments('');
     setHandoverNotes('');
@@ -196,11 +204,11 @@ export function ShiftHandoverNotesCard() {
       </Box>
 
       {/* Recent Notes Preview */}
-      {submittedNotes.length > 0 && (
-        <Box sx={{ pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-          <Typography sx={{ fontSize: 11, fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1 }}>
-            Recent Handover History
-          </Typography>
+      <Box sx={{ pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
+        <Typography sx={{ fontSize: 11, fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1 }}>
+          Recent Handover History
+        </Typography>
+        {submittedNotes.length > 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {submittedNotes.map((note) => (
               <Box
@@ -221,8 +229,12 @@ export function ShiftHandoverNotesCard() {
               </Box>
             ))}
           </Box>
-        </Box>
-      )}
+        ) : (
+          <Typography sx={{ fontSize: 12, color: 'text.secondary', fontStyle: 'italic', py: 1 }}>
+            No handovers logged yet. Notes saved here or during evening checkout will appear in this log.
+          </Typography>
+        )}
+      </Box>
     </Box>
   );
 }

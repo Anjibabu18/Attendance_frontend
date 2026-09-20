@@ -36,15 +36,20 @@ export function SmartAttendanceInsights({
     const totalMinutes = last7Days.reduce((acc, e) => acc + (e.workedMinutes || 0), 0);
     const totalHours = (totalMinutes / 60).toFixed(1);
     const lateDays = last7Days.filter((e) => (e.lateMinutes || 0) > 0).length;
-    const onTimeRate = last7Days.length > 0 ? Math.round(((last7Days.length - lateDays) / last7Days.length) * 100) : 100;
+    const hasShifts = last7Days.length > 0;
+    const onTimeRate = hasShifts ? Math.round(((last7Days.length - lateDays) / last7Days.length) * 100) : 0;
 
     // Fatigue / Load Status
     const weeklyHoursNum = parseFloat(totalHours);
-    let fatigueStatus = 'Optimal Balance 🌿';
+    let fatigueStatus = 'Fresh / Rested 🌱';
     let fatigueColor = '#10b981';
-    let fatiguePercent = 65;
+    let fatiguePercent = 25;
 
-    if (weeklyHoursNum >= 45) {
+    if (!hasShifts) {
+      fatigueStatus = 'Fresh / Rested 🌱';
+      fatigueColor = '#10b981';
+      fatiguePercent = 25;
+    } else if (weeklyHoursNum >= 45) {
       fatigueStatus = 'High Workload Warning ⚠️';
       fatigueColor = '#f43f5e';
       fatiguePercent = 95;
@@ -52,7 +57,7 @@ export function SmartAttendanceInsights({
       fatigueStatus = 'Productive & Steady ⚡';
       fatigueColor = '#38bdf8';
       fatiguePercent = 80;
-    } else if (weeklyHoursNum < 20 && last7Days.length > 3) {
+    } else if (weeklyHoursNum < 20) {
       fatigueStatus = 'Light Load 🧘';
       fatigueColor = '#818cf8';
       fatiguePercent = 40;
@@ -163,10 +168,10 @@ export function SmartAttendanceInsights({
             </Typography>
           </Box>
           <Typography sx={{ fontSize: 24, fontWeight: 900, color: '#38bdf8' }}>
-            {recentStats.onTimeRate}% On-Time
+            {recentStats.totalHours === '0.0' ? 'No shifts yet' : `${recentStats.onTimeRate}% On-Time`}
           </Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
-            {recentStats.totalHours} hrs worked over last 7 days
+            {recentStats.totalHours === '0.0' ? '0 hrs worked over last 7 days' : `${recentStats.totalHours} hrs worked over last 7 days`}
           </Typography>
         </Box>
 
@@ -229,7 +234,7 @@ export function SmartAttendanceInsights({
             +{recentStats.otHours}h OT
           </Typography>
           <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.5 }}>
-            ~${recentStats.projectedBonus} projected payroll input
+            ~₹{recentStats.projectedBonus.toLocaleString('en-IN')} projected payroll input
           </Typography>
         </Box>
       </Box>
