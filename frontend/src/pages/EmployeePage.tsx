@@ -30,7 +30,9 @@ import PermissionOnboardingOverlay from './employee/PermissionOnboardingOverlay'
 import DarkModeRoundedIcon from '@mui/icons-material/DarkModeRounded';
 import { hapticPop } from '../utils/haptics';
 import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
+import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import { IconButton, Tooltip } from '@mui/material';
+import { CommandPalette } from '../components/CommandPalette';
 
 const tabs = [
   { label: 'Dashboard', subtitle: 'Today overview', icon: <DashboardRoundedIcon fontSize="small" /> },
@@ -46,6 +48,7 @@ function EmployeeContent() {
   const [visitedTabs, setVisitedTabs] = useState<Record<number, boolean>>({ 0: true });
   const [quickRequestMode, setQuickRequestMode] = useState<QuickRequestMode | null>(null);
   const [pendingVerificationId, setPendingVerificationId] = useState<number | null>(null);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [showPermissionsOverlay, setShowPermissionsOverlay] = useState(() => {
     return localStorage.getItem('app_permissions_requested') !== 'true';
   });
@@ -61,6 +64,18 @@ function EmployeeContent() {
     setVisitedTabs((prev) => (prev[index] ? prev : { ...prev, [index]: true }));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  // Universal Command Palette shortcut: Ctrl+K or Cmd+K
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   React.useEffect(() => {
     if (loading || error) return;
@@ -226,7 +241,66 @@ function EmployeeContent() {
                 <Typography sx={{ color: 'text.secondary', fontSize: { xs: 12, md: 14 }, mt: 0.5 }}>{active.subtitle}</Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-                <Button component={motion.button} whileTap={{ scale: 0.96 }} onClick={refreshData} variant="outlined" startIcon={<RefreshRoundedIcon />} sx={{ display: { xs: 'none', sm: 'inline-flex' }, borderRadius: '8px', textTransform: 'none', fontWeight: 900 }}>
+                {/* Spotlight / Command Palette Trigger */}
+                <Button
+                  component={motion.button}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setCommandPaletteOpen(true)}
+                  variant="outlined"
+                  startIcon={<SearchRoundedIcon sx={{ color: 'primary.main', fontSize: 18 }} />}
+                  sx={{
+                    display: { xs: 'none', sm: 'inline-flex' },
+                    borderRadius: '10px',
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    fontSize: 13,
+                    color: 'text.secondary',
+                    borderColor: 'divider',
+                    bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                    px: 1.5,
+                    py: 0.7,
+                    gap: 1.2,
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      bgcolor: mode === 'dark' ? 'rgba(56,189,248,0.08)' : 'rgba(37,99,235,0.05)',
+                    },
+                  }}
+                >
+                  Search actions
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize: 10,
+                      fontWeight: 900,
+                      px: 0.8,
+                      py: 0.2,
+                      borderRadius: '5px',
+                      bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      color: 'text.primary',
+                    }}
+                  >
+                    ⌘K
+                  </Box>
+                </Button>
+
+                <IconButton
+                  onClick={() => setCommandPaletteOpen(true)}
+                  sx={{
+                    display: { xs: 'inline-flex', sm: 'none' },
+                    width: 40,
+                    height: 40,
+                    borderRadius: '10px',
+                    bgcolor: mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                  }}
+                >
+                  <SearchRoundedIcon fontSize="small" />
+                </IconButton>
+
+                <Button component={motion.button} whileTap={{ scale: 0.96 }} onClick={refreshData} variant="outlined" startIcon={<RefreshRoundedIcon />} sx={{ display: { xs: 'none', md: 'inline-flex' }, borderRadius: '8px', textTransform: 'none', fontWeight: 900 }}>
                   Refresh
                 </Button>
 
@@ -362,6 +436,21 @@ function EmployeeContent() {
       {showPermissionsOverlay && (
         <PermissionOnboardingOverlay onClose={() => setShowPermissionsOverlay(false)} />
       )}
+
+      {/* Global Command Palette */}
+      <CommandPalette
+        open={commandPaletteOpen}
+        onClose={() => setCommandPaletteOpen(false)}
+        onNavigateTab={(idx) => handleSelectTab(idx)}
+        onQuickLeave={() => {
+          handleSelectTab(2);
+          setQuickRequestMode('leave');
+        }}
+        onRefresh={async () => {
+          await refreshData();
+          hapticPop();
+        }}
+      />
       </Box>
     </Box>
   );

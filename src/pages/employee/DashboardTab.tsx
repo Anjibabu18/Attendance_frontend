@@ -24,6 +24,7 @@ import { api } from '../../api/client';
 import { Attendance } from '../../types';
 import { useEmployee } from './EmployeeContext';
 import { PunchOverlay } from './PunchOverlay';
+import { LiveGeofenceRadar } from '../../components/LiveGeofenceRadar';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { useToast } from '../../components/Toast';
 import { scheduleEveningPunchOutReminder, triggerDirectNotification } from '../../utils/pushNotifications';
@@ -394,6 +395,22 @@ export function DashboardTab() {
   if (hour < 12) dynamicGreeting = 'Good morning ☕';
   else if (hour < 17) dynamicGreeting = 'Good afternoon ☀️';
 
+  const shiftInTime = profile?.shift?.inTime?.slice(0, 5) || settings?.defaultInTime?.slice(0, 5) || '09:00';
+  const shiftOutTime = profile?.shift?.outTime?.slice(0, 5) || settings?.defaultOutTime?.slice(0, 5) || '18:00';
+
+  const shiftRemainingText = useMemo(() => {
+    if (!todayEntry?.inTime || todayEntry?.outTime) return null;
+    const inMoment = parseTimeValue(todayEntry.inTime);
+    if (!inMoment) return null;
+    const targetEnd = inMoment.add(targetMinutes || 480, 'minute');
+    const now = dayjs();
+    const diffSec = targetEnd.diff(now, 'second');
+    if (diffSec <= 0) return null;
+    const remH = Math.floor(diffSec / 3600);
+    const remM = Math.floor((diffSec % 3600) / 60);
+    return `${remH > 0 ? `${remH}h ` : ''}${remM}m left · Target ~${targetEnd.format('hh:mm A')}`;
+  }, [todayEntry, targetMinutes, elapsedSeconds]);
+
   const daysRemaining = useMemo(() => {
     const end = dayjs(`${month}-01`).endOf('month');
     return Math.max(0, end.diff(dayjs(), 'day'));
@@ -491,10 +508,10 @@ export function DashboardTab() {
           <Box sx={{ position: 'absolute', bottom: -40, left: -40, width: 160, height: 160, borderRadius: '50%', background: 'radial-gradient(circle, rgba(192,132,252,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
           {/* Header row */}
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5 }}>
             <Box>
               <HeroClock />
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                 <Typography sx={{ color: 'rgba(255,255,255,0.85)', fontSize: { xs: 18, md: 20 }, fontWeight: 600 }}>
                   {dynamicGreeting}, {greetingName}
                 </Typography>
@@ -511,6 +528,80 @@ export function DashboardTab() {
                       backdropFilter: 'blur(8px)',
                     }}
                   />
+                )}
+              </Box>
+
+              {/* Shift Countdown Pill */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                {clockedIn ? (
+                  <Box
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: '20px',
+                      background: isOvertime
+                        ? 'linear-gradient(90deg, rgba(245, 158, 11, 0.3) 0%, rgba(239, 68, 68, 0.3) 100%)'
+                        : 'linear-gradient(90deg, rgba(56, 189, 248, 0.25) 0%, rgba(34, 197, 94, 0.25) 100%)',
+                      border: `1px solid ${isOvertime ? 'rgba(245, 158, 11, 0.45)' : 'rgba(56, 189, 248, 0.4)'}`,
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        bgcolor: isOvertime ? '#f59e0b' : '#38bdf8',
+                        boxShadow: isOvertime ? '0 0 8px #f59e0b' : '0 0 8px #38bdf8',
+                      }}
+                    />
+                    <Typography sx={{ color: '#f8fafc', fontWeight: 800, fontSize: 12 }}>
+                      {isOvertime
+                        ? `Overtime Active: +${ot.h}h ${ot.m}m ⚡`
+                        : shiftRemainingText || 'Shift in progress'}
+                    </Typography>
+                  </Box>
+                ) : completed ? (
+                  <Box
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.8,
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: '20px',
+                      bgcolor: 'rgba(255,255,255,0.14)',
+                      border: '1px solid rgba(255,255,255,0.22)',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <CheckCircleRoundedIcon sx={{ fontSize: 14, color: '#93c5fd' }} />
+                    <Typography sx={{ color: '#f8fafc', fontWeight: 800, fontSize: 12 }}>
+                      Shift Complete · {minutesLabel(todayEntry?.workedMinutes)}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box
+                    sx={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 0.8,
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: '20px',
+                      bgcolor: 'rgba(255,255,255,0.12)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <AccessTimeRoundedIcon sx={{ fontSize: 14, color: '#38bdf8' }} />
+                    <Typography sx={{ color: '#f8fafc', fontWeight: 800, fontSize: 12 }}>
+                      Shift: {shiftInTime} – {shiftOutTime}
+                    </Typography>
+                  </Box>
                 )}
               </Box>
             </Box>
@@ -741,6 +832,11 @@ export function DashboardTab() {
           </Box>
         </Box>
         </Tilt>
+      </MotionBox>
+
+      {/* ── Live Office Geofence Radar ── */}
+      <MotionBox variants={itemVariants}>
+        <LiveGeofenceRadar assignedOffice={profile?.assignedOfficeLocation} />
       </MotionBox>
 
       {/* ── TODAY'S WORK CARD (appears after check-in) ── */}

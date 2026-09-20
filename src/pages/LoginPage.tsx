@@ -340,6 +340,39 @@ export default function LoginPage() {
                   {biometricLoading ? "Verifying..." : "Sign in with Biometric"}
                 </Button>
               )}
+
+              {/* Demo Accounts Quick-Fill */}
+              <Box sx={{ mt: 1, pt: 2, borderTop: "1px dashed #e2e8f0" }}>
+                <Typography sx={{ fontSize: 11, fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.06em", mb: 1, textAlign: "center" }}>
+                  1-Click Demo Accounts
+                </Typography>
+                <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", justifyContent: "center" }}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => { setUsername("admin"); setPassword("Admin@12345!"); }}
+                    sx={{ borderRadius: "8px", fontSize: 11, fontWeight: 700, textTransform: "none", py: 0.4, px: 1.2, borderColor: "#cbd5e1", color: "#0f172a", "&:hover": { borderColor: "#2563eb", bgcolor: "rgba(37,99,235,0.04)" } }}
+                  >
+                    🛡️ Admin
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => { setUsername("hr"); setPassword("HrUser@12345!"); }}
+                    sx={{ borderRadius: "8px", fontSize: 11, fontWeight: 700, textTransform: "none", py: 0.4, px: 1.2, borderColor: "#cbd5e1", color: "#0f172a", "&:hover": { borderColor: "#2563eb", bgcolor: "rgba(37,99,235,0.04)" } }}
+                  >
+                    👩‍💼 HR
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => { setUsername("EMP001"); setPassword("password"); }}
+                    sx={{ borderRadius: "8px", fontSize: 11, fontWeight: 700, textTransform: "none", py: 0.4, px: 1.2, borderColor: "#cbd5e1", color: "#0f172a", "&:hover": { borderColor: "#2563eb", bgcolor: "rgba(37,99,235,0.04)" } }}
+                  >
+                    👨‍💼 Employee
+                  </Button>
+                </Box>
+              </Box>
             </Box>
           </MotionBox>
         </Box>

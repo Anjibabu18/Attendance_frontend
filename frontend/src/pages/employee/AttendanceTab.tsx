@@ -19,6 +19,7 @@ import MonthCalendar, { DayStatus } from '../../components/MonthCalendar';
 import { Attendance } from '../../types';
 import { useEmployee } from './EmployeeContext';
 import { useToast } from '../../components/Toast';
+import { AttendanceHeatmap } from '../../components/AttendanceHeatmap';
 
 const MotionBox = motion.create(Box);
 
@@ -196,6 +197,15 @@ export function AttendanceTab() {
           </Button>
         </Box>
       </Box>
+
+      {/* ── Visual Activity Heatmap ── */}
+      <AttendanceHeatmap
+        entries={entries}
+        month={month}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+        weekendDays={settings?.weekendDays}
+      />
 
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: '1fr 0.82fr' }, gap: 2.5, alignItems: 'start' }}>
         <Box sx={{ ...cardSx, p: { xs: 1.5, sm: 2.25 } }}>

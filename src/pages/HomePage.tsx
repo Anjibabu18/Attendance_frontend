@@ -10,12 +10,19 @@ const MotionBox = motion.create(Box);
 
 export default function HomePage() {
   const nav = useNavigate();
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    return !sessionStorage.getItem("splash_shown");
+  });
 
   useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2400);
-    return () => clearTimeout(timer);
-  }, []);
+    if (showSplash) {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+        sessionStorage.setItem("splash_shown", "true");
+      }, 750);
+      return () => clearTimeout(timer);
+    }
+  }, [showSplash]);
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#0a0f1d", color: "#f8fafc", overflow: "hidden" }}>
