@@ -229,17 +229,50 @@ export default function ManagerPage() {
       .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   }, [pendingCorrections, pendingWorkRequests, queueTab, search]);
 
+  const [teamStatusFilter, setTeamStatusFilter] = useState<'ALL' | 'PRESENT' | 'OUT'>('ALL');
+
   const filteredTeam = useMemo(() => {
+    const attendanceMap = new Map<number, string>();
+    teamAttendance.forEach(a => attendanceMap.set(a.employeeId, a.todayStatus));
+
+    let list = team;
+    if (teamStatusFilter === 'PRESENT') {
+      list = list.filter(e => attendanceMap.get(e.id) === 'PRESENT');
+    } else if (teamStatusFilter === 'OUT') {
+      list = list.filter(e => {
+        const s = attendanceMap.get(e.id);
+        return s === 'LEAVE' || s === 'ABSENT' || !s;
+      });
+    }
+
     const normalized = search.trim().toLowerCase();
-    if (!normalized) return team;
-    return team.filter(
+    if (!normalized) return list;
+    return list.filter(
       (employee) =>
         employee.name.toLowerCase().includes(normalized) ||
         employee.employeeNumber.toLowerCase().includes(normalized) ||
         (employee.companyRole?.name ?? "").toLowerCase().includes(normalized) ||
         (employee.assignedOfficeLocation?.officeName ?? "").toLowerCase().includes(normalized),
     );
-  }, [search, team]);
+  }, [search, team, teamAttendance, teamStatusFilter]);
+
+  const handleBatchRecommendWork = async () => {
+    const workItems = queueItems.filter(item => item.kind === 'WORK');
+    if (!workItems.length) return;
+    if (!window.confirm(`Are you sure you want to recommend all ${workItems.length} pending work requests?`)) return;
+    setBusy(true);
+    try {
+      for (const item of workItems) {
+        await api.post(`/api/manager/work-requests/${item.id}/recommend`, { remarks: "Batch approved by manager" });
+      }
+      setOk(`Successfully recommended ${workItems.length} work requests!`);
+      await refresh();
+    } catch (e: any) {
+      setErr(e?.response?.data?.error ?? "Batch recommendation failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const recommendedToday = pendingCorrections.filter((item) => item.date === dayjs().format("YYYY-MM-DD")).length;
   const attendanceTotals = useMemo(() => {
@@ -311,20 +344,38 @@ export default function ManagerPage() {
 
         <Box className="grid gap-6 xl:grid-cols-[1.05fr_1.4fr]">
           <AppCard>
-            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center" }}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, alignItems: "center", flexWrap: "wrap" }}>
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 900 }}>
                   Team overview
                 </Typography>
-                <Typography sx={{ opacity: 0.72, mt: 0.75, fontSize: 13 }}>
-                  Open an employee card to review the role, office, and assignment context behind requests.
+                <Typography sx={{ opacity: 0.72, mt: 0.5, fontSize: 13 }}>
+                  Direct reports, active presence status and role assignments
                 </Typography>
               </Box>
-              <Chip
-                size="small"
-                label={`${filteredTeam.length} visible`}
-                sx={{ borderRadius: 1, fontWeight: 900 }}
-              />
+              <Box sx={{ display: "flex", gap: 0.75, alignItems: "center", flexWrap: "wrap" }}>
+                <Chip
+                  size="small"
+                  label={`All (${team.length})`}
+                  onClick={() => setTeamStatusFilter('ALL')}
+                  color={teamStatusFilter === 'ALL' ? 'primary' : 'default'}
+                  sx={{ borderRadius: 1, fontWeight: 900, cursor: 'pointer' }}
+                />
+                <Chip
+                  size="small"
+                  label={`Present (${attendanceTotals.presentToday})`}
+                  onClick={() => setTeamStatusFilter('PRESENT')}
+                  color={teamStatusFilter === 'PRESENT' ? 'success' : 'default'}
+                  sx={{ borderRadius: 1, fontWeight: 900, cursor: 'pointer' }}
+                />
+                <Chip
+                  size="small"
+                  label={`Out / Leave (${attendanceTotals.outToday})`}
+                  onClick={() => setTeamStatusFilter('OUT')}
+                  color={teamStatusFilter === 'OUT' ? 'error' : 'default'}
+                  sx={{ borderRadius: 1, fontWeight: 900, cursor: 'pointer' }}
+                />
+              </Box>
             </Box>
             <Box sx={{ mt: 2.5, display: "grid", gap: 1.25 }}>
               {filteredTeam.length ? (
@@ -385,17 +436,30 @@ export default function ManagerPage() {
                   One screen for corrections and work requests, with a side drawer for comments and action.
                 </Typography>
               </Box>
-              <Tabs
-                value={queueTab}
-                onChange={(_, value) => setQueueTab(value)}
-                variant="scrollable"
-                allowScrollButtonsMobile
-                sx={{ "& .MuiTab-root": { minHeight: 38, textTransform: "none", fontWeight: 900 } }}
-              >
-                <Tab value="ALL" label={`All (${pendingCorrections.length + pendingWorkRequests.length})`} />
-                <Tab value="CORRECTION" label={`Corrections (${pendingCorrections.length})`} />
-                <Tab value="WORK" label={`Work requests (${pendingWorkRequests.length})`} />
-              </Tabs>
+              <Box sx={{ display: "flex", gap: 1, alignItems: "center", flexWrap: "wrap" }}>
+                <Tabs
+                  value={queueTab}
+                  onChange={(_, value) => setQueueTab(value)}
+                  variant="scrollable"
+                  allowScrollButtonsMobile
+                  sx={{ "& .MuiTab-root": { minHeight: 38, textTransform: "none", fontWeight: 900 } }}
+                >
+                  <Tab value="ALL" label={`All (${pendingCorrections.length + pendingWorkRequests.length})`} />
+                  <Tab value="CORRECTION" label={`Corrections (${pendingCorrections.length})`} />
+                  <Tab value="WORK" label={`Work requests (${pendingWorkRequests.length})`} />
+                </Tabs>
+                {pendingWorkRequests.length > 0 && (
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="primary"
+                    onClick={handleBatchRecommendWork}
+                    sx={{ borderRadius: 1.5, fontWeight: 800, textTransform: "none", ml: "auto" }}
+                  >
+                    Recommend All Work ({pendingWorkRequests.length})
+                  </Button>
+                )}
+              </Box>
             </Box>
             <Divider sx={{ my: 2 }} />
             <Box sx={{ display: "grid", gap: 1 }}>

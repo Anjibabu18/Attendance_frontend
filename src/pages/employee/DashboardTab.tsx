@@ -25,6 +25,8 @@ import { Attendance } from '../../types';
 import { useEmployee } from './EmployeeContext';
 import { PunchOverlay } from './PunchOverlay';
 import { LiveGeofenceRadar } from '../../components/LiveGeofenceRadar';
+import { SmartAttendanceInsights } from '../../components/SmartAttendanceInsights';
+import { WeeklyRosterCard } from '../../components/WeeklyRosterCard';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { useToast } from '../../components/Toast';
 import { scheduleEveningPunchOutReminder, triggerDirectNotification } from '../../utils/pushNotifications';
@@ -1046,6 +1048,20 @@ export function DashboardTab() {
           )}
         </MotionBox>
       )}
+
+      {/* ── Weekly Work Schedule & Roster ── */}
+      <MotionBox variants={itemVariants}>
+        <WeeklyRosterCard profile={profile} weekendDays={settings?.weekendDays} />
+      </MotionBox>
+
+      {/* ── WorkTrack Intelligence & Wellness ── */}
+      <MotionBox variants={itemVariants}>
+        <SmartAttendanceInsights
+          entries={entries}
+          monthSummary={monthSummary}
+          settings={settings}
+        />
+      </MotionBox>
 
       {/* ── Stat Cards ── */}
       <MotionBox variants={itemVariants} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 1.5 }}>

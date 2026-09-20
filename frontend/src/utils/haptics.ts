@@ -12,5 +12,6 @@ export function vibrate(pattern: number | number[] = 50) {
 
 export const hapticTap = () => vibrate(40); // Short tap
 export const hapticSuccess = () => vibrate([50, 50, 50]); // Triple tap
+export const hapticWarning = () => vibrate([60, 40, 60]); // Warning double tap
 export const hapticError = () => vibrate([100, 50, 100, 50, 100]); // Long vibrations
 export const hapticPop = () => vibrate(15); // Tiny tick

@@ -33,6 +33,7 @@ import LightModeRoundedIcon from '@mui/icons-material/LightModeRounded';
 import SearchRoundedIcon from '@mui/icons-material/SearchRounded';
 import { IconButton, Tooltip } from '@mui/material';
 import { CommandPalette } from '../components/CommandPalette';
+import { OfflineSyncBanner } from '../components/OfflineSyncBanner';
 
 const tabs = [
   { label: 'Dashboard', subtitle: 'Today overview', icon: <DashboardRoundedIcon fontSize="small" /> },
@@ -451,6 +452,8 @@ function EmployeeContent() {
           hapticPop();
         }}
       />
+      {/* Offline Sync Banner */}
+      <OfflineSyncBanner />
       </Box>
     </Box>
   );
