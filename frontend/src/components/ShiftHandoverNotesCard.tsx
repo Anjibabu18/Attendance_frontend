@@ -21,21 +21,6 @@ import { useThemeContext } from '../theme/ThemeContext';
 import { useToast } from './Toast';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 
-const DEFAULT_HANDOVERS = [
-  {
-    id: 'demo-1',
-    summary: '• Completed daily sprint deliverables & resolved 4 frontend Jira tickets.\n• Conducted code review for Auth middleware.\n• Handover: Handed off staging smoke test verification to Night Shift lead (Priya Sharma).',
-    mood: '🚀 Productive',
-    timestamp: 'Yesterday · 06:30 PM',
-  },
-  {
-    id: 'demo-2',
-    summary: '• Prepared Q3 sprint retrospective and updated attendance geofence radar thresholds.\n• Handover: Left database migration script in staging readiness branch for morning team.',
-    mood: '☕ Smooth',
-    timestamp: 'Friday · 06:15 PM',
-  },
-];
-
 export function ShiftHandoverNotesCard() {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
@@ -53,7 +38,7 @@ export function ShiftHandoverNotesCard() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return DEFAULT_HANDOVERS;
+    return [];
   });
 
   const handleAiDraft = () => {
@@ -64,7 +49,7 @@ export function ShiftHandoverNotesCard() {
         '• Completed scheduled on-site shift duties with 100% punctuality.\n• Closed pending tickets and updated sprint tracker.\n• Verified hardware punch integrity and team status board.'
       );
       setHandoverNotes(
-        '• Night shift support coverage handed over to Priya Sharma.\n• System health green, no blocking issues.'
+        '• Shift duties and tasks handed over to next shift colleague.\n• System health green, no blocking issues.'
       );
       setDrafting(false);
       hapticSuccess();
@@ -179,7 +164,7 @@ export function ShiftHandoverNotesCard() {
 
         <TextField
           label="Handover / Next Shift Notes (Optional)"
-          placeholder="e.g. Handed over deployment monitor to Priya; customer ticket #412 requires follow-up..."
+          placeholder="e.g. Handed over deployment monitor to next lead; customer ticket #412 requires follow-up..."
           size="small"
           value={handoverNotes}
           onChange={(e) => setHandoverNotes(e.target.value)}

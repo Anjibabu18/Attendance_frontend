@@ -38,7 +38,7 @@ export function WeeklyRosterCard({ profile, weekendDays = 'SUNDAY' }: WeeklyRost
 
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [selectedShiftDay, setSelectedShiftDay] = useState<string>('');
-  const [targetColleague, setTargetColleague] = useState('EMP002 - Priya Sharma');
+  const [targetColleague, setTargetColleague] = useState('');
   const [swapReason, setSwapReason] = useState('Personal scheduling conflict');
   const [swapSubmitted, setSwapSubmitted] = useState(false);
 
@@ -271,17 +271,13 @@ export function WeeklyRosterCard({ profile, weekendDays = 'SUNDAY' }: WeeklyRost
           </TextField>
 
           <TextField
-            select
             label="Target Colleague / Coverage"
+            placeholder="Enter colleague name or employee code"
             value={targetColleague}
             onChange={(e) => setTargetColleague(e.target.value)}
             fullWidth
             size="small"
-          >
-            <MenuItem value="EMP002 - Priya Sharma">EMP002 - Priya Sharma</MenuItem>
-            <MenuItem value="EMP003 - Rahul Verma">EMP003 - Rahul Verma</MenuItem>
-            <MenuItem value="EMP004 - Anita Patel">EMP004 - Anita Patel</MenuItem>
-          </TextField>
+          />
 
           <TextField
             label="Reason for Shift Swap"

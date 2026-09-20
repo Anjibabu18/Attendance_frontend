@@ -27,11 +27,8 @@ import { PunchOverlay } from './PunchOverlay';
 import { LiveGeofenceRadar } from '../../components/LiveGeofenceRadar';
 import { SmartAttendanceInsights } from '../../components/SmartAttendanceInsights';
 import { WeeklyRosterCard } from '../../components/WeeklyRosterCard';
-import { OfficeFloorMap } from '../../components/OfficeFloorMap';
 import { AttendanceBadgesLeague } from '../../components/AttendanceBadgesLeague';
 import { SmartCommuteWidget } from '../../components/SmartCommuteWidget';
-import { SlackPresenceSyncCard } from '../../components/SlackPresenceSyncCard';
-import { PeerKudosWall } from '../../components/PeerKudosWall';
 import { VoicePunchAssistant } from '../../components/VoicePunchAssistant';
 import { DigitalEmployeeBadgeCard } from '../../components/DigitalEmployeeBadgeCard';
 import { FocusSessionTracker } from '../../components/FocusSessionTracker';
@@ -1405,23 +1402,6 @@ export function DashboardTab() {
         </Box>
       </MotionBox>
 
-      {/* ── Live Office Seating & Team Presence Map ── */}
-      <MotionBox variants={itemVariants}>
-        <OfficeFloorMap currentEmployee={profile} isPunchedIn={!!todayEntry?.inTime && !todayEntry?.outTime} />
-      </MotionBox>
-
-      {/* ── Slack & Teams Auto-Presence Sync ── */}
-      <MotionBox variants={itemVariants}>
-        <SlackPresenceSyncCard
-          isPunchedIn={!!todayEntry?.inTime && !todayEntry?.outTime}
-          isOnBreak={!!activeBreak}
-        />
-      </MotionBox>
-
-      {/* ── Team Recognition & Shift Kudos Wall ── */}
-      <MotionBox variants={itemVariants}>
-        <PeerKudosWall currentUserName={profile?.name} />
-      </MotionBox>
 
       {/* ── Daily Shift Handover & Accomplishments ── */}
       <MotionBox variants={itemVariants}>
