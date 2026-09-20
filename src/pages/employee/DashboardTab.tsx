@@ -625,7 +625,26 @@ export function DashboardTab() {
               transition={{ duration: 2, repeat: Infinity }}
               sx={{ borderRadius: '50%' }}
             >
-              <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 56, height: 56, border: '3px solid rgba(255,255,255,0.2)' }} />
+              <Avatar
+                src={profile?.profilePhotoUrl || undefined}
+                sx={{
+                  width: { xs: 48, sm: 56 },
+                  height: { xs: 48, sm: 56 },
+                  border: '3px solid rgba(255,255,255,0.3)',
+                  fontWeight: 900,
+                  fontSize: { xs: 17, sm: 20 },
+                  color: '#ffffff',
+                  background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+                  boxShadow: '0 6px 20px rgba(99,102,241,0.35)',
+                }}
+              >
+                {profile?.name
+                  ? (profile.name.trim().split(/\s+/).length >= 2
+                      ? `${profile.name.trim().split(/\s+/)[0][0]}${profile.name.trim().split(/\s+/)[1][0]}`
+                      : profile.name.slice(0, 2)
+                    ).toUpperCase()
+                  : 'VR'}
+              </Avatar>
             </Box>
           </Box>
 

@@ -74,6 +74,12 @@ const INITIAL_KUDOS: KudosItem[] = [
   },
 ];
 
+const getInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return (name.slice(0, 2) || 'TM').toUpperCase();
+};
+
 export function PeerKudosWall({ currentUserName }: { currentUserName?: string }) {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
@@ -119,7 +125,7 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
 
     const newKudos: KudosItem = {
       id: Date.now().toString(),
-      sender: 'You',
+      sender: currentUserName || 'Venkatarao Dama',
       recipient,
       badge: badgeCategory,
       icon: badgeConfig.icon,
@@ -134,7 +140,7 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
     try {
       localStorage.setItem('worktrack_peer_kudos_v1', JSON.stringify(updated));
     } catch {}
-    toastSuccess(`Kudos sent to ${recipient}! 🌟`);
+    toastSuccess(`Kudos badge sent to ${recipient}!`);
     setMessage('');
     setGiveModalOpen(false);
   };
@@ -142,7 +148,7 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
         bgcolor: 'background.paper',
         border: '1px solid',
@@ -151,23 +157,33 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
       }}
     >
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          mb: 2,
+          gap: 1.5,
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
-              bgcolor: isDark ? 'rgba(236, 72, 153, 0.15)' : 'rgba(236, 72, 153, 0.1)',
+              width: 38,
+              height: 38,
+              borderRadius: '12px',
+              bgcolor: isDark ? 'rgba(236, 72, 153, 0.18)' : 'rgba(236, 72, 153, 0.1)',
               color: '#ec4899',
               display: 'grid',
               placeItems: 'center',
+              flexShrink: 0,
             }}
           >
             <VolunteerActivismRoundedIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 16, lineHeight: 1.2 }}>
+            <Typography sx={{ fontWeight: 900, fontSize: { xs: 15, sm: 16 }, lineHeight: 1.2 }}>
               Team Recognition & Shift Kudos Wall
             </Typography>
             <Typography sx={{ fontSize: 12, color: 'text.secondary', fontWeight: 600 }}>
@@ -189,6 +205,7 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
             textTransform: 'none',
             fontWeight: 800,
             fontSize: 12,
+            width: { xs: '100%', sm: 'auto' },
             bgcolor: '#ec4899',
             '&:hover': { bgcolor: '#db2777' },
           }}
@@ -201,16 +218,16 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'flex-start', sm: 'center' },
           justifyContent: 'space-between',
           p: 1.75,
           borderRadius: '14px',
-          bgcolor: isDark ? 'rgba(245, 158, 11, 0.06)' : 'rgba(245, 158, 11, 0.05)',
+          bgcolor: isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.06)',
           border: '1px solid',
-          borderColor: isDark ? 'rgba(245, 158, 11, 0.2)' : 'rgba(245, 158, 11, 0.15)',
+          borderColor: isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(245, 158, 11, 0.2)',
           mb: 2,
-          flexWrap: 'wrap',
-          gap: 1,
+          gap: 1.25,
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
@@ -219,10 +236,11 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
               width: 36,
               height: 36,
               borderRadius: '10px',
-              bgcolor: 'rgba(245, 158, 11, 0.15)',
+              bgcolor: 'rgba(245, 158, 11, 0.18)',
               color: '#f59e0b',
               display: 'grid',
               placeItems: 'center',
+              flexShrink: 0,
             }}
           >
             <EmojiEventsRoundedIcon fontSize="small" />
@@ -231,15 +249,15 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
             <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#f59e0b' }}>
               🌟 {dayjs().format('MMMM')} Team Appreciation &amp; Recognition
             </Typography>
-            <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-              {currentUserName ? `Celebrating top on-time contributions and peer support across ${currentUserName}'s team!` : 'Celebrating on-time contributions, teamwork, and shift coverage across the team!'}
+            <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600 }}>
+              {currentUserName ? `Celebrating top on-time contributions across ${currentUserName}'s team!` : 'Celebrating on-time contributions and peer support across the team!'}
             </Typography>
           </Box>
         </Box>
         <Chip
           size="small"
           label="Top Contributor"
-          sx={{ fontWeight: 800, fontSize: 10, bgcolor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}
+          sx={{ fontWeight: 800, fontSize: 10, bgcolor: 'rgba(245, 158, 11, 0.18)', color: '#f59e0b' }}
         />
       </Box>
 
@@ -255,14 +273,27 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
               border: '1px solid',
               borderColor: 'divider',
               display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
               justifyContent: 'space-between',
-              alignItems: 'flex-start',
+              alignItems: { xs: 'flex-start', sm: 'center' },
               gap: 1.5,
             }}
           >
-            <Box sx={{ display: 'flex', gap: 1.25 }}>
-              <Avatar sx={{ width: 34, height: 34, fontSize: 13, bgcolor: k.color, fontWeight: 800 }}>
-                {k.recipient[0]}
+            <Box sx={{ display: 'flex', gap: 1.25, alignItems: 'flex-start' }}>
+              <Avatar
+                sx={{
+                  width: 38,
+                  height: 38,
+                  fontSize: 12,
+                  fontWeight: 900,
+                  color: '#ffffff',
+                  background: `linear-gradient(135deg, ${k.color}, ${k.color}cc)`,
+                  boxShadow: `0 3px 10px ${k.color}33`,
+                  border: '2px solid rgba(255,255,255,0.2)',
+                  flexShrink: 0,
+                }}
+              >
+                {getInitials(k.recipient)}
               </Avatar>
               <Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
@@ -281,7 +312,7 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
                       border: `1px solid ${k.color}33`,
                     }}
                   />
-                  <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>· {k.timeAgo}</Typography>
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600 }}>· {k.timeAgo}</Typography>
                 </Box>
                 <Typography sx={{ fontSize: 12, color: 'text.primary', mt: 0.5, lineHeight: 1.4 }}>
                   "{k.message}"
@@ -301,6 +332,7 @@ export function PeerKudosWall({ currentUserName }: { currentUserName?: string })
                 bgcolor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
                 minWidth: 50,
                 py: 0.25,
+                alignSelf: { xs: 'flex-end', sm: 'center' },
               }}
             >
               {k.likes}

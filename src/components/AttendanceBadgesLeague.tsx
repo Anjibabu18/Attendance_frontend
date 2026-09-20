@@ -103,7 +103,7 @@ export function AttendanceBadgesLeague({ entries = [], monthSummary }: Attendanc
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
         bgcolor: 'background.paper',
         border: '1px solid',
@@ -112,23 +112,33 @@ export function AttendanceBadgesLeague({ entries = [], monthSummary }: Attendanc
       }}
     >
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          mb: 2,
+          gap: 1.5,
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
-              bgcolor: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)',
+              width: 38,
+              height: 38,
+              borderRadius: '12px',
+              bgcolor: isDark ? 'rgba(245, 158, 11, 0.18)' : 'rgba(245, 158, 11, 0.1)',
               color: '#f59e0b',
               display: 'grid',
               placeItems: 'center',
+              flexShrink: 0,
             }}
           >
             <EmojiEventsRoundedIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 16 }}>
+            <Typography sx={{ fontWeight: 900, fontSize: { xs: 15, sm: 16 } }}>
               Punctuality Badges &amp; League
             </Typography>
             <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
@@ -147,6 +157,7 @@ export function AttendanceBadgesLeague({ entries = [], monthSummary }: Attendanc
             bgcolor: 'rgba(245, 158, 11, 0.15)',
             color: '#d97706',
             border: '1px solid rgba(245, 158, 11, 0.3)',
+            alignSelf: { xs: 'flex-start', sm: 'center' },
           }}
         />
       </Box>

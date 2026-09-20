@@ -200,7 +200,26 @@ export function MoreTab({ onQuickRequest }: { onQuickRequest?: (mode: 'leave' | 
               </IconButton>
             }
           >
-            <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 72, height: 72, border: '4px solid #EFF6FF' }} />
+            <Avatar
+              src={profile?.profilePhotoUrl || undefined}
+              sx={{
+                width: 72,
+                height: 72,
+                border: '4px solid #EFF6FF',
+                fontWeight: 900,
+                fontSize: 24,
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+                boxShadow: '0 8px 24px rgba(99,102,241,0.3)',
+              }}
+            >
+              {profile?.name
+                ? (profile.name.trim().split(/\s+/).length >= 2
+                    ? `${profile.name.trim().split(/\s+/)[0][0]}${profile.name.trim().split(/\s+/)[1][0]}`
+                    : profile.name.slice(0, 2)
+                  ).toUpperCase()
+                : 'VR'}
+            </Avatar>
           </Badge>
           <Box sx={{ minWidth: 0 }}>
             <Typography sx={{ fontWeight: 900, fontSize: { xs: 24, md: 30 }, lineHeight: 1.05, overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile?.name || 'Employee'}</Typography>

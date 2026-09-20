@@ -89,7 +89,7 @@ export function SmartCommuteWidget({
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
         bgcolor: 'background.paper',
         border: '1px solid',
@@ -116,7 +116,16 @@ export function SmartCommuteWidget({
       />
 
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', sm: 'center' },
+          mb: 2,
+          gap: 1.5,
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <Box
             sx={{
@@ -257,7 +266,15 @@ export function SmartCommuteWidget({
       </Box>
 
       {/* Weather context & Google Maps button */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: 1.5,
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Box
             sx={{
@@ -267,6 +284,7 @@ export function SmartCommuteWidget({
               color: '#f59e0b',
               display: 'grid',
               placeItems: 'center',
+              flexShrink: 0,
             }}
           >
             <WbSunnyRoundedIcon sx={{ fontSize: 18 }} />
@@ -291,6 +309,7 @@ export function SmartCommuteWidget({
             textTransform: 'none',
             fontWeight: 800,
             fontSize: 12,
+            width: { xs: '100%', sm: 'auto' },
             borderColor: 'divider',
             color: 'text.primary',
             '&:hover': {

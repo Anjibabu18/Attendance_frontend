@@ -40,12 +40,30 @@ export function SlackPresenceSyncCard({
   const [customStatus, setCustomStatus] = useState('');
   const [syncing, setSyncing] = useState(false);
 
-  // Compute live presence status based on attendance
+  // Compute live presence status based on attendance with high contrast colors
   const liveStatus = isOnBreak
-    ? { text: '☕ Coffee / Meal Break', subtext: 'Auto-clears when punch resumes', color: '#f59e0b' }
+    ? {
+        text: '☕ Coffee / Meal Break',
+        subtext: 'Auto-clears when punch resumes',
+        color: isDark ? '#fbbf24' : '#b45309',
+        badgeBg: isDark ? 'rgba(245, 158, 11, 0.12)' : '#fffbeb',
+        border: isDark ? 'rgba(245, 158, 11, 0.3)' : '#fde68a',
+      }
     : isPunchedIn
-    ? { text: '🟢 Working On-Site · Desk E-01', subtext: 'Synced via WorkTrack hardware badge', color: '#10b981' }
-    : { text: '🌙 Out of Office · Do Not Disturb', subtext: 'Shift ended · Notifications muted', color: '#94a3b8' };
+    ? {
+        text: '🟢 Working On-Site · Active Shift',
+        subtext: 'Synced via WorkTrack hardware badge',
+        color: isDark ? '#34d399' : '#047857',
+        badgeBg: isDark ? 'rgba(16, 185, 129, 0.12)' : '#ecfdf5',
+        border: isDark ? 'rgba(16, 185, 129, 0.3)' : '#a7f3d0',
+      }
+    : {
+        text: '🌙 Out of Office · Do Not Disturb',
+        subtext: 'Shift ended · Notifications muted',
+        color: isDark ? '#e2e8f0' : '#1e293b',
+        badgeBg: isDark ? 'rgba(255, 255, 255, 0.04)' : '#f8fafc',
+        border: isDark ? 'rgba(255, 255, 255, 0.1)' : '#e2e8f0',
+      };
 
   const handleTestSync = () => {
     hapticTap();
@@ -62,7 +80,7 @@ export function SlackPresenceSyncCard({
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
         bgcolor: 'background.paper',
         border: '1px solid',
@@ -75,9 +93,9 @@ export function SlackPresenceSyncCard({
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
+              width: 38,
+              height: 38,
+              borderRadius: '12px',
               bgcolor: isDark ? 'rgba(99, 102, 241, 0.15)' : 'rgba(99, 102, 241, 0.1)',
               color: '#6366f1',
               display: 'grid',
@@ -87,8 +105,8 @@ export function SlackPresenceSyncCard({
             <ChatBubbleOutlineRoundedIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 16, lineHeight: 1.2 }}>
-              Slack & Teams Auto-Presence Sync
+            <Typography sx={{ fontWeight: 900, fontSize: { xs: 15, sm: 17 }, lineHeight: 1.2, letterSpacing: '-0.02em' }}>
+              Slack &amp; Teams Auto-Presence Sync
             </Typography>
             <Typography sx={{ fontSize: 12, color: 'text.secondary', fontWeight: 600 }}>
               Reflect your punch state directly to corporate chat
@@ -115,9 +133,9 @@ export function SlackPresenceSyncCard({
         sx={{
           p: 2,
           borderRadius: '16px',
-          bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+          bgcolor: liveStatus.badgeBg,
           border: '1px solid',
-          borderColor: 'divider',
+          borderColor: liveStatus.border,
           mb: 2,
           display: 'flex',
           justifyContent: 'space-between',
@@ -130,10 +148,10 @@ export function SlackPresenceSyncCard({
           <Typography sx={{ fontSize: 11, fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 0.5 }}>
             Current Broadcast Status
           </Typography>
-          <Typography sx={{ fontSize: 16, fontWeight: 900, color: liveStatus.color }}>
+          <Typography sx={{ fontSize: { xs: 15, sm: 17 }, fontWeight: 900, color: liveStatus.color, letterSpacing: '-0.01em' }}>
             {customStatus.trim() ? `💬 ${customStatus}` : liveStatus.text}
           </Typography>
-          <Typography sx={{ fontSize: 11, color: 'text.secondary', mt: 0.25 }}>
+          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.25, fontWeight: 600 }}>
             {liveStatus.subtext}
           </Typography>
         </Box>
@@ -142,30 +160,36 @@ export function SlackPresenceSyncCard({
           <Chip
             size="small"
             label="Slack"
+            onClick={() => { hapticPop(); setSlackEnabled(!slackEnabled); }}
             sx={{
               fontWeight: 800,
               fontSize: 11,
+              cursor: 'pointer',
               bgcolor: slackEnabled ? '#4a154b1a' : 'action.hover',
-              color: slackEnabled ? '#e01e5a' : 'text.disabled',
-              border: slackEnabled ? '1px solid #4a154b33' : '1px solid transparent',
+              color: slackEnabled ? '#4a154b' : 'text.disabled',
+              border: slackEnabled ? '1px solid #4a154b44' : '1px solid transparent',
+              '&:hover': { bgcolor: '#4a154b2a' },
             }}
           />
           <Chip
             size="small"
             label="MS Teams"
+            onClick={() => { hapticPop(); setTeamsEnabled(!teamsEnabled); }}
             sx={{
               fontWeight: 800,
               fontSize: 11,
+              cursor: 'pointer',
               bgcolor: teamsEnabled ? '#6264a71a' : 'action.hover',
-              color: teamsEnabled ? '#6264a7' : 'text.disabled',
-              border: teamsEnabled ? '1px solid #6264a733' : '1px solid transparent',
+              color: teamsEnabled ? '#4f52b2' : 'text.disabled',
+              border: teamsEnabled ? '1px solid #6264a744' : '1px solid transparent',
+              '&:hover': { bgcolor: '#6264a72a' },
             }}
           />
         </Box>
       </Box>
 
       {/* Override custom message & ping action */}
-      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
         <TextField
           size="small"
           placeholder="Override custom status (e.g. In deep focus / Client workshop)"
@@ -189,8 +213,10 @@ export function SlackPresenceSyncCard({
             borderRadius: '12px',
             textTransform: 'none',
             fontWeight: 800,
-            fontSize: 12,
-            px: 2,
+            fontSize: 13,
+            py: { xs: 1.25, sm: 1 },
+            px: 2.5,
+            width: { xs: '100%', sm: 'auto' },
             whiteSpace: 'nowrap',
             bgcolor: '#6366f1',
             '&:hover': { bgcolor: '#4f46e5' },
@@ -201,10 +227,10 @@ export function SlackPresenceSyncCard({
       </Box>
 
       {/* Auto DND Toggle & App switches */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, pt: 1, borderTop: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <NotificationsOffRoundedIcon sx={{ fontSize: 16, color: '#f59e0b' }} />
-          <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
+          <NotificationsOffRoundedIcon sx={{ fontSize: 17, color: '#f59e0b' }} />
+          <Typography sx={{ fontSize: { xs: 11.5, sm: 12.5 }, fontWeight: 700, color: 'text.primary' }}>
             Auto-Mute Notifications after Shift Punch-Out
           </Typography>
         </Box>

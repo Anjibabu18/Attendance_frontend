@@ -42,6 +42,13 @@ const tabs = [
   { label: 'More', subtitle: 'Profile, reports, settings', icon: <TuneRoundedIcon fontSize="small" /> },
 ];
 
+const getInitials = (name?: string) => {
+  if (!name) return 'VR';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return (name.slice(0, 2) || 'VR').toUpperCase();
+};
+
 function EmployeeContent() {
   const { loading, error, profile, refreshData } = useEmployee();
   const { mode, toggleColorMode } = useThemeContext();
@@ -217,8 +224,23 @@ function EmployeeContent() {
             })}
           </Box>
 
-          <Box component={motion.div} whileHover={{ y: -2 }} sx={{ mt: 'auto', p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: '8px', bgcolor: 'background.default', display: 'flex', gap: 1.25, alignItems: 'center' }}>
-            <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 42, height: 42 }} />
+          <Box component={motion.div} whileHover={{ y: -2 }} sx={{ mt: 'auto', p: 1.5, border: '1px solid', borderColor: 'divider', borderRadius: '12px', bgcolor: 'background.default', display: 'flex', gap: 1.25, alignItems: 'center' }}>
+            <Avatar
+              src={profile?.profilePhotoUrl || undefined}
+              sx={{
+                width: 42,
+                height: 42,
+                fontWeight: 900,
+                fontSize: 14,
+                color: '#ffffff',
+                background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+                boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                border: '2px solid rgba(255, 255, 255, 0.2)',
+                flexShrink: 0,
+              }}
+            >
+              {getInitials(profile?.name)}
+            </Avatar>
             <Box sx={{ minWidth: 0, flex: 1 }}>
               <Typography sx={{ fontWeight: 900, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile?.name}</Typography>
               <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>Employee</Typography>
@@ -335,8 +357,22 @@ function EmployeeContent() {
                     </AnimatePresence>
                   </IconButton>
                 </Tooltip>
-
-                <Avatar src={profile?.profilePhotoUrl || undefined} sx={{ width: 40, height: 40, display: { md: 'none' } }} />
+                <Avatar
+                  src={profile?.profilePhotoUrl || undefined}
+                  sx={{
+                    width: 38,
+                    height: 38,
+                    display: { md: 'none' },
+                    fontWeight: 900,
+                    fontSize: 13,
+                    color: '#ffffff',
+                    background: 'linear-gradient(135deg, #6366f1 0%, #38bdf8 100%)',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                    border: '2px solid rgba(255, 255, 255, 0.2)',
+                  }}
+                >
+                  {getInitials(profile?.name)}
+                </Avatar>
               </Box>
             </Box>
           </Box>

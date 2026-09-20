@@ -82,7 +82,7 @@ export function WeeklyRosterCard({ profile, weekendDays = 'SUNDAY' }: WeeklyRost
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
         bgcolor: 'background.paper',
         border: '1px solid',
@@ -91,23 +91,33 @@ export function WeeklyRosterCard({ profile, weekendDays = 'SUNDAY' }: WeeklyRost
       }}
     >
       {/* Title Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          mb: 2,
+          gap: 1.5,
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
-              bgcolor: isDark ? 'rgba(56, 189, 248, 0.15)' : 'rgba(37, 99, 235, 0.1)',
+              width: 38,
+              height: 38,
+              borderRadius: '12px',
+              bgcolor: isDark ? 'rgba(56, 189, 248, 0.18)' : 'rgba(37, 99, 235, 0.1)',
               color: isDark ? '#38bdf8' : '#2563eb',
               display: 'grid',
               placeItems: 'center',
+              flexShrink: 0,
             }}
           >
             <CalendarViewWeekRoundedIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 16 }}>
+            <Typography sx={{ fontWeight: 900, fontSize: { xs: 15, sm: 16 } }}>
               Weekly Work Schedule & Roster
             </Typography>
             <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
@@ -129,6 +139,7 @@ export function WeeklyRosterCard({ profile, weekendDays = 'SUNDAY' }: WeeklyRost
             textTransform: 'none',
             fontWeight: 800,
             fontSize: 12,
+            width: { xs: '100%', sm: 'auto' },
             borderColor: 'divider',
           }}
         >

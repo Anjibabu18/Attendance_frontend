@@ -105,7 +105,7 @@ export function LiveGeofenceRadar({ assignedOffice, onStatusChange }: LiveGeofen
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
         background: isDark
           ? isInside

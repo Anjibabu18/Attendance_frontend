@@ -37,6 +37,12 @@ interface DigitalEmployeeBadgeCardProps {
   bloodGroup?: string;
 }
 
+const getInitials = (name: string) => {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return (name.slice(0, 2) || 'VD').toUpperCase();
+};
+
 export function DigitalEmployeeBadgeCard({
   open,
   onClose,
@@ -168,13 +174,14 @@ export function DigitalEmployeeBadgeCard({
                     height: 110,
                     border: '4px solid',
                     borderColor: '#0284c7',
-                    boxShadow: '0 8px 24px rgba(2, 132, 199, 0.3)',
+                    boxShadow: '0 8px 24px rgba(2, 132, 199, 0.35)',
                     fontWeight: 900,
-                    fontSize: 36,
-                    bgcolor: '#0284c7',
+                    fontSize: 34,
+                    color: '#ffffff',
+                    background: 'linear-gradient(135deg, #0284c7 0%, #6366f1 100%)',
                   }}
                 >
-                  {employeeName[0]}
+                  {getInitials(employeeName)}
                 </Avatar>
                 <Box
                   sx={{

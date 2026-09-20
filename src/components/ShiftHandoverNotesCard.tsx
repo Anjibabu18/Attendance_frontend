@@ -21,6 +21,21 @@ import { useThemeContext } from '../theme/ThemeContext';
 import { useToast } from './Toast';
 import { hapticSuccess, hapticTap } from '../utils/haptics';
 
+const DEFAULT_HANDOVERS = [
+  {
+    id: 'demo-1',
+    summary: '• Completed daily sprint deliverables & resolved 4 frontend Jira tickets.\n• Conducted code review for Auth middleware.\n• Handover: Handed off staging smoke test verification to Night Shift lead (Priya Sharma).',
+    mood: '🚀 Productive',
+    timestamp: 'Yesterday · 06:30 PM',
+  },
+  {
+    id: 'demo-2',
+    summary: '• Prepared Q3 sprint retrospective and updated attendance geofence radar thresholds.\n• Handover: Left database migration script in staging readiness branch for morning team.',
+    mood: '☕ Smooth',
+    timestamp: 'Friday · 06:15 PM',
+  },
+];
+
 export function ShiftHandoverNotesCard() {
   const { mode } = useThemeContext();
   const isDark = mode === 'dark';
@@ -35,10 +50,10 @@ export function ShiftHandoverNotesCard() {
       const raw = localStorage.getItem('worktrack_shift_handovers_v1');
       if (raw) {
         const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return [];
+    return DEFAULT_HANDOVERS;
   });
 
   const handleAiDraft = () => {
@@ -79,7 +94,7 @@ export function ShiftHandoverNotesCard() {
   return (
     <Box
       sx={{
-        p: 2.5,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: '20px',
         bgcolor: 'background.paper',
         border: '1px solid',
@@ -88,23 +103,33 @@ export function ShiftHandoverNotesCard() {
       }}
     >
       {/* Header */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          mb: 2,
+          gap: 1.5,
+        }}
+      >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
           <Box
             sx={{
-              width: 36,
-              height: 36,
-              borderRadius: '10px',
-              bgcolor: isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.1)',
+              width: 38,
+              height: 38,
+              borderRadius: '12px',
+              bgcolor: isDark ? 'rgba(168, 85, 247, 0.18)' : 'rgba(168, 85, 247, 0.1)',
               color: '#a855f7',
               display: 'grid',
               placeItems: 'center',
+              flexShrink: 0,
             }}
           >
             <HistoryEduRoundedIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography sx={{ fontWeight: 900, fontSize: 16, lineHeight: 1.2 }}>
+            <Typography sx={{ fontWeight: 900, fontSize: { xs: 15, sm: 16 }, lineHeight: 1.2 }}>
               Daily Shift Handover & Accomplishments
             </Typography>
             <Typography sx={{ fontSize: 12, color: 'text.secondary', fontWeight: 600 }}>
@@ -123,12 +148,14 @@ export function ShiftHandoverNotesCard() {
             borderRadius: '10px',
             textTransform: 'none',
             fontWeight: 800,
-            fontSize: 11,
-            borderColor: isDark ? 'rgba(168, 85, 247, 0.3)' : 'rgba(168, 85, 247, 0.2)',
-            color: 'text.primary',
+            fontSize: 12,
+            width: { xs: '100%', sm: 'auto' },
+            borderColor: isDark ? 'rgba(168, 85, 247, 0.4)' : 'rgba(168, 85, 247, 0.25)',
+            color: isDark ? '#d8b4fe' : '#7e22ce',
+            bgcolor: isDark ? 'rgba(168, 85, 247, 0.08)' : 'rgba(168, 85, 247, 0.04)',
             '&:hover': {
               borderColor: '#a855f7',
-              bgcolor: isDark ? 'rgba(168, 85, 247, 0.1)' : 'rgba(168, 85, 247, 0.05)',
+              bgcolor: isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.08)',
             },
           }}
         >
@@ -161,8 +188,16 @@ export function ShiftHandoverNotesCard() {
         />
 
         {/* Shift Mood Selector & Submit */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'stretch', sm: 'center' },
+            gap: 1.5,
+          }}
+        >
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
             <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'text.secondary' }}>Shift Mood:</Typography>
             {(['🚀 Productive', '⚡ Fast-Paced', '☕ Smooth'] as const).map((m) => (
               <Chip
@@ -175,8 +210,11 @@ export function ShiftHandoverNotesCard() {
                   fontSize: 11,
                   cursor: 'pointer',
                   bgcolor: mood === m ? (isDark ? 'rgba(168, 85, 247, 0.25)' : '#f3e8ff') : 'action.hover',
-                  color: mood === m ? '#a855f7' : 'text.secondary',
+                  color: mood === m ? (isDark ? '#e9d5ff' : '#7e22ce') : 'text.secondary',
                   border: mood === m ? '1px solid #a855f7' : '1px solid transparent',
+                  '&:hover': {
+                    bgcolor: isDark ? 'rgba(168, 85, 247, 0.3)' : '#ebd5ff',
+                  },
                 }}
               />
             ))}
@@ -194,6 +232,8 @@ export function ShiftHandoverNotesCard() {
               fontWeight: 800,
               fontSize: 12,
               px: 2,
+              py: { xs: 1, sm: 0.75 },
+              width: { xs: '100%', sm: 'auto' },
               bgcolor: '#a855f7',
               '&:hover': { bgcolor: '#9333ea' },
             }}
@@ -205,27 +245,41 @@ export function ShiftHandoverNotesCard() {
 
       {/* Recent Notes Preview */}
       <Box sx={{ pt: 1.5, borderTop: '1px solid', borderColor: 'divider' }}>
-        <Typography sx={{ fontSize: 11, fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em', mb: 1 }}>
-          Recent Handover History
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.25 }}>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Recent Handover History
+          </Typography>
+          <Chip
+            size="small"
+            label={`${submittedNotes.length} logged`}
+            sx={{ fontSize: 10, fontWeight: 700, height: 20, bgcolor: isDark ? 'rgba(168, 85, 247, 0.15)' : 'rgba(168, 85, 247, 0.08)', color: '#a855f7' }}
+          />
+        </Box>
         {submittedNotes.length > 0 ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {submittedNotes.map((note) => (
               <Box
                 key={note.id}
                 sx={{
-                  p: 1.25,
-                  borderRadius: '10px',
-                  bgcolor: isDark ? 'rgba(255,255,255,0.02)' : '#f8fafc',
+                  p: 1.5,
+                  borderRadius: '12px',
+                  bgcolor: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
                   border: '1px solid',
-                  borderColor: 'divider',
+                  borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                  transition: 'all 0.2s ease',
+                  '&:hover': {
+                    borderColor: 'rgba(168, 85, 247, 0.3)',
+                    bgcolor: isDark ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                  },
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
-                  <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#a855f7' }}>{note.mood}</Typography>
-                  <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>{note.timestamp}</Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5, flexWrap: 'wrap', gap: 0.5 }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 800, color: isDark ? '#c084fc' : '#9333ea' }}>{note.mood}</Typography>
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary', fontWeight: 600 }}>{note.timestamp}</Typography>
                 </Box>
-                <Typography sx={{ fontSize: 12, whiteSpace: 'pre-line' }}>{note.summary}</Typography>
+                <Typography sx={{ fontSize: 12.5, whiteSpace: 'pre-line', color: 'text.primary', lineHeight: 1.5 }}>
+                  {note.summary}
+                </Typography>
               </Box>
             ))}
           </Box>
